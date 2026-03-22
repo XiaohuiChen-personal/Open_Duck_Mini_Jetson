@@ -60,6 +60,7 @@ Open_Duck_Mini_Jetson/
 │       └── __init__.py              # Register env with Isaac Lab
 ├── jetson_runtime/                   # NEW — Jetson deployment code
 │   ├── trt_infer.py                 # TensorRT inference wrapper for locomotion policy
+│   ├── thermal_manager.py           # Battery temp monitor + power mode management (Task 4.6)
 │   ├── cosmos_commander.py          # Cosmos Reason2 interface + command parser (Phase 5)
 │   ├── autonomous_walk.py           # Main control loop: Cosmos + locomotion (Phase 5)
 │   ├── walk_controller.py           # Manual walk control loop (replaces Pi runtime)
@@ -77,6 +78,7 @@ Open_Duck_Mini_Jetson/
 │   ├── assembly_guide.md             # Build instructions + GPIO pin map
 │   └── jetson-mod/                   # THIS MODIFICATION
 │       ├── task_plan.md              # This file
+│       ├── jetson_wiring_diagram.drawio  # Wiring diagram for Jetson modification (Task 4.3)
 │       ├── algorithm_comparison.md   # Multi-algorithm evaluation results (Task 2.5 output)
 │       ├── validation_results.md    # Final policy validation observations (Task 2.7 output)
 │       └── prompt_engineering_results.md  # Cosmos prompt behavior test results (Task 5.4 output)
@@ -1514,21 +1516,44 @@ class TestTrunkTopSTL:
 
 ---
 
-### Task 3.2 — Redesign `body_back`
+### Task 3.2 — Redesign `body_back` and `body_front` for Directed Ventilation
 
 **Description:**
-Add ventilation slots and optional connector access panel to the body_back part.
+Add ventilation slots to `body_back` and matching inlet holes on `body_front` to create cross-flow ventilation through the **compute zone only** (not the battery zone). The airflow path should direct hot exhaust air away from the battery compartment and out the back of the robot.
 
-**Changes:**
-- Add grid ventilation pattern (~40x20mm) for passive airflow to the Jetson heatsink
-- Optional: add a cutout for the DC barrel jack or USB-C connector
+**Context — Thermal Safety:**
+The Jetson dissipates 20-22W at 25W mode. Its heatsink surface can reach 55-80°C under load. 18650 Li-ion cells degrade above 45°C and risk venting/damage above 60°C. The trunk cavity must be thermally zoned to protect batteries. This task works together with Task 3.6 (thermal partition wall) and Task 3.4 (battery pack isolation) to form a complete thermal management solution.
+
+**Changes to `body_back`:**
+- Add hex-pattern ventilation cutouts (~40x20mm) **positioned only on the compute zone side** (the side where the Jetson sits, opposite the battery compartment)
+- Keep the battery zone side of `body_back` **solid** (no vents) to prevent hot air recirculating toward batteries
+- Optional: add a cutout for the DC barrel jack or USB-C connector on the compute side
+
+**Changes to `body_front`:**
+- Add matching inlet ventilation slots (~30x15mm) on the compute zone side of `body_front`
+- Inlet holes should be positioned to create a cross-flow path: air enters front → flows over Jetson heatsink → exits rear vents
+- Keep the battery zone side of `body_front` **solid**
+
+**Airflow diagram (top view):**
+```
+         body_front                              body_back
+    ┌────────────────────────────────────────────────────┐
+    │  SOLID (battery zone)          SOLID (battery zone)│
+    │────────────── PARTITION WALL ──────────────────────│
+    │░░░INLET░░░  →  JETSON + FAN  →  ░░░EXHAUST░░░░░░░│
+    │  (compute zone)                (compute zone)      │
+    └────────────────────────────────────────────────────┘
+         AIR IN →                              → AIR OUT
+```
 
 **How to test:**
 
 *Manual verification:*
-- [ ] Print the part and visually inspect ventilation holes
-- [ ] Confirm holes do not weaken the structural integrity of the part
-- [ ] Blow air through — vents should allow free airflow
+- [ ] Print both parts and visually inspect ventilation holes
+- [ ] Confirm holes do not weaken the structural integrity of either part
+- [ ] Blow air through — vents should allow free cross-flow airflow on compute side only
+- [ ] Verify battery zone side has no openings that would allow hot air ingress
+- [ ] With Jetson fan running, hold tissue paper near rear vents to confirm exhaust flow
 
 ---
 
@@ -1562,10 +1587,16 @@ class TestBodyMiddleDimensions:
 
 ---
 
-### Task 3.4 — Redesign Battery Pack
+### Task 3.4 — Redesign Battery Pack (Thermally Isolated)
 
 **Description:**
-Redesign the battery_pack_lid to hold 4x 18650 cells instead of 2x, and add space for the DC-DC boost converter.
+Redesign the battery_pack_lid to hold 4x 18650 cells instead of 2x, add space for the DC-DC boost converter, and ensure the battery pack is thermally isolated from the Jetson compute zone.
+
+**Thermal isolation requirements:**
+- The battery pack must sit entirely within the **battery zone** (behind the thermal partition wall from Task 3.6)
+- Add a **slot or lip** on the battery pack housing that mates with the thermal partition wall, creating a sealed boundary
+- Include a **thermistor mounting point** (small clip or channel) to hold a NTC 10kΩ thermistor against one of the 18650 cells for runtime temperature monitoring (see Task 4.6)
+- Route power cables from battery zone to compute zone through a **small notch** in the partition wall (just large enough for wires, not airflow)
 
 **How to test:**
 
@@ -1573,6 +1604,9 @@ Redesign the battery_pack_lid to hold 4x 18650 cells instead of 2x, and add spac
 - [ ] Print and test-fit with 4x 18650 cells
 - [ ] Verify cells are held securely and cannot rattle
 - [ ] Confirm DC-DC converter mounting location and wire routing
+- [ ] Verify partition wall slot aligns with Task 3.6 thermal partition
+- [ ] Confirm thermistor mounting clip holds sensor snugly against a cell
+- [ ] Verify cable routing notch is <5mm diameter (minimal thermal leakage)
 
 ---
 
@@ -1589,6 +1623,105 @@ pytest tests/test_simulation_stability.py tests/test_policy_inference.py -v
 ```
 
 All tests must pass with the final meshes.
+
+---
+
+### Task 3.6 — Design Thermal Partition Wall
+
+**Description:**
+Design and print a partition wall that divides the trunk cavity into two thermally isolated zones: a **battery zone** (back/rear of trunk) and a **compute zone** (front/mid of trunk where the Jetson is mounted). This is the primary thermal safety measure preventing Jetson heat from reaching the 18650 battery cells.
+
+**Context — Why this is critical:**
+The Jetson Orin Nano dissipates 20-22W at 25W power mode. Its heatsink surface temperature can reach 55-80°C under sustained AI workloads. 18650 Li-ion cells begin accelerated degradation above 45°C, risk gas formation and venting above 60°C, and enter thermal runaway above ~130°C. While the gap between heatsink temp and battery danger zone is not immediately catastrophic, sustained operation in an enclosed trunk cavity without a thermal barrier could push battery temperatures into the damage zone (60°C+), especially during prolonged Cosmos VLM inference at 25W mode.
+
+**Design specifications:**
+
+```
+    TRUNK CAVITY (top view)
+    ┌──────────────────┬───────────────────────────────┐
+    │  BATTERY ZONE    │  COMPUTE ZONE                 │
+    │  (cool, sealed)  │  (hot, ventilated)            │
+    │                  │                                │
+    │  [4x 18650]      │  [JETSON ORIN NANO]            │
+    │  [BMS]           │  [SERVO DRIVER]                │
+    │  [DC-DC conv]    │  [IMU]                         │
+    │                  │  [FAN → exhaust vents]         │
+    │                  │                                │
+    │  ~50mm depth     │  ~100mm depth                  │
+    └──────────────────┴───────────────────────────────┘
+         BACK (-X)    PARTITION     FRONT (+X)
+                     (~X = -0.08)
+```
+
+**Partition wall construction:**
+- **Base material:** PLA, 2mm thick, printed to span the full width (Y: 110mm) and height (Z: ~90mm) of the trunk cavity
+- **Thermal insulation:** Bond a 1mm **mica sheet** (cut to size) to the compute-zone-facing side of the partition wall
+  - Mica thermal conductivity: ~0.08 W/mK (excellent insulator)
+  - Mica is flame resistant, electrically insulating, lightweight (<5g for this size)
+  - Alternative: silicone thermal insulation pad (similar performance, easier to source)
+- **Mounting:** Slot into grooves in `trunk_top` and `trunk_bottom` (add matching slots in Task 3.1 and existing trunk_bottom redesign)
+- **Cable pass-through:** Small notch (~5mm wide) at the bottom for power cables from battery zone to compute zone. Notch should be as small as possible to minimize thermal leakage; fill remaining gap with thermal insulation tape if needed
+- **Estimated position:** X ≈ -0.08m in trunk frame (between BMS at -0.075 and servo driver at 0.001)
+
+**New file:** `print/thermal_partition.stl`
+
+**How to test:**
+
+*Automated test — `tests/test_cad_dimensions.py`:*
+
+```python
+@pytest.mark.phase3
+class TestThermalPartition:
+
+    def test_partition_stl_exists(self):
+        """Thermal partition wall STL must exist."""
+        assert os.path.exists("print/thermal_partition.stl")
+
+    def test_partition_spans_cavity(self):
+        """Partition must span the full width and height of the trunk cavity."""
+        vertices = load_stl_vertices("print/thermal_partition.stl")
+        dims = vertices.max(axis=0) - vertices.min(axis=0)
+        # Should span at least 100mm in Y (width) and 80mm in Z (height)
+        assert dims[1] >= 100, f"Partition Y (width) too small: {dims[1]}"
+        assert dims[2] >= 80, f"Partition Z (height) too small: {dims[2]}"
+        # Should be thin: 2-4mm in X (depth)
+        assert dims[0] <= 5.0, f"Partition X (thickness) too large: {dims[0]}"
+
+    def test_partition_has_cable_notch(self):
+        """Partition should not be a perfect rectangle — it needs a cable pass-through notch."""
+        vertices = load_stl_vertices("print/thermal_partition.stl")
+        # A simple rectangle would have 12 triangles (2 per face × 6 faces)
+        # A notch adds geometry — expect more than 12 triangles
+        assert len(vertices) > 36, "Partition appears to be a simple box — missing cable notch?"
+```
+
+*Manual verification:*
+- [ ] Print the partition wall and verify it fits snugly into the trunk cavity
+- [ ] Verify the mica/silicone sheet can be bonded flush to the compute-side face
+- [ ] Verify cable notch allows power cables through but is not oversized
+- [ ] Test-fit with battery pack (Task 3.4) — partition should mate with battery housing slot
+- [ ] Test-fit with trunk_top and trunk_bottom — partition should slide into grooves
+- [ ] With Jetson running at 25W for 10 minutes, measure temperature on both sides of the partition with an IR thermometer — battery side should be >15°C cooler than compute side
+
+---
+
+### Task 3.7 — Update `trunk_top` and `trunk_bottom` for Partition Wall Slots
+
+**Description:**
+Add matching slots/grooves in `trunk_top` and `trunk_bottom` to accept the thermal partition wall from Task 3.6. This is a follow-up modification to Task 3.1.
+
+**Changes:**
+- Add a 2.5mm wide slot (for 2mm wall + tolerance) running across the full Y-width of both `trunk_top` and `trunk_bottom` at X ≈ -0.08m
+- Slot depth: 2-3mm into the wall (enough to hold the partition securely)
+- Ensure slots align vertically so the partition slides in during assembly
+
+**How to test:**
+
+*Manual verification:*
+- [ ] Print modified trunk_top and trunk_bottom
+- [ ] Thermal partition from Task 3.6 slides into slots with light friction fit
+- [ ] Partition stands upright without additional fasteners
+- [ ] No interference with Jetson mounting standoffs (Task 3.1) or battery pack (Task 3.4)
 
 ---
 
@@ -1609,8 +1742,11 @@ All tests must pass with the final meshes.
 | CSI ribbon cable 30cm | 1 | $5 | Amazon |
 | M3 standoffs + screws (assorted) | 1 set | $8 | Amazon |
 | XT30 to DC barrel adapter cable | 1 | $5 | Amazon |
+| Mica insulation sheet (50x100mm, 1mm thick) | 1 | $3 | Amazon/AliExpress |
+| NTC 10kΩ thermistor (3950B, with leads) | 1 | $1 | Amazon/AliExpress |
+| Thermal insulation tape (kapton or silicone) | 1 roll | $5 | Amazon |
 
-**Total estimated additional cost:** ~$309
+**Total estimated additional cost:** ~$318
 
 **How to test:**
 - [ ] Verify all items received and undamaged
@@ -1625,34 +1761,44 @@ All tests must pass with the final meshes.
 
 | Part | Material | Est. Time | Notes |
 |---|---|---|---|
-| trunk_top (modified) | PLA | ~3 hr | M3 inserts for Jetson standoffs |
-| trunk_bottom (modified) | PLA | ~2 hr | Cable pass-throughs |
-| body_back (modified) | PLA | ~1.5 hr | Ventilation slots |
+| trunk_top (modified) | PLA | ~3 hr | M3 inserts for Jetson standoffs + partition wall slot |
+| trunk_bottom (modified) | PLA | ~2 hr | Cable pass-throughs + partition wall slot |
+| body_back (modified) | PLA | ~1.5 hr | Ventilation slots (compute zone side only) |
+| body_front (modified) | PLA | ~1.5 hr | Inlet vents (compute zone side only) |
 | body_middle_top (if modified) | PLA | ~3 hr | Extended depth |
 | body_middle_bottom (if modified) | PLA | ~3 hr | Extended depth |
-| battery_pack_lid (modified) | PLA | ~1.5 hr | 4-cell capacity |
+| battery_pack_lid (modified) | PLA | ~1.5 hr | 4-cell capacity + thermistor clip |
+| thermal_partition (new) | PLA | ~1 hr | Thermal barrier wall between battery and compute zones |
 
 **How to test:**
 - [ ] Each printed part passes visual inspection — no warping, layer adhesion good
 - [ ] M3 inserts install cleanly with soldering iron
 - [ ] Test-fit all modified parts together before full assembly
 - [ ] Verify screw holes align with existing unmodified parts (legs, hip mounts, etc.)
+- [ ] Thermal partition slides into trunk_top/trunk_bottom slots with light friction fit
+- [ ] Verify body_front inlet vents and body_back exhaust vents are aligned to compute zone only
 
 ---
 
 ### Task 4.3 — Assemble Modified Robot
 
+**Wiring reference:** See `docs/jetson-mod/jetson_wiring_diagram.drawio` for the full wiring diagram. Open in [diagrams.net](https://app.diagrams.net) or VS Code draw.io extension.
+
 **Steps:**
 1. Disassemble the head: remove Pi Zero 2W, retain SG90 servos and wiring
-2. Mount Jetson dev kit in trunk using M3 standoffs
-3. Wire power: Battery → BMS → DC-DC boost (19V) → Jetson DC barrel jack
-4. Wire servo driver board: USB cable from trunk-mounted servo driver to Jetson USB port
-5. Wire IMU (BNO055): I2C from trunk-mounted IMU to Jetson GPIO (SDA=pin 3, SCL=pin 5)
-6. Route CSI ribbon cable from head through neck to Jetson CSI connector
-7. Wire foot switches: GPIO wires from feet to Jetson GPIO header
-8. Wire antenna servos: PWM from Jetson GPIO through neck to head SG90s
-9. Wire eye LEDs: GPIO from Jetson through neck to head LEDs (or use a small I2C LED driver in the head)
-10. Reassemble body panels
+2. **Install thermal partition wall:** Slide the thermal partition (Task 3.6) into the trunk_top/trunk_bottom slots. Bond the mica insulation sheet to the compute-zone-facing side using high-temp adhesive or thermal tape
+3. Mount Jetson dev kit in trunk **compute zone** using M3 standoffs — ensure the dev kit fan exhaust points toward the body_back ventilation slots
+4. Mount the 4-cell battery pack in the **battery zone** (behind the partition wall). Attach the NTC thermistor to one of the middle cells using thermal tape or the printed clip (Task 3.4)
+5. Wire power: Battery → BMS → DC-DC boost (19V) → route power cable through partition wall notch → Jetson DC barrel jack
+6. Wire thermistor: Route thermistor leads through partition wall notch → Jetson GPIO ADC pin (or external ADC like ADS1115 on I2C)
+7. Wire servo driver board: USB cable from trunk-mounted servo driver to Jetson USB port
+8. Wire IMU (BNO055): I2C from trunk-mounted IMU to Jetson GPIO (SDA=pin 3, SCL=pin 5)
+9. Route CSI ribbon cable from head through neck to Jetson CSI connector
+10. Wire foot switches: GPIO wires from feet to Jetson GPIO header
+11. Wire antenna servos: PWM from Jetson GPIO through neck to head SG90s
+12. Wire eye LEDs: GPIO from Jetson through neck to head LEDs (or use a small I2C LED driver in the head)
+13. Seal the partition wall cable notch with thermal insulation tape (kapton or silicone tape) around the wire bundle
+14. Reassemble body panels — verify body_front inlet and body_back exhaust vents are unobstructed
 
 **How to test:**
 
@@ -1664,6 +1810,8 @@ All tests must pass with the final meshes.
 - [ ] GPIO test: Toggle each LED on/off with `gpioset`
 - [ ] GPIO test: Read foot switch state with `gpioget`
 - [ ] Servo test: Command each servo to center position and verify movement
+- [ ] **Thermal test:** Run Jetson at 25W mode for 15 minutes (e.g., `stress-ng --cpu 6 --gpu 1`). Measure temperature on both sides of the thermal partition with IR thermometer. Battery side must stay below 40°C
+- [ ] **Thermistor test:** Read NTC thermistor value via GPIO/ADC — should report reasonable ambient temperature (~20-30°C). Verify value rises when battery is warmed manually
 
 ---
 
@@ -1847,6 +1995,217 @@ Deploy the walking policy on the physical Jetson-modified robot and verify sim2r
 - **PASS:** Robot walks forward for 10+ seconds on flat ground without falling
 - **MARGINAL:** Robot can stand but walking is unstable — may need more sim2real tuning
 - **FAIL:** Robot cannot stand — review Phase 2 validation, check wiring, re-measure mass
+
+---
+
+### Task 4.6 — Software Thermal Management
+
+**Description:**
+Implement runtime software that monitors battery temperature via the NTC thermistor and manages Jetson power modes to prevent battery overheating. This complements the physical thermal management (partition wall + ventilation) with an active software safety layer.
+
+**Context:**
+Even with the thermal partition wall (Task 3.6) and directed ventilation (Task 3.2), software thermal management adds defense-in-depth. The Jetson's built-in thermal sensors only monitor the SoC — they don't know how hot the batteries are. An external thermistor on the battery pack closes this gap.
+
+**Power mode strategy:**
+
+| Mode | TDP | Heatsink Temp | When to Use |
+|---|---|---|---|
+| 7W eco | 7W | ~35-40°C | Idle / standing / battery temp > 38°C |
+| 15W default | 15W | ~45-55°C | Locomotion policy only (normal operation) |
+| 25W super | 25W | ~65-80°C | Cosmos VLM inference (duty-cycled, battery temp < 35°C) |
+
+**Implementation:**
+
+```python
+# jetson_runtime/thermal_manager.py
+import subprocess
+import time
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Temperature thresholds (°C)
+BATTERY_TEMP_WARNING = 35.0    # Switch to 15W if above this
+BATTERY_TEMP_CRITICAL = 40.0   # Switch to 7W if above this
+BATTERY_TEMP_SHUTDOWN = 50.0   # Emergency shutdown if above this
+JETSON_TEMP_THROTTLE = 85.0    # Reduce to 15W if Jetson SoC above this
+
+# NVP model names for Jetson Orin Nano Super
+POWER_MODES = {
+    "7W":  "MAXN",       # Adjust based on actual nvpmodel names
+    "15W": "15W",
+    "25W": "25W_SUPER",
+}
+
+
+class ThermalManager:
+    """
+    Monitors battery temperature (via NTC thermistor) and Jetson SoC temperature.
+    Automatically adjusts power mode to keep batteries safe.
+    """
+
+    def __init__(self, thermistor_adc_channel=0, poll_interval_s=5.0):
+        self.thermistor_channel = thermistor_adc_channel
+        self.poll_interval = poll_interval_s
+        self.current_mode = "15W"
+        self.battery_temp = 25.0
+        self.jetson_temp = 40.0
+        self._running = False
+        self._thread = None
+
+    def read_battery_temp(self) -> float:
+        """Read NTC thermistor via ADC (ADS1115 on I2C or Jetson ADC pin).
+
+        Returns temperature in °C.
+        """
+        # TODO: Implement actual ADC reading
+        # For ADS1115: import board, busio, adafruit_ads1x15.ads1115
+        # Convert ADC voltage to temperature using Steinhart-Hart equation
+        # For NTC 10kΩ 3950B: R = R0 * exp(B * (1/T - 1/T0))
+        raise NotImplementedError("Wire up ADC reading for thermistor")
+
+    def read_jetson_temp(self) -> float:
+        """Read Jetson SoC temperature from thermal zones."""
+        try:
+            with open("/sys/devices/virtual/thermal/thermal_zone0/temp") as f:
+                return float(f.read().strip()) / 1000.0
+        except (FileNotFoundError, ValueError):
+            return 40.0  # Safe default
+
+    def set_power_mode(self, mode: str):
+        """Switch Jetson power mode via nvpmodel."""
+        if mode == self.current_mode:
+            return
+        # Map mode name to nvpmodel ID (verify with `nvpmodel -p --all`)
+        mode_ids = {"7W": 0, "15W": 1, "25W": 2}  # Adjust for actual system
+        mode_id = mode_ids.get(mode, 1)
+        try:
+            subprocess.run(
+                ["sudo", "nvpmodel", "-m", str(mode_id)],
+                check=True, capture_output=True, timeout=10
+            )
+            logger.info(f"Power mode changed: {self.current_mode} -> {mode}")
+            self.current_mode = mode
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to set power mode {mode}: {e}")
+
+    def _monitor_loop(self):
+        """Background monitoring loop."""
+        while self._running:
+            try:
+                self.battery_temp = self.read_battery_temp()
+                self.jetson_temp = self.read_jetson_temp()
+
+                # Emergency shutdown
+                if self.battery_temp >= BATTERY_TEMP_SHUTDOWN:
+                    logger.critical(
+                        f"BATTERY TEMP CRITICAL: {self.battery_temp}°C — SHUTTING DOWN"
+                    )
+                    subprocess.run(["sudo", "shutdown", "-h", "now"])
+                    return
+
+                # Thermal throttling logic
+                if self.battery_temp >= BATTERY_TEMP_CRITICAL:
+                    self.set_power_mode("7W")
+                elif (self.battery_temp >= BATTERY_TEMP_WARNING
+                      or self.jetson_temp >= JETSON_TEMP_THROTTLE):
+                    self.set_power_mode("15W")
+                # Don't auto-escalate to 25W — that's done explicitly by VLM code
+
+            except NotImplementedError:
+                logger.warning("Thermistor ADC not implemented — using Jetson temp only")
+                self.jetson_temp = self.read_jetson_temp()
+                if self.jetson_temp >= JETSON_TEMP_THROTTLE:
+                    self.set_power_mode("15W")
+            except Exception as e:
+                logger.error(f"Thermal monitor error: {e}")
+
+            time.sleep(self.poll_interval)
+
+    def start(self):
+        """Start background thermal monitoring."""
+        self._running = True
+        self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self._thread.start()
+        logger.info("Thermal manager started (polling every %.1fs)", self.poll_interval)
+
+    def stop(self):
+        """Stop background thermal monitoring."""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=10)
+
+    def request_boost(self) -> bool:
+        """Request 25W mode for VLM inference. Returns True if safe to boost."""
+        if self.battery_temp < BATTERY_TEMP_WARNING:
+            self.set_power_mode("25W")
+            return True
+        else:
+            logger.warning(
+                f"Boost denied — battery temp {self.battery_temp}°C >= {BATTERY_TEMP_WARNING}°C"
+            )
+            return False
+
+    def release_boost(self):
+        """Return to 15W after VLM inference completes."""
+        self.set_power_mode("15W")
+```
+
+**Integration with Cosmos VLM (Task 5.3):**
+
+The `autonomous_walk.py` control loop should use `ThermalManager.request_boost()` before each VLM inference call and `release_boost()` after:
+
+```python
+# In the main control loop:
+thermal = ThermalManager()
+thermal.start()
+
+# When VLM query is needed:
+if thermal.request_boost():
+    vlm_result = cosmos.query(camera_frame, prompt)
+    thermal.release_boost()
+else:
+    # Use last known VLM command or stop
+    vlm_result = last_known_command
+```
+
+**How to test:**
+
+*Unit tests (run on Jetson):*
+```bash
+# Test Jetson temperature reading
+python -c "
+from jetson_runtime.thermal_manager import ThermalManager
+tm = ThermalManager()
+jetson_temp = tm.read_jetson_temp()
+print(f'Jetson SoC temp: {jetson_temp}°C')
+assert 20 < jetson_temp < 100, f'Implausible temperature: {jetson_temp}'
+print('PASS: Jetson temp reading works')
+"
+```
+
+```bash
+# Test power mode switching
+python -c "
+from jetson_runtime.thermal_manager import ThermalManager
+tm = ThermalManager()
+tm.set_power_mode('15W')
+print(f'Current mode: {tm.current_mode}')
+assert tm.current_mode == '15W'
+tm.set_power_mode('7W')
+assert tm.current_mode == '7W'
+tm.set_power_mode('15W')  # Restore default
+print('PASS: Power mode switching works')
+"
+```
+
+*Integration test:*
+- [ ] Start thermal manager, run Jetson at 25W for 10 minutes
+- [ ] Verify battery temperature stays below 35°C with partition wall installed
+- [ ] Simulate high battery temp (warm the thermistor with a hair dryer) — verify auto-throttle to 7W
+- [ ] Verify `request_boost()` returns `False` when battery temp is above threshold
+- [ ] Monitor with `tegrastats` — verify power mode transitions are logged
 
 ---
 
@@ -2429,27 +2788,30 @@ Task 2.7 (Validate best policy in Isaac Sim) ── depends on 2.6
          v  [PASS → proceed]
 Task 3.1 (Redesign trunk_top)
     │
-    ├── Task 3.2 (Redesign body_back) ── parallel
+    ├── Task 3.2 (Redesign body_back + body_front ventilation) ── parallel
     ├── Task 3.3 (Redesign body_middle) ── parallel, conditional
-    └── Task 3.4 (Redesign battery pack) ── parallel
+    ├── Task 3.4 (Redesign battery pack, thermally isolated) ── parallel
+    ├── Task 3.6 (Design thermal partition wall) ── parallel
+    └── Task 3.7 (Add partition slots to trunk_top/bottom) ── depends on 3.6
          │
          v
-Task 3.5 (Update sim with final STLs) ── depends on 3.1-3.4
+Task 3.5 (Update sim with final STLs) ── depends on 3.1-3.4, 3.6, 3.7
          │
          v
-Task 4.1 (Procure Hardware) ── can start after 2.6 PASS
+Task 4.1 (Procure Hardware) ── can start after 2.6 PASS (includes mica sheet, thermistor)
     │
     v
-Task 4.2 (3D Print) ── depends on 3.1-3.4
+Task 4.2 (3D Print) ── depends on 3.1-3.4, 3.6, 3.7 (includes thermal_partition)
     │
     v
-Task 4.3 (Assemble) ── depends on 4.1, 4.2
+Task 4.3 (Assemble) ── depends on 4.1, 4.2 (includes thermal partition + thermistor install)
     │
     v
 Task 4.4 (Port Runtime + TensorRT) ── depends on 4.1, 2.6
     │
+    ├── Task 4.6 (Software Thermal Management) ── parallel with 4.4 (depends on 4.3)
     v
-Task 4.5 (Real Robot Walk Test) ── depends on 4.3, 4.4
+Task 4.5 (Real Robot Walk Test) ── depends on 4.3, 4.4, 4.6
          │
          v  [PASS → robot walks autonomously]
 Task 5.1 (Setup Cosmos Reason2 on Jetson) ── depends on 4.5 PASS
@@ -2458,7 +2820,7 @@ Task 5.1 (Setup Cosmos Reason2 on Jetson) ── depends on 4.5 PASS
 Task 5.2 (Build command parser) ── depends on 5.1
     │
     v
-Task 5.3 (Integrate Cosmos + locomotion) ── depends on 5.2, 4.4
+Task 5.3 (Integrate Cosmos + locomotion + thermal_manager) ── depends on 5.2, 4.4, 4.6
     │
     v
 Task 5.4 (Prompt engineering for behaviors) ── depends on 5.3
@@ -2478,7 +2840,7 @@ Task 5.5 (Voice input — optional) ── depends on 5.3
 | PPO training fails to produce walking gait | Low-Med | High | Use proven Isaac Lab locomotion configs (ANYmal, humanoid) as starting points. Iterate on reward weights. Add imitation reward from reference motions. |
 | Jetson doesn't physically fit in trunk cavity | Low | High | CAD clearance checks (Task 3.1). Worst case: extend body_middle parts by 10-15mm. |
 | STS3215 servos lack torque for heavier robot | Low-Med | High | Domain randomization in training includes mass variation. Monitor servo current in real tests. Fallback: 7W eco mode. |
-| Thermal issues — Jetson overheats in enclosed body | Medium | Medium | Ventilation slots in body_back (Task 3.2). Monitor with `tegrastats`. Fallback: add 5V fan. |
+| Thermal issues — Jetson heat damages batteries | Medium | High | **Three-layer defense:** (1) Thermal partition wall with mica insulation between battery and compute zones (Task 3.6), (2) Directed cross-flow ventilation — inlet on body_front, exhaust on body_back, compute zone only (Task 3.2), (3) Software thermal management — NTC thermistor on battery pack + auto power-mode throttling (7W/15W/25W) with emergency shutdown at 50°C (Task 4.6). |
 | TensorRT conversion fails for the policy MLP | Low | Medium | Fallback to `onnxruntime-gpu` (CUDAExecutionProvider). Slightly slower but still fast enough. |
 | DC-DC converter introduces electrical noise | Low | Medium | Use shielded cables. Add capacitors to servo power lines. |
 | Sim2real gap is too large (trained policy doesn't work on real robot) | Medium | High | Aggressive domain randomization during training. Start with conservative commands (slow walk). Iteratively adjust sim parameters based on real robot behavior. |

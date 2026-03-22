@@ -1,0 +1,640 @@
+<mxfile host="app.diagrams.net" version="26.0.4">
+  <diagram name="Jetson Mod Wiring" id="jetson-mod-wiring">
+    <mxGraphModel dx="1800" dy="1900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ==================== ZONE BACKGROUNDS ==================== -->
+
+        <!-- Head zone background -->
+        <mxCell id="z_head" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;" parent="1" vertex="1">
+          <mxGeometry x="650" y="10" width="890" height="310" as="geometry" />
+        </mxCell>
+
+        <!-- Body / Compute zone background -->
+        <mxCell id="z_body" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;" parent="1" vertex="1">
+          <mxGeometry x="640" y="350" width="900" height="640" as="geometry" />
+        </mxCell>
+
+        <!-- Battery zone background -->
+        <mxCell id="z_bat" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#82b366;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="30" y="390" width="560" height="560" as="geometry" />
+        </mxCell>
+
+        <!-- Thermal partition line -->
+        <mxCell id="z_part" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=6;strokeColor=#B85450;dashed=1;dashPattern=12 8;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="615" y="370" as="sourcePoint" />
+            <mxPoint x="615" y="960" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ==================== ZONE LABELS ==================== -->
+
+        <mxCell id="lbl_head" value="&lt;font style=&quot;font-size: 24px;&quot;&gt;Head&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1470" y="20" width="60" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbl_body" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Body — Compute Zone (ventilated)&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="650" y="355" width="380" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbl_bat" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Battery Zone (sealed)&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="40" y="395" width="260" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbl_part" value="&lt;font style=&quot;font-size: 14px;&quot; color=&quot;#B85450&quot;&gt;THERMAL&lt;br&gt;PARTITION&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="575" y="960" width="80" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbl_bpack" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;Battery Pack&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="40" y="440" width="170" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== BATTERY ZONE COMPONENTS ==================== -->
+
+        <!-- 18650 x4 (2S2P) — CHANGED from x2 -->
+        <mxCell id="bat" value="18650 x4 (2S2P)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="70" y="530" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- BMS -->
+        <mxCell id="bms" value="BMS&lt;br&gt;(2S, ≥10A)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="310" y="530" width="130" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Power Switch -->
+        <mxCell id="psw" value="Power Switch" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="310" y="700" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- USB-C Charger -->
+        <mxCell id="chg" value="USB-C Charger" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="70" y="700" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- NTC Thermistor — NEW -->
+        <mxCell id="ntc" value="NTC 10kΩ&lt;br&gt;Thermistor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="70" y="840" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 7.4V label between battery and BMS -->
+        <mxCell id="lbl_74v" value="7.4V" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="240" y="545" width="60" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== COMPUTE ZONE COMPONENTS ==================== -->
+
+        <!-- Jetson Orin Nano Super — NEW (replaces Pi Zero 2W) -->
+        <mxCell id="jet" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Jetson Orin Nano Super Dev Kit&lt;br&gt;&lt;/font&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;19V barrel | USB 3.2 x4 | CSI x2 | 40-pin GPIO&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="700" y="420" width="380" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- DC-DC Boost converter — NEW -->
+        <mxCell id="ddc" value="DC-DC Boost&lt;br&gt;7.4V → 19V" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="700" y="660" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- UBEC (existing, now in trunk instead of routing to head) -->
+        <mxCell id="ubec" value="UBEC" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="920" y="660" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Motor Control Board (unchanged) -->
+        <mxCell id="mcb" value="Motor Control&lt;br&gt;Board" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="1150" y="470" width="180" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- MCB USB-C port -->
+        <mxCell id="mcb_usbc" value="usb-c" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1130" y="500" width="40" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- MCB 7.4V DC in -->
+        <mxCell id="mcb_dc" value="7.4V DC in" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
+          <mxGeometry x="1130" y="600" width="80" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- MCB servo port 1 -->
+        <mxCell id="mcb_p1" value="" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1300" y="510" width="20" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- MCB servo port 2 -->
+        <mxCell id="mcb_p2" value="" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1300" y="580" width="20" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- IMU BNO055 (unchanged, now trunk-local to Jetson) -->
+        <mxCell id="imu" value="IMU&lt;br&gt;BNO055" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="1150" y="730" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== HEAD COMPONENTS ==================== -->
+
+        <mxCell id="cam" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Camera&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="670" y="40" width="100" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="spk" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Speaker&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="670" y="170" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mic" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Mic&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="670" y="230" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="flash" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Flashlight&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="830" y="40" width="110" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="eyeL" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Eye LED&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="990" y="50" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="eyeR" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Eye LED&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="1080" y="50" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ant1" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Antenna 1&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="1200" y="40" width="110" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ant2" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Antenna 2&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="1330" y="40" width="110" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== LEGS AND NECK ==================== -->
+
+        <mxCell id="legL" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;Left Leg&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="930" y="1060" width="100" height="400" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legR" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;Right Leg&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="1170" y="1060" width="100" height="400" as="geometry" />
+        </mxCell>
+
+        <mxCell id="neck" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Neck&lt;br&gt;(3 servos)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="1400" y="120" width="100" height="420" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swL" value="switch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="930" y="1470" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="swR" value="switch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="1170" y="1470" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== ANNOTATIONS ==================== -->
+
+        <!-- Neck cable bundle note -->
+        <mxCell id="note_neck" value="&lt;font style=&quot;font-size: 11px;&quot; color=&quot;#666666&quot;&gt;&lt;b&gt;Neck Cable Bundle:&lt;/b&gt;&lt;br&gt;CSI ribbon + PWM x2&lt;br&gt;+ GPIO x5 + 5V/GND&lt;br&gt;+ Audio (I2S)&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="1390" y="550" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Partition notch note -->
+        <mxCell id="note_notch" value="&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#b85450&quot;&gt;cables pass through&lt;br&gt;partition notch&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="480" y="770" width="120" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Trunk-local highlight -->
+        <mxCell id="note_local" value="&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#228B22&quot;&gt;&lt;b&gt;TRUNK-LOCAL&lt;/b&gt;&lt;br&gt;(no neck routing!)&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#E8F5E9;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="1080" y="700" width="120" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- 19V label near DC-DC output -->
+        <mxCell id="lbl_19v" value="19V" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="660" y="620" width="40" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- 5V label near UBEC output -->
+        <mxCell id="lbl_5v" value="5V out" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="960" y="630" width="50" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== LEGEND ==================== -->
+
+        <mxCell id="leg_title" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="30" y="1060" width="80" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_pwr_line" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=4;strokeColor=#82b366;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="1110" as="sourcePoint" />
+            <mxPoint x="120" y="1110" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg_pwr_txt" value="Power" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="130" y="1095" width="60" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_dat_line" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=4;strokeColor=#9673a6;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="1140" as="sourcePoint" />
+            <mxPoint x="120" y="1140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg_dat_txt" value="Data / Signal" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="130" y="1125" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_srv_line" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=4;strokeColor=#006EAF;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="1170" as="sourcePoint" />
+            <mxPoint x="120" y="1170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg_srv_txt" value="Servo Bus" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="130" y="1155" width="80" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_thm_line" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=3;strokeColor=#b85450;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="1200" as="sourcePoint" />
+            <mxPoint x="120" y="1200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg_thm_txt" value="Thermal Monitoring" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="130" y="1185" width="130" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_new_box" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="40" y="1225" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_new_txt" value="NEW / Changed component" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="130" y="1215" width="180" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== POWER EDGES (Green, solid) ==================== -->
+
+        <!-- P1: Battery B+ → BMS B+ -->
+        <mxCell id="P1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" source="bat" target="bms" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="P1a" value="B+" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P1" vertex="1" connectable="0">
+          <mxGeometry x="-0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P2: Battery B- → BMS B- -->
+        <mxCell id="P2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" source="bat" target="bms" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="P2a" value="B-" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P2" vertex="1" connectable="0">
+          <mxGeometry x="-0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P3: Battery BM → BMS (mid-cell tap, arcs over top) -->
+        <mxCell id="P3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" source="bat" target="bms" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="P3a" value="BM" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P3" vertex="1" connectable="0">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="P3b" value="Between cells" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P3" vertex="1" connectable="0">
+          <mxGeometry x="-0.8" y="-1" relative="1" as="geometry">
+            <mxPoint x="15" y="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P4: USB-C Charger → BMS -->
+        <mxCell id="P4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" source="chg" target="bms" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="725" />
+              <mxPoint x="260" y="630" />
+              <mxPoint x="375" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="P4a" value="+/-" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P4" vertex="1" connectable="0">
+          <mxGeometry x="-0.7" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P5: BMS P+/P- → Power Switch -->
+        <mxCell id="P5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" source="bms" target="psw" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="P5a" value="P+/P-" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P5" vertex="1" connectable="0">
+          <mxGeometry x="-0.4" y="-1" relative="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="P5b" value="7.4V out" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P5" vertex="1" connectable="0">
+          <mxGeometry x="0.4" y="-1" relative="1" as="geometry">
+            <mxPoint x="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P6: Power Switch → DC-DC Boost (through partition) -->
+        <mxCell id="P6" value="" style="endArrow=classic;html=1;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="440" y="712" as="sourcePoint" />
+            <mxPoint x="700" y="680" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="540" y="712" />
+              <mxPoint x="540" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="P6a" value="7.4V" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P6" vertex="1" connectable="0">
+          <mxGeometry x="-0.6" y="-1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P7: Power Switch → MCB 7.4V DC in (through partition, dashed) -->
+        <mxCell id="P7" value="" style="endArrow=classic;html=1;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;dashed=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="440" y="725" as="sourcePoint" />
+            <mxPoint x="1130" y="620" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="555" y="725" />
+              <mxPoint x="555" y="830" />
+              <mxPoint x="1100" y="830" />
+              <mxPoint x="1100" y="620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="P7a" value="7.4V" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P7" vertex="1" connectable="0">
+          <mxGeometry x="0.3" y="-1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P8: Power Switch → UBEC (through partition) -->
+        <mxCell id="P8" value="" style="endArrow=classic;html=1;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="440" y="738" as="sourcePoint" />
+            <mxPoint x="920" y="700" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="525" y="738" />
+              <mxPoint x="525" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P9: DC-DC Boost → Jetson (19V, short vertical) -->
+        <mxCell id="P9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.1;entryY=1;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" source="ddc" target="jet" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="P9a" value="19V DC" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P9" vertex="1" connectable="0">
+          <mxGeometry x="0.3" y="1" relative="1" as="geometry">
+            <mxPoint x="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P10: UBEC 5V → Head antennas (via neck) -->
+        <mxCell id="P10" value="" style="endArrow=none;html=1;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="990" y="660" as="sourcePoint" />
+            <mxPoint x="1255" y="120" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="990" y="400" />
+              <mxPoint x="1360" y="400" />
+              <mxPoint x="1360" y="160" />
+              <mxPoint x="1255" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="P10a" value="5V to SG90s" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P10" vertex="1" connectable="0">
+          <mxGeometry x="-0.7" y="1" relative="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ==================== DATA EDGES (Purple, dashed) ==================== -->
+
+        <!-- D1: Jetson USB → Motor Control Board USB-C (TRUNK-LOCAL) -->
+        <mxCell id="D1" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1080" y="500" as="sourcePoint" />
+            <mxPoint x="1130" y="515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D1a" value="USB" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D1" vertex="1" connectable="0">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D2: IMU I2C → Jetson GPIO (TRUNK-LOCAL) -->
+        <mxCell id="D2" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="imu" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1100" y="770" as="sourcePoint" />
+            <mxPoint x="1000" y="570" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1100" y="770" />
+              <mxPoint x="1100" y="650" />
+              <mxPoint x="1000" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D2a" value="I2C (SDA/SCL)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D2" vertex="1" connectable="0">
+          <mxGeometry x="0.3" y="1" relative="1" as="geometry">
+            <mxPoint x="30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D3: NTC Thermistor → Jetson ADC (through partition) -->
+        <mxCell id="D3" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=3;dashed=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="230" y="865" as="sourcePoint" />
+            <mxPoint x="740" y="570" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="500" y="865" />
+              <mxPoint x="500" y="900" />
+              <mxPoint x="660" y="900" />
+              <mxPoint x="660" y="570" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D3a" value="ADC (temp)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D3" vertex="1" connectable="0">
+          <mxGeometry x="-0.5" y="1" relative="1" as="geometry">
+            <mxPoint x="-5" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D4: Jetson CSI → Camera (via neck) -->
+        <mxCell id="D4" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="420" as="sourcePoint" />
+            <mxPoint x="720" y="140" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="800" y="340" />
+              <mxPoint x="720" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D4a" value="CSI ribbon" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D4" vertex="1" connectable="0">
+          <mxGeometry x="0.3" y="-1" relative="1" as="geometry">
+            <mxPoint x="-30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D5: Jetson GPIO → Flashlight (via neck) -->
+        <mxCell id="D5" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="420" as="sourcePoint" />
+            <mxPoint x="885" y="110" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D5a" value="GPIO" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D5" vertex="1" connectable="0">
+          <mxGeometry x="0.5" y="-1" relative="1" as="geometry">
+            <mxPoint x="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D6: Jetson GPIO → Eye LEDs (via neck) -->
+        <mxCell id="D6" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="420" as="sourcePoint" />
+            <mxPoint x="1025" y="100" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D6a" value="GPIO" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D6" vertex="1" connectable="0">
+          <mxGeometry x="0.5" y="-1" relative="1" as="geometry">
+            <mxPoint x="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D7: Jetson GPIO → Speaker (via neck) -->
+        <mxCell id="D7" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="840" y="420" as="sourcePoint" />
+            <mxPoint x="770" y="190" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="840" y="380" />
+              <mxPoint x="770" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D8: Jetson GPIO → Mic (via neck) -->
+        <mxCell id="D8" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="860" y="420" as="sourcePoint" />
+            <mxPoint x="770" y="250" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="860" y="370" />
+              <mxPoint x="770" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D9: Jetson PWM → Antenna 1 (via neck) -->
+        <mxCell id="D9" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1010" y="420" as="sourcePoint" />
+            <mxPoint x="1255" y="120" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1010" y="340" />
+              <mxPoint x="1255" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D9a" value="PWM" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D9" vertex="1" connectable="0">
+          <mxGeometry x="0.3" y="-1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D10: Jetson PWM → Antenna 2 (via neck) -->
+        <mxCell id="D10" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1040" y="420" as="sourcePoint" />
+            <mxPoint x="1385" y="120" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1040" y="330" />
+              <mxPoint x="1385" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D10a" value="PWM" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D10" vertex="1" connectable="0">
+          <mxGeometry x="0.3" y="-1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D11: Left foot switch → Jetson GPIO -->
+        <mxCell id="D11" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="swL" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="980" y="1500" as="sourcePoint" />
+            <mxPoint x="870" y="570" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="980" y="1530" />
+              <mxPoint x="870" y="1530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D11a" value="GPIO" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D11" vertex="1" connectable="0">
+          <mxGeometry x="0.8" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D12: Right foot switch → Jetson GPIO -->
+        <mxCell id="D12" value="" style="endArrow=none;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=4;fillColor=#e1d5e7;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="swR" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1220" y="1500" as="sourcePoint" />
+            <mxPoint x="930" y="570" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1220" y="1550" />
+              <mxPoint x="930" y="1550" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D12a" value="GPIO" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="D12" vertex="1" connectable="0">
+          <mxGeometry x="0.8" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ==================== SERVO BUS EDGES (Blue, solid) ==================== -->
+
+        <!-- S1: MCB port 1 → Left Leg -->
+        <mxCell id="S1" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=4;fillColor=#1ba1e2;strokeColor=#006EAF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" target="legL" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1320" y="530" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="980" y="530" />
+              <mxPoint x="980" y="1000" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- S2: MCB port 2 → Right Leg -->
+        <mxCell id="S2" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=4;fillColor=#1ba1e2;strokeColor=#006EAF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" target="legR" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1320" y="600" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="1380" y="600" />
+              <mxPoint x="1380" y="1000" />
+              <mxPoint x="1220" y="1000" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- S3: MCB → Neck servos (via neck) -->
+        <mxCell id="S3" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=4;fillColor=#1ba1e2;strokeColor=#006EAF;entryX=0.5;entryY=1;entryDx=0;entryDy=0;dashed=1;" parent="1" target="neck" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1320" y="560" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="1450" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
