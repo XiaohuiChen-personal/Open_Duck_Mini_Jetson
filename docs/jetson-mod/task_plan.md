@@ -55,7 +55,7 @@ Open_Duck_Mini_Jetson/
 ├── isaac_lab_env/                    # NEW — Isaac Lab environment definition
 │   └── open_duck_mini_v2/
 │       ├── env_cfg.py               # Environment config (obs, actions, rewards, domain rand)
-│       ├── train_cfg.py             # Training configs for all algorithms (PPO, RPO, AMP, SAC, TRPO, TD3)
+│       ├── train_cfg.py             # Training configs (PPO via RSL-RL, optional AMP via SKRL)
 │       ├── evaluate_policies.py     # Multi-algorithm comparison script (Task 2.5)
 │       └── __init__.py              # Register env with Isaac Lab
 ├── jetson_runtime/                   # NEW — Jetson deployment code
@@ -746,48 +746,48 @@ pytest tests/ --collect-only
 
 ## Phase 2: Isaac Sim/Lab Setup & RL Training (on DGX Spark)
 
-> This phase replaces the old MuJoCo-based validation. Instead of testing old policies on a modified MuJoCo model, we convert the robot to the NVIDIA stack and train a fresh walking policy from scratch using Isaac Lab on the DGX Spark.
+> This phase converts the robot to the NVIDIA stack and trains a fresh walking policy from scratch using Isaac Lab on the DGX Spark. The environment extends Isaac Lab's built-in `LocomotionVelocityRoughEnvCfg` (following the H1 humanoid biped pattern) to inherit battle-tested defaults for observations, rewards, terminations, domain randomization, and curriculum.
 
-### Task 2.1 — Convert URDF to USD for Isaac Sim
+### Task 2.1 — Convert MJCF to USD for Isaac Sim
 
 **Description:**
-Import the updated robot URDF (from Task 1.5) into Isaac Sim and convert it to USD format, which is the native format for Isaac Sim and Isaac Lab.
+Convert the robot model to USD format using Isaac Lab's converter API. We use the MJCF importer (from `robot_motors.xml`) as the primary path since it preserves actuator parameters (kp, kd, armature, frictionloss) more directly than the URDF importer.
 
 **Prerequisites:**
-- Isaac Sim installed on DGX Spark (should be pre-installed with NVIDIA AI Enterprise)
-- Updated `robot.urdf` from Task 1.5 with correct mass/inertia and Jetson mesh
+- Isaac Sim 5.1.0+ built from source on DGX Spark
+- Isaac Lab 2.3.0+ installed
+- Updated `robot_motors.xml` from Phase 1 with correct mass/inertia and Jetson mesh
 
 **Steps:**
-1. Launch Isaac Sim on DGX Spark
-2. Use the URDF Importer to convert:
+1. Use the Isaac Lab MJCF converter API:
    ```python
-   # Programmatic conversion (preferred for reproducibility)
-   from isaacsim.asset.importer.urdf import UrdfConverterCfg, UrdfConverter
-
-   cfg = UrdfConverterCfg(
-       asset_path="mini_bdx/robots/open_duck_mini_v2/robot.urdf",
-       usd_dir="mini_bdx/robots/open_duck_mini_v2/usd/",
-       usd_file_name="open_duck_mini_v2.usd",
-       fix_base=False,
-       make_instanceable=True,
-   )
-   converter = UrdfConverter(cfg)
-   converter.convert()
-   ```
-   Alternatively, use the MJCF Importer if URDF conversion has issues:
-   ```python
-   from isaacsim.asset.importer.mjcf import MjcfConverterCfg, MjcfConverter
+   from isaaclab.sim.converters import MjcfConverter, MjcfConverterCfg
 
    cfg = MjcfConverterCfg(
        asset_path="mini_bdx/robots/open_duck_mini_v2/robot_motors.xml",
-       usd_dir="mini_bdx/robots/open_duck_mini_v2/usd/",
-       usd_file_name="open_duck_mini_v2.usd",
+       usd_path="mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd",
        fix_base=False,
        make_instanceable=True,
+       import_inertia_tensor=True,
+       import_sites=True,
+   )
+   converter = MjcfConverter(cfg)  # conversion happens in __init__
+   ```
+   Alternatively, use the low-level Isaac Sim API as fallback:
+   ```python
+   import omni.kit.commands
+   status, import_config = omni.kit.commands.execute("MJCFCreateImportConfig")
+   import_config.set_fix_base(False)
+   import_config.set_import_inertia_tensor(True)
+   omni.kit.commands.execute(
+       "MJCFCreateAsset",
+       mjcf_path="mini_bdx/robots/open_duck_mini_v2/robot_motors.xml",
+       import_config=import_config,
+       dest_path="mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd",
    )
    ```
-3. Open the resulting USD in Isaac Sim viewer — verify visual appearance
-4. Save the USD file to the repository
+2. Open the resulting USD in Isaac Sim viewer — verify visual appearance
+3. Save the USD file to the repository
 
 **Output file:** `mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd`
 
@@ -815,69 +815,87 @@ class TestUSDConversion:
 *Manual verification (on DGX Spark):*
 - [ ] Open USD in Isaac Sim viewer — robot should appear with correct geometry
 - [ ] Verify all 16 joints are present and have correct names
-- [ ] Verify joint limits match the URDF/MJCF values
+- [ ] Verify joint limits match the MJCF values
 - [ ] Verify mass properties are preserved (check in physics inspector)
 - [ ] Drag the robot around — physics should behave reasonably (no explosions, no interpenetration)
 - [ ] Compare visual appearance against the MuJoCo viewer rendering
 
 ---
 
-### Task 2.2 — Configure Actuator Model in Isaac Sim
+### Task 2.2 — Create Robot ArticulationCfg
 
 **Description:**
-Set up the Feetech STS3215 servo motor model in Isaac Sim to match the BAM-identified parameters from the real servos. Accurate motor modeling is critical for sim2real transfer.
+Define the Isaac Lab `ArticulationCfg` for the Open Duck Mini v2, including the actuator model with BAM-identified Feetech STS3215 servo parameters. This config is used by the environment to spawn the robot.
 
 **Motor parameters (from `experiments/v2/params_m6.json` and `robot_motors.xml`):**
 
 | Parameter | Value | Source |
 |---|---|---|
-| damping | 0.0 (in robot_motors.xml default) | robot_motors.xml line 69 |
-| armature | 0.027 | robot_motors.xml line 69 |
-| frictionloss | 0.083 | robot_motors.xml line 69 |
-| kt (torque constant) | 1.4303 | params_m6.json |
-| R (resistance) | 2.0431 | params_m6.json |
-| kp (position gain) | 6.55 (PD control) | onnx_AWD_mujoco_motor_control.py line 194 |
-| kd (velocity gain) | 0.65 (PD control) | onnx_AWD_mujoco_motor_control.py line 195 |
-| forcerange | [-3.57, 3.57] Nm | onnx_AWD_mujoco_motor_control.py line 216 |
+| armature | 0.027 | robot_motors.xml default joint attribute |
+| frictionloss | 0.083 | robot_motors.xml default joint attribute |
+| kp (position gain) | 6.55 | onnx_AWD_mujoco_motor_control.py line 194 |
+| kd (velocity gain) | 0.65 | onnx_AWD_mujoco_motor_control.py line 195 |
+| effort_limit | 3.57 Nm | onnx_AWD_mujoco_motor_control.py line 216 |
 
 **Steps:**
-1. In the Isaac Lab robot configuration, define actuators using `ImplicitActuatorCfg` or `IdealPDActuatorCfg`:
+1. Create the robot asset configuration:
    ```python
-   from isaaclab.actuators import ImplicitActuatorCfg
+   # isaac_lab_env/open_duck_mini_v2/robot_cfg.py
 
-   actuator_cfg = ImplicitActuatorCfg(
-       joint_names_expr=[".*_hip_yaw", ".*_hip_roll", ".*_hip_pitch",
-                         ".*_knee", ".*_ankle", "neck_pitch",
-                         "head_pitch", "head_yaw", "head_roll",
-                         ".*_antenna"],
-       stiffness=6.55,     # kp from BAM identification
-       damping=0.65,       # kd from BAM identification
-       armature=0.027,     # From robot_motors.xml
-       friction=0.083,     # frictionloss from robot_motors.xml
-       effort_limit=3.57,  # forcerange from torque limit
+   from isaaclab.actuators import ImplicitActuatorCfg
+   from isaaclab.assets.articulation import ArticulationCfg
+   import isaaclab.sim as sim_utils
+
+   OPEN_DUCK_MINI_V2_CFG = ArticulationCfg(
+       spawn=sim_utils.UsdFileCfg(
+           usd_path="mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd",
+           rigid_props=sim_utils.RigidBodyPropertiesCfg(
+               disable_gravity=False,
+               retain_accelerations=False,
+           ),
+           articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+               enabled_self_collisions=False,
+           ),
+       ),
+       init_state=ArticulationCfg.InitialStateCfg(
+           pos=(0.0, 0.0, 0.17),  # spawn height (same as MuJoCo base pos)
+           joint_pos={
+               "right_hip_yaw": -0.014, "right_hip_roll": 0.079,
+               "right_hip_pitch": 0.533, "right_knee": -1.623,
+               "right_ankle": 0.915,
+               "left_hip_yaw": 0.014, "left_hip_roll": 0.077,
+               "left_hip_pitch": 0.593, "left_knee": -1.631,
+               "left_ankle": 0.862,
+               "neck_pitch": -0.175, "head_pitch": -0.175,
+               "head_yaw": 0.0, "head_roll": 0.0,
+               "left_antenna": 0.0, "right_antenna": 0.0,
+           },
+       ),
+       actuators={
+           "legs": ImplicitActuatorCfg(
+               joint_names_expr=[".*_hip_yaw", ".*_hip_roll", ".*_hip_pitch",
+                                 ".*_knee", ".*_ankle"],
+               stiffness=6.55,
+               damping=0.65,
+               armature=0.027,
+               friction=0.083,
+               effort_limit=3.57,
+           ),
+           "head": ImplicitActuatorCfg(
+               joint_names_expr=["neck_pitch", "head_pitch", "head_yaw",
+                                 "head_roll", ".*_antenna"],
+               stiffness=6.55,
+               damping=0.65,
+               armature=0.027,
+               friction=0.083,
+               effort_limit=3.57,
+           ),
+       },
    )
    ```
 2. Verify that a single joint responds similarly to MuJoCo when given the same step input
 
 **How to test:**
-
-*Automated test — `tests/test_isaac_lab_env.py`:*
-
-```python
-@pytest.mark.phase2
-class TestActuatorModel:
-
-    def test_joint_response_matches_mujoco(self):
-        """
-        Step response of a single joint in Isaac Sim should approximately
-        match the MuJoCo response (within 10% of settling time and overshoot).
-        """
-        # 1. Run step response in MuJoCo: command joint from 0 to 0.5 rad
-        # 2. Run same step response in Isaac Sim with same actuator params
-        # 3. Compare trajectories
-        # Tolerance: RMS error < 0.05 rad over 2 seconds
-        pass  # Implementation depends on Isaac Lab API specifics
-```
 
 *Manual verification:*
 - [ ] In Isaac Sim, command a single leg joint to move from 0 to 0.5 rad
@@ -889,100 +907,183 @@ class TestActuatorModel:
 ### Task 2.3 — Create Isaac Lab Locomotion Environment
 
 **Description:**
-Create an Isaac Lab RL environment for the Open Duck Mini v2 that defines the observation space, action space, reward functions, termination conditions, and domain randomization.
+Create an Isaac Lab RL environment for the Open Duck Mini v2 by **extending the built-in `LocomotionVelocityRoughEnvCfg`** — following the same pattern as the H1 humanoid biped config. This gives us correct observations, actions, terminations, domain randomization, commands, and curriculum out of the box. We only override what's specific to our duck robot.
 
-**Reference implementations:**
-- Isaac Lab's built-in humanoid locomotion: `isaaclab/envs/mdp/locomotion/`
-- Isaac Lab's ANYmal quadruped: used in the Spot locomotion blog post
-- The Open Duck Playground joystick env: `Open_Duck_Playground/playground/open_duck_mini_v2/joystick.py`
+**Architecture decision:** We inherit from `LocomotionVelocityRoughEnvCfg` rather than building from scratch. This base class (located at `isaaclab_tasks/manager_based/locomotion/velocity/velocity_env_cfg.py`) provides:
+- Observations: `base_lin_vel` (3), `base_ang_vel` (3), `projected_gravity` (3), `velocity_commands` (3), `joint_pos_rel` (N), `joint_vel_rel` (N), `last_action` (N) — with noise for sim2real
+- Actions: `JointPositionActionCfg` with `scale=0.5` and `use_default_offset=True`
+- Commands: `UniformVelocityCommandCfg` with `rel_standing_envs=0.02`
+- Rewards: `track_lin_vel_xy_exp`, `track_ang_vel_z_exp`, `lin_vel_z_l2`, `ang_vel_xy_l2`, `flat_orientation_l2`, `action_rate_l2`, `joint_torques_l2`, `joint_acc_l2`, `feet_air_time`, `undesired_contacts`
+- Terminations: `time_out` (with `time_out=True`), `base_contact`, `root_height_below_minimum`
+- Events: mass/friction/CoM randomization, push disturbances, joint/base reset randomization
+- Curriculum: terrain difficulty based on velocity tracking performance
+- Scene: terrain, robot, contact sensors, height scanner
+
+**Reference implementation:** `isaaclab_tasks/manager_based/locomotion/velocity/config/h1/rough_env_cfg.py`
 
 **Steps:**
 1. Create a new directory: `isaac_lab_env/open_duck_mini_v2/`
-2. Define the environment configuration:
+2. Define duck-specific reward overrides (biped gait rewards):
 
    ```python
    # isaac_lab_env/open_duck_mini_v2/env_cfg.py
 
-   from isaaclab.envs import ManagerBasedRLEnvCfg
-   from isaaclab.managers import (
-       ObservationGroupCfg, ObservationTermCfg,
-       RewardTermCfg, TerminationTermCfg,
-       EventTermCfg,
+   import math
+   from isaaclab.managers import RewardTermCfg as RewTerm
+   from isaaclab.managers import SceneEntityCfg
+   from isaaclab.utils import configclass
+
+   import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+   from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
+       LocomotionVelocityRoughEnvCfg, RewardsCfg,
    )
+   from isaac_lab_env.open_duck_mini_v2.robot_cfg import OPEN_DUCK_MINI_V2_CFG
 
-   class OpenDuckLocomotionEnvCfg(ManagerBasedRLEnvCfg):
-       """Configuration for Open Duck Mini v2 locomotion environment."""
+   @configclass
+   class DuckRewards(RewardsCfg):
+       """Biped-specific rewards for the Open Duck Mini v2."""
 
-       # Simulation
-       sim_dt = 0.005           # 200 Hz physics
-       decimation = 4           # Policy runs at 50 Hz (every 4 sim steps)
-       num_envs = 4096          # Parallel environments on DGX Spark
+       # Termination penalty (strong negative signal for falling)
+       termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
-       # Robot
-       robot_usd_path = "mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd"
+       # Override velocity tracking with yaw-frame versions (biped best practice)
+       lin_vel_z_l2 = None  # Disable default — bouncing penalty not needed for biped
+       track_lin_vel_xy_exp = RewTerm(
+           func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=1.0,
+           params={"command_name": "base_velocity", "std": 0.5},
+       )
+       track_ang_vel_z_exp = RewTerm(
+           func=mdp.track_ang_vel_z_world_exp, weight=1.0,
+           params={"command_name": "base_velocity", "std": 0.5},
+       )
 
-       # Observations (maps to the current 56-dim AWD observation)
-       observations = ObservationGroupCfg({
-           "projected_gravity": ObservationTermCfg(func=projected_gravity, dim=3),
-           "joint_pos": ObservationTermCfg(func=joint_positions, dim=16),
-           "joint_vel": ObservationTermCfg(func=joint_velocities, dim=16),
-           "feet_contact": ObservationTermCfg(func=feet_contact_binary, dim=2),
-           "previous_action": ObservationTermCfg(func=last_action, dim=16),
-           "commands": ObservationTermCfg(func=velocity_commands, dim=3),
-       })
-       # Total observation dim: 3 + 16 + 16 + 2 + 16 + 3 = 56
+       # Biped-specific gait reward — encourages alternating single-stance
+       feet_air_time = RewTerm(
+           func=mdp.feet_air_time_positive_biped, weight=0.25,
+           params={
+               "command_name": "base_velocity",
+               "sensor_cfg": SceneEntityCfg("contact_forces",
+                   body_names=["left_foot", "right_foot"]),
+               "threshold": 0.4,
+           },
+       )
 
-       # Actions: joint position targets for all 16 actuators
-       action_dim = 16
-       action_scale = 0.25
+       # Penalize feet sliding on ground
+       feet_slide = RewTerm(
+           func=mdp.feet_slide, weight=-0.25,
+           params={
+               "sensor_cfg": SceneEntityCfg("contact_forces",
+                   body_names=["left_foot", "right_foot"]),
+               "asset_cfg": SceneEntityCfg("robot",
+                   body_names=["left_foot", "right_foot"]),
+           },
+       )
 
-       # Rewards (ported from existing codebase + Disney BDX imitation)
-       rewards = {
-           "survival": RewardTermCfg(func=survival_reward, weight=0.05),
-           "smoothness": RewardTermCfg(func=action_smoothness, weight=-0.01),
-           "init_pose": RewardTermCfg(func=init_position_reward, weight=0.1),
-           "velocity_tracking": RewardTermCfg(func=velocity_tracking_reward, weight=0.5),
-           "upright": RewardTermCfg(func=upright_reward, weight=0.2),
-           "walking_height": RewardTermCfg(func=walking_height_reward, weight=0.1),
-           # Optional: Disney BDX imitation reward using reference motions
-           # "imitation": RewardTermCfg(func=imitation_reward, weight=1.0),
-       }
+       # Penalize deviation of non-locomotion joints from default
+       joint_deviation_head = RewTerm(
+           func=mdp.joint_deviation_l1, weight=-0.1,
+           params={"asset_cfg": SceneEntityCfg("robot",
+               joint_names=["neck_pitch", "head_pitch", "head_yaw", "head_roll",
+                            "left_antenna", "right_antenna"])},
+       )
 
-       # Termination conditions
-       terminations = {
-           "fall": TerminationTermCfg(
-               func=trunk_below_height, params={"min_height": 0.08}
-           ),
-           "tilt": TerminationTermCfg(
-               func=trunk_excessive_tilt, params={"max_tilt_deg": 90}
-           ),
-       }
+   @configclass
+   class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
+       """Open Duck Mini v2 locomotion environment configuration."""
 
-       # Domain randomization (critical for sim2real)
-       events = {
-           "mass_randomization": EventTermCfg(
-               func=randomize_mass, params={"range": [0.9, 1.1]}  # ±10% mass
-           ),
-           "friction_randomization": EventTermCfg(
-               func=randomize_friction, params={"range": [0.5, 2.0]}
-           ),
-           "motor_strength_randomization": EventTermCfg(
-               func=randomize_motor_strength, params={"range": [0.9, 1.1]}
-           ),
-           "push_robot": EventTermCfg(
-               func=random_push, params={"force_range": [-3.0, 3.0]},
-               interval_range_s=(5.0, 10.0),
-           ),
-       }
+       rewards: DuckRewards = DuckRewards()
+
+       def __post_init__(self):
+           super().__post_init__()
+
+           # --- Scene: swap robot asset ---
+           self.scene.robot = OPEN_DUCK_MINI_V2_CFG.replace(
+               prim_path="{ENV_REGEX_NS}/Robot"
+           )
+           self.scene.num_envs = 4096
+           self.scene.env_spacing = 2.5
+
+           # --- Simulation timing ---
+           self.sim.dt = 0.005       # 200 Hz physics
+           self.decimation = 4       # Policy at 50 Hz
+           self.episode_length_s = 20.0
+
+           # --- Height scanner (optional, set to None for flat-ground only) ---
+           self.scene.height_scanner = None
+
+           # --- Commands: velocity ranges for the duck ---
+           self.commands.base_velocity.ranges.lin_vel_x = (-0.5, 1.0)
+           self.commands.base_velocity.ranges.lin_vel_y = (-0.5, 0.5)
+           self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+
+           # --- Terminations: adjust body names for duck ---
+           self.terminations.base_contact.params["sensor_cfg"].body_names = "trunk_assembly"
+
+           # --- Events: adjust for duck-specific bodies ---
+           self.events.push_robot = None  # Disable push initially, enable after basic walking works
+           self.events.base_external_force_torque.params["asset_cfg"].body_names = ["trunk_assembly"]
+           self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
+           self.events.reset_base.params = {
+               "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+               "velocity_range": {
+                   "x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0),
+                   "roll": (0.0, 0.0), "pitch": (0.0, 0.0), "yaw": (0.0, 0.0),
+               },
+           }
+
+           # --- Rewards: tune weights for duck ---
+           self.rewards.undesired_contacts = None  # Re-enable after verifying body names
+           self.rewards.flat_orientation_l2.weight = -1.0
+           self.rewards.action_rate_l2.weight = -0.005
+           self.rewards.dof_acc_l2.weight = -1.25e-7
+           self.rewards.dof_torques_l2.weight = 0.0  # Disable torque penalty initially
+
+   @configclass
+   class OpenDuckRoughEnvCfg_PLAY(OpenDuckRoughEnvCfg):
+       """Playback configuration with fewer envs and no randomization."""
+       def __post_init__(self):
+           super().__post_init__()
+           self.scene.num_envs = 50
+           self.scene.env_spacing = 2.5
+           self.episode_length_s = 40.0
+           self.scene.terrain.max_init_terrain_level = None
+           self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
+           self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+           self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+           self.observations.policy.enable_corruption = False
+           self.events.base_external_force_torque = None
+           self.events.push_robot = None
    ```
 
-3. Define reward functions that match the existing project's approach:
-   - `survival_reward`: +0.05 per timestep the robot is alive
-   - `action_smoothness`: Penalize large differences between consecutive actions
-   - `init_position_reward`: Penalize deviation from the natural standing pose
-   - `velocity_tracking_reward`: Reward matching the commanded velocity (forward, lateral, turning)
-   - `upright_reward`: Reward keeping the trunk Z-axis aligned with world up
-   - `walking_height_reward`: Reward maintaining trunk height near 0.15m
+3. Register the environment with Gymnasium:
+   ```python
+   # isaac_lab_env/open_duck_mini_v2/__init__.py
+   import gymnasium
+   gymnasium.register(
+       id="Isaac-OpenDuck-v0",
+       entry_point="isaaclab.envs:ManagerBasedRLEnv",
+       kwargs={
+           "env_cfg_entry_point": "isaac_lab_env.open_duck_mini_v2.env_cfg:OpenDuckRoughEnvCfg",
+           "rsl_rl_cfg_entry_point": "isaac_lab_env.open_duck_mini_v2.train_cfg:DuckPPORunnerCfg",
+       },
+   )
+   gymnasium.register(
+       id="Isaac-OpenDuck-Play-v0",
+       entry_point="isaaclab.envs:ManagerBasedRLEnv",
+       kwargs={
+           "env_cfg_entry_point": "isaac_lab_env.open_duck_mini_v2.env_cfg:OpenDuckRoughEnvCfg_PLAY",
+       },
+   )
+   ```
+
+**Observation space (inherited from base, ~60 dims):**
+- `base_lin_vel` (3) — body linear velocity in robot frame
+- `base_ang_vel` (3) — body angular velocity in robot frame
+- `projected_gravity` (3) — gravity direction in robot frame
+- `velocity_commands` (3) — commanded (vx, vy, ωyaw)
+- `joint_pos_rel` (16) — joint positions relative to default pose
+- `joint_vel_rel` (16) — joint velocities
+- `last_action` (16) — previous policy output
 
 **How to test:**
 
@@ -994,57 +1095,39 @@ class TestIsaacLabEnv:
 
     def test_env_creates_successfully(self):
         """Environment must instantiate without errors."""
-        from isaac_lab_env.open_duck_mini_v2.env_cfg import OpenDuckLocomotionEnvCfg
-        env = make_env(OpenDuckLocomotionEnvCfg, num_envs=2)
+        import gymnasium as gym
+        env = gym.make("Isaac-OpenDuck-v0", num_envs=2)
         assert env is not None
         env.close()
 
     def test_env_step_produces_valid_output(self):
         """A single env.step() must return obs, reward, done, info."""
-        env = make_env(OpenDuckLocomotionEnvCfg, num_envs=2)
-        obs = env.reset()
+        import gymnasium as gym
+        env = gym.make("Isaac-OpenDuck-v0", num_envs=2)
+        obs, info = env.reset()
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
-        assert obs.shape[-1] == 56, f"Unexpected obs dim: {obs.shape}"
         assert reward.shape[0] == 2  # num_envs
         env.close()
 
     def test_env_resets_after_fall(self):
         """Environment must auto-reset when robot falls."""
-        env = make_env(OpenDuckLocomotionEnvCfg, num_envs=4)
+        import gymnasium as gym
+        import torch
+        env = gym.make("Isaac-OpenDuck-v0", num_envs=4)
         env.reset()
-        # Send zero actions repeatedly — robot should eventually fall and reset
         for _ in range(500):
             obs, reward, terminated, truncated, info = env.step(
-                torch.zeros(4, 16)
+                torch.zeros(4, 16, device="cuda")
             )
             if terminated.any():
                 break
         assert terminated.any(), "Robot never fell — termination condition may be broken"
         env.close()
-
-    def test_observation_dimensions(self):
-        """Observation space must match expected dimensions."""
-        env = make_env(OpenDuckLocomotionEnvCfg, num_envs=1)
-        obs = env.reset()
-        # projected_gravity(3) + joint_pos(16) + joint_vel(16) +
-        # feet_contact(2) + prev_action(16) + commands(3) = 56
-        assert obs.shape[-1] == 56
-        env.close()
-
-    def test_domain_randomization_varies_mass(self):
-        """Mass randomization should produce different masses across envs."""
-        env = make_env(OpenDuckLocomotionEnvCfg, num_envs=16)
-        env.reset()
-        # Check that not all trunk masses are identical
-        masses = [env.scene.articulations["robot"].body_mass[i]
-                  for i in range(16)]
-        assert len(set(masses)) > 1, "Mass randomization not working"
-        env.close()
 ```
 
 *Manual verification (on DGX Spark):*
-- [ ] Launch env with `num_envs=16` and Isaac Sim viewer enabled
+- [ ] Launch env with `num_envs=16` without `--headless` to open Isaac Sim viewer
 - [ ] Visually confirm 16 robots spawn on a flat plane
 - [ ] Send random actions — robots should move chaotically and fall
 - [ ] Confirm auto-reset: fallen robots reappear in standing position
@@ -1052,199 +1135,155 @@ class TestIsaacLabEnv:
 
 ---
 
-### Task 2.4 — Train Walking Policies (Multi-Algorithm Experiment)
+### Task 2.4 — Train Walking Policies
 
 **Description:**
-Train locomotion policies using multiple RL algorithms to find the best gait for the Jetson-modified robot. All training runs on the DGX Spark. This is both a practical optimization step and a learning exercise across different RL approaches.
+Train locomotion policies using PPO (primary) and optionally AMP (stretch goal). All training runs on the DGX Spark.
 
-**Algorithm Experiment Plan:**
+**Algorithm Plan:**
 
-| Priority | Algorithm | Framework | Parallel Envs | Est. Time | Type | Why Try It |
+| Priority | Algorithm | Framework | Parallel Envs | Est. Time | Type | Why |
 |---|---|---|---|---|---|---|
-| 1 | **PPO** | RSL-RL | 4096 | ~1 hr | On-policy | Proven baseline. All Isaac Lab locomotion examples use it. |
-| 2 | **RPO** | SKRL | 4096 | ~1 hr | On-policy | Drop-in PPO upgrade. Outperforms PPO in 93% of envs via random perturbation of action mean. |
-| 3 | **AMP** | SKRL | 4096 | ~1-2 hr | On-policy + imitation | Uses reference motion discriminator. Produces natural gaits. The original project already uses imitation rewards — AMP is the formalized version. |
-| 4 | **SAC** | SKRL | 512 | ~3-6 hr | Off-policy | More sample-efficient. May find smoother gaits. Needs smaller env count due to replay buffer GPU memory. |
-| 5 | **TRPO** | SKRL | 4096 | ~2-3 hr | On-policy | Conservative updates. More theoretically grounded than PPO. May produce more stable gaits. |
-| 6 | **TD3** | SKRL | 512 | ~3-6 hr | Off-policy | Deterministic policy. Only try if SAC shows promise. |
+| 1 | **PPO** | RSL-RL | 4096 | ~30 min | On-policy | Proven baseline. All Isaac Lab locomotion examples use it. Built-in ONNX export for Jetson. |
+| 2 (optional) | **AMP** | SKRL | 4096 | ~1-2 hr | On-policy + imitation | Produces natural gaits by imitating reference motions. Requires separate `DirectRLEnv` implementation + reference motion data. |
 
-**Algorithm details and configurations:**
+**Note on algorithm scope:** The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP` via the built-in CLI (verified in `scripts/reinforcement_learning/skrl/train.py` line 54: `choices=["AMP", "PPO", "IPPO", "MAPPO"]`). Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts with no existing locomotion examples. We focus on PPO as the primary policy.
 
 #### 2.4a — PPO (Proximal Policy Optimization) via RSL-RL
 
-The baseline. All Isaac Lab locomotion work is built on this.
+The primary policy. All Isaac Lab locomotion work is built on this. RSL-RL provides built-in ONNX export for TensorRT deployment on Jetson.
 
 ```python
 # isaac_lab_env/open_duck_mini_v2/train_cfg.py
 
-from rsl_rl.algorithms import PPO
-from rsl_rl.runners import OnPolicyRunner
+from isaaclab.utils import configclass
+from isaaclab_rl.rsl_rl import (
+    RslRlOnPolicyRunnerCfg,
+    RslRlPpoActorCriticCfg,
+    RslRlPpoAlgorithmCfg,
+)
 
-class OpenDuckPPORunnerCfg:
+@configclass
+class DuckPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     """PPO training configuration for Open Duck Mini v2."""
     seed = 42
-    num_steps_per_env = 24          # Steps collected per env before update
-    max_iterations = 3000           # Total PPO update iterations
-    save_interval = 100             # Save checkpoint every 100 iterations
+    num_steps_per_env = 24
+    max_iterations = 3000
+    save_interval = 100
+    experiment_name = "open_duck_ppo"
 
-    class algorithm(PPO.Config):
-        value_loss_coef = 1.0
-        use_clipped_value_loss = True
-        clip_param = 0.2            # PPO clipping parameter
-        entropy_coef = 0.01         # Entropy bonus for exploration
-        num_learning_epochs = 5     # Epochs per PPO update
-        num_mini_batches = 4        # Mini-batches per epoch
-        learning_rate = 1e-3
-        schedule = "adaptive"       # Adaptive LR based on KL divergence
-        gamma = 0.99                # Discount factor
-        lam = 0.95                  # GAE lambda
-
-    class policy:
-        class policy_cfg:
-            hidden_dims = [512, 256, 128]   # MLP architecture
-            activation = "elu"
-        class value_cfg:
-            hidden_dims = [512, 256, 128]
-            activation = "elu"
+    policy = RslRlPpoActorCriticCfg(
+        init_noise_std=1.0,
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.01,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
 ```
 
 ```bash
-python -m isaaclab.train \
-    --task OpenDuckLocomotion-v0 \
-    --headless --num_envs 4096 --max_iterations 3000
+# Train PPO via RSL-RL
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task Isaac-OpenDuck-v0 \
+    --headless --video --video_length 200 --video_interval 5000
 ```
 
-#### 2.4b — RPO (Robust Policy Optimization) via SKRL
+#### 2.4b — AMP (Adversarial Motion Priors) via SKRL — optional stretch goal
 
-A drop-in upgrade over PPO. Adds uniform random noise to the action mean during training, maintaining exploration and preventing premature convergence. Only one extra hyperparameter (`alpha`).
+AMP combines PPO-style RL with a GAN-like discriminator that rewards the policy for producing motions that resemble reference data. This produces more natural-looking gaits.
 
-```python
-# SKRL RPO config
-cfg = {
-    "rollouts": 24,
-    "learning_epochs": 5,
-    "mini_batches": 4,
-    "discount_factor": 0.99,
-    "lambda": 0.95,
-    "learning_rate": 1e-3,
-    "clip_ratio": 0.2,
-    "entropy_loss_scale": 0.01,
-    "alpha": 0.5,               # RPO perturbation magnitude (the key difference)
-}
-```
+**Important:** AMP requires a **`DirectRLEnv`** (not `ManagerBasedRLEnv`). This means a separate environment implementation following the `humanoid_amp` example at `isaaclab_tasks/direct/humanoid_amp/`. This is a significant additional effort.
 
-```bash
-python -m isaaclab.train \
-    --task OpenDuckLocomotion-v0 \
-    --algorithm RPO --headless --num_envs 4096 --max_iterations 3000
-```
+**Extra requirements:**
+- Reference motion dataset from [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator)
+- Separate `DirectRLEnv` environment class with AMP observation buffer
+- SKRL YAML config file (not Python dict) with `models`, `memory`, `agent`, `trainer` sections
 
-#### 2.4c — AMP (Adversarial Motion Priors) via SKRL
-
-AMP combines PPO-style RL with a GAN-like discriminator that rewards the policy for producing motions that resemble reference data. This is the most promising algorithm for natural-looking gaits.
-
-**Extra requirement:** Reference motion dataset. Generate using the existing [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator) — this produces `polynomial_coefficients.pkl` containing parametric walking motions. Convert to AMP format (sequence of joint positions at each timestep).
-
-```python
-# SKRL AMP config
-cfg_amp = {
-    "rollouts": 24,
-    "learning_epochs": 5,
-    "mini_batches": 4,
-    "discount_factor": 0.99,
-    "lambda": 0.95,
-    "learning_rate": 1e-3,
-    "clip_ratio": 0.2,
-    # AMP-specific
-    "amp_batch_size": 512,
-    "task_reward_weight": 0.5,      # Weight for task rewards (velocity tracking, etc.)
-    "style_reward_weight": 0.5,     # Weight for discriminator reward (motion matching)
-    "discriminator_learning_rate": 1e-3,
-    "discriminator_hidden_dims": [256, 128],
-}
-```
-
-```bash
-python -m isaaclab.train \
-    --task OpenDuckLocomotion-v0 \
-    --algorithm AMP --headless --num_envs 4096 --max_iterations 3000
-```
-
-#### 2.4d — SAC (Soft Actor-Critic) via SKRL
-
-Off-policy algorithm with entropy maximization. More sample-efficient than PPO but needs careful tuning for GPU-parallel sims due to replay buffer memory.
-
-**Important tuning (based on Antonin Raffin's research on SAC in Isaac Sim):**
-- Reduce `num_envs` to 256-512 (replay buffer memory constraint)
-- Use smaller replay buffer (100k-500k instead of default 1M)
-- Normalize action space
-- Use larger network than default
-
-```python
-# SKRL SAC config
-cfg_sac = {
-    "gradient_steps": 1,
-    "batch_size": 256,
-    "discount_factor": 0.99,
-    "polyak": 0.005,                 # Soft target update
-    "learning_rate": 3e-4,
-    "initial_log_std": 0.0,
-    "learn_entropy": True,           # Auto-tune entropy coefficient
-    "memory_size": 300000,           # Smaller replay buffer for GPU memory
-}
+```yaml
+# isaac_lab_env/open_duck_mini_v2/agents/skrl_amp_cfg.yaml
+seed: 42
+models:
+  separate: False
+  policy:
+    class: GaussianMixin
+    clip_actions: False
+    clip_log_std: True
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [512, 256, 128]
+        activations: elu
+    output: ACTIONS
+  value:
+    class: DeterministicMixin
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [512, 256, 128]
+        activations: elu
+    output: ONE
+  discriminator:
+    class: DeterministicMixin
+    network:
+      - name: net
+        input: AMP_OBSERVATIONS
+        layers: [1024, 512]
+        activations: relu
+    output: ONE
+memory:
+  class: RandomMemory
+  memory_size: 24
+agent:
+  class: AMP
+  rollouts: 24
+  learning_epochs: 5
+  mini_batches: 4
+  discount_factor: 0.99
+  lambda: 0.95
+  learning_rate: 1.0e-03
+  learning_rate_scheduler: KLAdaptiveLR
+  learning_rate_scheduler_kwargs:
+    kl_threshold: 0.01
+  amp_batch_size: 512
+  discriminator_batch_size: 4096
+  discriminator_reward_scale: 2.0
+  discriminator_loss_scale: 5.0
+trainer:
+  class: SequentialTrainer
+  timesteps: 72000
 ```
 
 ```bash
-python -m isaaclab.train \
-    --task OpenDuckLocomotion-v0 \
-    --algorithm SAC --headless --num_envs 512 --max_iterations 10000
+# Train AMP via SKRL (only if DirectRLEnv is implemented)
+./isaaclab.sh -p scripts/reinforcement_learning/skrl/train.py \
+    --task Isaac-OpenDuck-AMP-v0 \
+    --algorithm AMP --headless --video --video_length 200 --video_interval 5000
 ```
 
-#### 2.4e — TRPO (Trust Region Policy Optimization) via SKRL
-
-PPO's predecessor with stricter mathematical guarantees on policy update size. Slower per iteration but potentially more stable convergence.
-
-```python
-# SKRL TRPO config
-cfg_trpo = {
-    "rollouts": 24,
-    "learning_epochs": 5,
-    "mini_batches": 4,
-    "discount_factor": 0.99,
-    "lambda": 0.95,
-    "learning_rate": 1e-3,
-    "max_kl_divergence": 0.01,      # Trust region constraint
-    "damping": 0.1,                  # Conjugate gradient damping
-}
-```
-
-```bash
-python -m isaaclab.train \
-    --task OpenDuckLocomotion-v0 \
-    --algorithm TRPO --headless --num_envs 4096 --max_iterations 3000
-```
-
-#### 2.4f — TD3 (Twin Delayed DDPG) via SKRL — conditional
-
-Only run if SAC (2.4d) shows promising results. TD3 is a deterministic off-policy algorithm — same replay buffer constraints as SAC.
-
-```bash
-python -m isaaclab.train \
-    --task OpenDuckLocomotion-v0 \
-    --algorithm TD3 --headless --num_envs 512 --max_iterations 10000
-```
-
-**Steps (apply to all algorithms):**
-1. Ensure Isaac Lab + SKRL are installed on DGX Spark
-2. Run each training with TensorBoard logging:
+**Steps (for PPO, the primary path):**
+1. Ensure Isaac Lab + RSL-RL are installed on DGX Spark
+2. Run training with TensorBoard logging:
    ```bash
    tensorboard --logdir logs/
    ```
-3. Key metrics to track for all runs:
+3. Key metrics to track:
    - `mean_reward` — should increase steadily
    - `mean_episode_length` — should increase (robot surviving longer)
    - `policy_loss` and `value_loss` — should decrease
-4. Save the best checkpoint from each algorithm run
+4. Save the best checkpoint
 
 **How to test:**
 
@@ -1254,21 +1293,17 @@ python -m isaaclab.train \
 import pytest
 import glob
 
-ALGORITHMS = ["PPO", "RPO", "AMP", "SAC", "TRPO"]
-
 @pytest.mark.phase2
 class TestTrainedPolicies:
 
-    @pytest.mark.parametrize("algo", ALGORITHMS)
-    def test_training_produces_checkpoint(self, algo):
-        """Each algorithm should produce at least one checkpoint."""
-        checkpoints = glob.glob(f"logs/*/{algo}*/model_*.pt") + \
-                      glob.glob(f"logs/*/{algo}*/checkpoints/*.pt")
-        assert len(checkpoints) > 0, f"No checkpoint found for {algo}"
+    def test_ppo_training_produces_checkpoint(self):
+        """PPO training should produce at least one checkpoint."""
+        checkpoints = glob.glob("logs/*open_duck_ppo*/model_*.pt") + \
+                      glob.glob("logs/*open_duck_ppo*/checkpoints/*.pt")
+        assert len(checkpoints) > 0, "No PPO checkpoint found"
 
-    @pytest.mark.parametrize("algo", ALGORITHMS)
-    def test_final_episode_length_above_minimum(self, algo):
-        """Each trained policy should survive > 5 seconds on average."""
+    def test_ppo_final_episode_length_above_minimum(self):
+        """PPO trained policy should survive > 5 seconds on average."""
         # 5 seconds at 50 Hz = 250 steps
         # Parse training logs for final mean_episode_length
         # assert final_ep_length > 250
@@ -1276,48 +1311,51 @@ class TestTrainedPolicies:
 ```
 
 *Manual verification (on DGX Spark):*
-- [ ] All 5-6 training runs complete without crashes
-- [ ] TensorBoard shows learning curves for all algorithms
-- [ ] Play each algorithm's best policy in Isaac Sim viewer (at least briefly)
-- [ ] Note qualitative observations: which gaits look most natural? Most stable?
+- [ ] PPO training run completes without crashes
+- [ ] TensorBoard shows increasing reward and episode length
+- [ ] Play PPO's best policy in Isaac Sim viewer (briefly)
+- [ ] (Optional) AMP training completes if DirectRLEnv was implemented
 
 ---
 
-### Task 2.5 — Compare Algorithms and Select Best Policy
+### Task 2.5 — Evaluate and Select Best Policy
 
 **Description:**
-Systematically evaluate all trained policies from Task 2.4 using quantitative metrics and visual inspection. Select the top 1-2 policies for deployment.
+Evaluate the trained PPO policy (and AMP if available) using quantitative metrics and visual inspection. Confirm the policy is ready for deployment.
 
-**Comparison metrics:**
+**Evaluation metrics:**
 
 | Metric | How to Measure | Why It Matters |
 |---|---|---|
 | **Survival time** | Mean episode length from training logs | Basic viability — can the robot walk without falling? |
 | **Velocity tracking** | RMS error between commanded and actual velocity over 30s | Can the robot follow speed/direction commands? |
 | **Gait smoothness** | Mean squared jerk of joint actions (∑(a_t - 2*a_{t-1} + a_{t-2})²) | Smooth gaits are quieter, less stressful on servos, better for sim2real |
-| **Push recovery** | Max lateral push force (N) survived without falling | Robustness to disturbances in the real world |
+| **Push recovery** | Max lateral push velocity (m/s) survived without falling | Robustness to disturbances in the real world |
 | **Energy efficiency** | Total torque integral per meter traveled (Nm·s/m) | Lower is better for battery life |
 | **Visual quality** | Subjective 1-5 score from video review | Does it look like a duck walking or a robot convulsing? |
 
 **Steps:**
 1. Create an evaluation script `isaac_lab_env/open_duck_mini_v2/evaluate_policies.py` that:
-   - Loads each algorithm's best checkpoint
+   - Loads the best PPO checkpoint (and AMP if available)
    - Runs 10 episodes of 30 seconds each with forward walk command
    - Records all metrics above
    - Exports a comparison table
-2. For push recovery: apply random lateral forces of increasing magnitude and record the threshold
-3. Record videos of each policy walking
-4. Fill in the comparison table:
+2. For push recovery: enable `push_by_setting_velocity` with increasing velocity magnitude and record the threshold
+3. Record evaluation videos using:
+   ```bash
+   ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py \
+       --task Isaac-OpenDuck-Play-v0 \
+       --checkpoint <path_to_best_model.pt> \
+       --video --video_length 500
+   ```
+   Training progress videos are automatically saved by the `--video --video_length 200 --video_interval 5000` flags on the training run
+4. Fill in the evaluation table:
 
 ```markdown
-| Algorithm | Survival (s) | Vel. Track (m/s) | Smoothness | Push (N) | Energy | Visual (1-5) |
-|-----------|-------------|-------------------|------------|----------|--------|--------------|
-| PPO       |             |                   |            |          |        |              |
-| RPO       |             |                   |            |          |        |              |
-| AMP       |             |                   |            |          |        |              |
-| SAC       |             |                   |            |          |        |              |
-| TRPO      |             |                   |            |          |        |              |
-| TD3       |             |                   |            |          |        |              |
+| Algorithm | Survival (s) | Vel. Track (m/s) | Smoothness | Push (m/s) | Energy | Visual (1-5) |
+|-----------|-------------|-------------------|------------|------------|--------|--------------|
+| PPO       |             |                   |            |            |        |              |
+| AMP       |             |                   |            |            |        |              |
 ```
 
 **How to test:**
@@ -1326,21 +1364,13 @@ Systematically evaluate all trained policies from Task 2.4 using quantitative me
 
 ```python
 @pytest.mark.phase2
-class TestPolicyComparison:
+class TestPolicyEvaluation:
 
-    def test_comparison_table_exists(self):
-        """Algorithm comparison results must be documented."""
+    def test_evaluation_results_exist(self):
+        """Evaluation results must be documented."""
         import os
         assert os.path.exists("docs/jetson-mod/algorithm_comparison.md"), \
             "Algorithm comparison document not found"
-
-    def test_at_least_3_algorithms_trained(self):
-        """At least 3 algorithms should have been trained successfully."""
-        import glob
-        algo_dirs = set()
-        for path in glob.glob("logs/*/"):
-            algo_dirs.add(path)
-        assert len(algo_dirs) >= 3, f"Only {len(algo_dirs)} algorithms trained"
 
     def test_best_policy_survives_30_seconds(self):
         """The selected best policy must survive 30+ seconds in simulation."""
@@ -1351,57 +1381,59 @@ class TestPolicyComparison:
 ```
 
 *Manual verification:*
-- [ ] Review comparison table — all 5 algorithms have data
-- [ ] Watch videos of top 2-3 policies side by side
-- [ ] Document selection decision and reasoning in `docs/jetson-mod/algorithm_comparison.md`
-- [ ] **Expected outcome:** AMP or RPO likely produces best gait quality; PPO is the safe baseline
-- [ ] Select **primary policy** (for deployment) and **backup policy** (fallback)
+- [ ] Review evaluation metrics
+- [ ] Watch policy videos — gait should look natural
+- [ ] Document observations in `docs/jetson-mod/algorithm_comparison.md`
+- [ ] Select **primary policy** (PPO) for deployment
 
-**Output:** `docs/jetson-mod/algorithm_comparison.md` with full results table, observations, and decision.
+**Output:** `docs/jetson-mod/algorithm_comparison.md` with evaluation results and observations.
 
 ---
 
-### Task 2.6 — Export Best Policies to ONNX
+### Task 2.6 — Export Best Policy to ONNX
 
 **Description:**
-Export the top 1-2 selected policies from Task 2.5 to ONNX format for Jetson deployment.
+Export the selected PPO policy to ONNX format for Jetson deployment.
 
 **Steps:**
-1. For RSL-RL trained policies (PPO):
+1. For RSL-RL trained PPO policy:
    ```python
    from isaaclab_rl.rsl_rl.exporter import export_policy_as_onnx
 
    export_policy_as_onnx(
-       actor_critic=loaded_policy,
+       policy=loaded_policy,
        path="exported_policies/",
+       normalizer=obs_normalizer,  # if observation normalization was used
        filename="open_duck_ppo_policy.onnx",
    )
    ```
-2. For SKRL trained policies (RPO, AMP, SAC, TRPO, TD3):
+2. For SKRL trained AMP policy (if available):
    ```python
-   # SKRL exports via PyTorch JIT and ONNX
    import torch
 
+   # Load the trained agent
    agent.load("path/to/best_checkpoint.pt")
-   dummy_input = torch.zeros(1, 56)  # obs dim
+   # Export the actor network
+   dummy_input = torch.zeros(1, 60, device="cuda")  # obs dim from base config
    torch.onnx.export(
        agent.policy,
        dummy_input,
        "exported_policies/open_duck_amp_policy.onnx",
        input_names=["obs"],
        output_names=["actions"],
+       opset_version=18,
    )
    ```
 3. Verify each ONNX file:
    ```bash
    python -c "
    import onnxruntime as ort, numpy as np
-   for name in ['ppo', 'amp']:
-       sess = ort.InferenceSession(f'exported_policies/open_duck_{name}_policy.onnx')
-       print(f'{name}: inputs={[(i.name, i.shape) for i in sess.get_inputs()]}')
-       dummy = np.zeros((1, 56), dtype=np.float32)
-       out = sess.run(None, {sess.get_inputs()[0].name: dummy})
-       print(f'{name}: output shape={out[0].shape}')
+   sess = ort.InferenceSession('exported_policies/open_duck_ppo_policy.onnx')
+   print(f'inputs={[(i.name, i.shape) for i in sess.get_inputs()]}')
+   dummy = np.zeros((1, 60), dtype=np.float32)
+   out = sess.run(None, {sess.get_inputs()[0].name: dummy})
+   print(f'output shape={out[0].shape}')
+   assert out[0].shape[-1] == 16
    "
    ```
 
@@ -1419,26 +1451,16 @@ class TestONNXExport:
         onnx_files = glob.glob("exported_policies/*.onnx")
         assert len(onnx_files) >= 1, "No ONNX files found"
 
-    def test_onnx_input_output_shapes(self):
-        """All ONNX models must accept 56-dim obs and output 16-dim action."""
+    def test_onnx_produces_valid_actions(self):
+        """ONNX model must accept observations and output 16-dim actions."""
         import onnxruntime as ort
         import numpy as np, glob
         for onnx_path in glob.glob("exported_policies/*.onnx"):
             sess = ort.InferenceSession(onnx_path)
-            input_shape = sess.get_inputs()[0].shape
-            assert input_shape[-1] == 56, f"{onnx_path}: unexpected input dim {input_shape}"
-            dummy = np.zeros((1, 56), dtype=np.float32)
+            obs_dim = sess.get_inputs()[0].shape[-1]
+            dummy = np.random.randn(1, obs_dim).astype(np.float32)
             out = sess.run(None, {sess.get_inputs()[0].name: dummy})
             assert out[0].shape[-1] == 16, f"{onnx_path}: unexpected output dim {out[0].shape}"
-
-    def test_onnx_produces_finite_output(self):
-        """ONNX inference must not produce NaN or Inf."""
-        import onnxruntime as ort
-        import numpy as np, glob
-        for onnx_path in glob.glob("exported_policies/*.onnx"):
-            sess = ort.InferenceSession(onnx_path)
-            dummy = np.random.randn(1, 56).astype(np.float32)
-            out = sess.run(None, {sess.get_inputs()[0].name: dummy})
             assert not np.any(np.isnan(out[0])), f"{onnx_path}: produced NaN"
             assert not np.any(np.isinf(out[0])), f"{onnx_path}: produced Inf"
 ```
@@ -1453,37 +1475,35 @@ Run the selected best policy in Isaac Sim with full rendering to visually valida
 **Steps:**
 1. Play the best policy with the Isaac Sim viewer:
    ```bash
-   python -m isaaclab.play \
-       --task OpenDuckLocomotion-v0 \
+   ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py \
+       --task Isaac-OpenDuck-Play-v0 \
        --checkpoint <path_to_best_checkpoint> \
        --num_envs 4
    ```
-2. Test all walking commands:
-   - Forward walk (0.3 m/s)
-   - Backward walk (-0.2 m/s)
-   - Sideways walk (0.2 m/s left/right)
-   - Turning in place (0.3 rad/s)
+2. Test all walking commands (modify velocity ranges in `OpenDuckRoughEnvCfg_PLAY`):
+   - Forward walk (0.5 m/s)
+   - Backward walk (-0.3 m/s)
+   - Sideways walk (0.3 m/s left/right)
+   - Turning in place (0.5 rad/s)
    - Standing still (0 velocity)
 3. Test robustness:
-   - Enable push disturbances
+   - Re-enable push disturbances in the play config
    - Vary terrain roughness (if configured)
-4. Also test the backup policy — verify it's a viable alternative
 
 **How to test:**
 
 *Manual verification (on DGX Spark — this is the critical gate):*
-- [ ] Primary policy: Robot walks forward smoothly for 30+ seconds
-- [ ] Primary policy: Robot can turn left and right while walking
-- [ ] Primary policy: Robot recovers from small pushes
-- [ ] Primary policy: Gait looks natural (no excessive wobbling, jerking, or foot dragging)
-- [ ] Backup policy: At minimum, robot walks forward for 10+ seconds
-- [ ] Record videos of both policies for documentation
+- [ ] Robot walks forward smoothly for 30+ seconds
+- [ ] Robot can turn left and right while walking
+- [ ] Robot recovers from small pushes
+- [ ] Gait looks natural (no excessive wobbling, jerking, or foot dragging)
+- [ ] Record videos for documentation
 - [ ] Save observations to `docs/jetson-mod/validation_results.md`
 
 **Pass/Fail criteria:**
-- **PASS:** Best policy walks in all directions for 30+ seconds, recovers from pushes → proceed to Phase 3
-- **MARGINAL:** Best policy walks but gait is poor → adjust rewards and retrain (repeat Task 2.4 for top algorithms only)
-- **FAIL:** No algorithm produces walking → debug actuator model (Task 2.2), check USD conversion (Task 2.1)
+- **PASS:** Policy walks in all directions for 30+ seconds, recovers from pushes → proceed to Phase 3
+- **MARGINAL:** Policy walks but gait is poor → adjust reward weights and retrain
+- **FAIL:** No walking achieved → debug actuator model (Task 2.2), check USD conversion (Task 2.1)
 
 ---
 
@@ -2791,13 +2811,11 @@ Task 2.2 (Configure actuator model) ── depends on 2.1
 Task 2.3 (Create Isaac Lab env) ── depends on 2.1, 2.2
     │
     v
-Task 2.4 (Train multi-algorithm) ── depends on 2.3
+Task 2.4 (Train PPO + optional AMP) ── depends on 2.3
     │   ├── 2.4a PPO  (RSL-RL, 4096 envs, ~1 hr)
-    │   ├── 2.4b RPO  (SKRL,   4096 envs, ~1 hr)    ── parallel with PPO
+    │   └── 2.4b AMP  (SKRL,   4096 envs, ~1-2 hr)  ── optional stretch goal, requires DirectRLEnv
     │   ├── 2.4c AMP  (SKRL,   4096 envs, ~1-2 hr)  ── parallel (needs ref motion data)
-    │   ├── 2.4d SAC  (SKRL,   512 envs,  ~3-6 hr)  ── parallel
-    │   ├── 2.4e TRPO (SKRL,   4096 envs, ~2-3 hr)  ── parallel
-    │   └── 2.4f TD3  (SKRL,   512 envs,  ~3-6 hr)  ── conditional on SAC results
+    │
     │
     v
 Task 2.5 (Compare algorithms & select best) ── depends on 2.4
@@ -2881,7 +2899,7 @@ Task 5.5 (Voice input — optional) ── depends on 5.3
 | Phase | Duration | Can Start | Hardware |
 |---|---|---|---|
 | Phase 1 (Sim Model Update) | 3-5 days | Immediately | Local machine |
-| Phase 2 (Isaac Lab Setup + Multi-Algorithm Training) | 2-3 weeks | After Phase 1 | **DGX Spark** |
+| Phase 2 (Isaac Lab Setup + PPO Training) | 1-2 weeks | After Phase 1 | **DGX Spark** |
 | Phase 3 (CAD Redesign) | 1-3 weeks | After Phase 2 passes | Local + CAD software |
 | Phase 4 (Hardware Build) | 2-4 weeks | After Phase 3 + procurement | **Jetson + 3D printer** |
 | Phase 5 (Cosmos Reason2 VLM Integration) | 1-2 weeks | After Phase 4 (robot walks) | **Jetson Orin Nano** |
@@ -2889,7 +2907,7 @@ Task 5.5 (Voice input — optional) ── depends on 5.3
 
 Phase 2 breakdown:
 - Task 2.1-2.3 (USD conversion, actuator tuning, env setup): ~3-5 days
-- Task 2.4 (multi-algorithm training — PPO/RPO/AMP run in parallel, SAC/TRPO after): ~3-5 days
+- Task 2.4 (PPO training + optional AMP): ~1-2 days
 - Task 2.5-2.7 (comparison, export, validation): ~2-3 days
 
 Phase 5 breakdown:

@@ -37,31 +37,44 @@ Joint position targets for all 16 actuators. Scaled by `action_scale` (typically
 
 Note: Isaac Gym uses a different joint order (left leg first). See `mini_bdx/mini_bdx/utils/rl_utils.py` for conversion functions.
 
-## Multi-Algorithm Experiment (Phase 2)
+## RL Algorithms (Phase 2)
 
-Training is done on DGX Spark with Isaac Lab. We compare these algorithms:
+Training is done on DGX Spark with Isaac Lab. The environment extends `LocomotionVelocityRoughEnvCfg` (H1 biped pattern).
 
-| Algorithm | Framework | Parallel Envs | Type | Key Feature |
-|---|---|---|---|---|
-| **PPO** | RSL-RL | 4096 | On-policy | Proven baseline for locomotion |
-| **RPO** | SKRL | 4096 | On-policy | PPO + random perturbation (outperforms PPO in 93% of envs) |
-| **AMP** | SKRL | 4096 | On-policy + imitation | Uses reference motion discriminator for natural gaits |
-| **SAC** | SKRL | 512 | Off-policy | Sample-efficient but needs smaller env count (replay buffer) |
-| **TRPO** | SKRL | 4096 | On-policy | Conservative trust region updates, more stable |
-| **TD3** | SKRL | 512 | Off-policy | Conditional on SAC results |
+| Algorithm | Framework | Type | Status |
+|---|---|---|---|
+| **PPO** | RSL-RL | On-policy | Primary — built-in ONNX export for Jetson |
+| **AMP** | SKRL | On-policy + imitation | Optional stretch goal — requires DirectRLEnv + reference motions |
+
+Note: The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP`. Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts.
 
 ## Reward Functions
 
-- `survival`: +0.05 per timestep alive
-- `smoothness`: Penalize action jerk (consecutive action differences)
-- `init_pose`: Penalize deviation from natural standing pose
-- `velocity_tracking`: Reward matching commanded velocity
-- `upright`: Reward keeping trunk Z-axis aligned with world up
-- `walking_height`: Reward maintaining trunk at ~0.15m height
+Inherited from `LocomotionVelocityRoughEnvCfg` base + biped-specific overrides (following H1 pattern):
+
+- `track_lin_vel_xy_yaw_frame_exp`: Exponential reward for tracking commanded velocity in yaw frame
+- `track_ang_vel_z_world_exp`: Exponential reward for tracking angular velocity
+- `feet_air_time_positive_biped`: Reward alternating single-stance phases (biped gait)
+- `feet_slide`: Penalize feet sliding on ground
+- `flat_orientation_l2`: Penalize non-upright orientation
+- `action_rate_l2`: Penalize jerky actions (smoothness)
+- `joint_deviation_l1`: Penalize head/antenna deviation from default
+- `joint_acc_l2`: Penalize joint accelerations
+- `is_terminated`: Strong penalty (-200) for falling
 
 ## Policy Network Architecture
 
 MLP with 3 hidden layers: [512, 256, 128], ELU activation. Separate policy and value networks.
+
+## Training Video Recording
+
+Always record training progress videos for debugging and documentation. Use these flags on all training runs:
+
+```bash
+--video --video_length 200 --video_interval 5000
+```
+
+This records a 200-step clip every 2000 training steps. Videos are saved to `logs/<workflow>/<task>/<run>/videos/train/`. Use `play.py --video` after training for clean evaluation clips of the final policy.
 
 ## Training → Deployment Pipeline
 
