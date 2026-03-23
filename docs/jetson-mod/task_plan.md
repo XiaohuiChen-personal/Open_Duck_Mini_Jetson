@@ -114,7 +114,7 @@ Open_Duck_Mini_Jetson/
 
 | Parameter | Raspberry Pi Zero 2W (remove) | Jetson Orin Nano Super Dev Kit (add) |
 |---|---|---|
-| Dimensions | 65 x 30 x 5 mm | 100 x 79 x 21 mm |
+| Dimensions | 65 x 30 x 5 mm | 103 x 90.5 x 34.77 mm (full dev kit incl. heatsink+fan) |
 | Weight | 10 g | 176 g |
 | Power (typical) | ~1-3 W | 7-25 W |
 | Current location | Head (head_assembly body) | Trunk (trunk_assembly body) — NEW |
@@ -123,8 +123,12 @@ Open_Duck_Mini_Jetson/
 ### Additional Hardware
 
 - 2x extra 18650 battery cells: ~45g each, 18mm diameter x 65mm long
-- DC-DC boost converter (7.4V to 19V): ~20g, ~50x25x15mm
+- DC-DC boost converter (7.4V to 19V): ~15g, ~43x21x14mm (XL6009-based module)
 - CSI camera module: ~3g, mounted in head
+- Thermal partition wall (PLA, 2mm thick, ~110x90mm): ~25g
+- Mica insulation sheet (1mm thick, ~110x90mm): ~12g
+- NTC 10kΩ thermistor: ~0.5g (negligible)
+- Additional wiring/cables: ~8g estimated
 
 ### NVIDIA Stack Overview
 
@@ -291,29 +295,33 @@ pytest -m "phase2" -v
 ### Task 1.1 — Calculate New Mass and Inertia Values
 
 **Description:**
-Compute the updated mass, center-of-mass (CoM), and diagonal inertia tensor for `trunk_assembly` and `head_assembly` bodies after removing the Pi Zero 2W from the head and adding the Jetson Orin Nano Dev Kit + extra batteries to the trunk.
+Compute the updated mass, center-of-mass (CoM), and diagonal inertia tensor for `trunk_assembly` and `head_assembly` bodies after removing the Pi Zero 2W from the head and adding the Jetson Orin Nano Dev Kit + extra batteries + thermal partition to the trunk.
 
 **Inputs:**
 - Current `trunk_assembly`: mass=0.698526 kg, pos=(-0.0483259, -9.97823e-05, 0.0384971), diaginertia=(0.00344489, 0.00292719, 0.00167606)
 - Current `head_assembly`: mass=0.352583 kg, pos=(0.00761779, 0.00018098, 0.0242575), diaginertia=(0.00207104, 0.00144128, 0.000909578)
 - Raspberry Pi Zero 2W: 10g, 65x30x5mm, located at pos=(0.03205, 0.048, 0.00595) in head_assembly frame
-- Jetson Orin Nano Dev Kit: 176g, 100x79x21mm
+- Jetson Orin Nano Dev Kit (full kit incl. heatsink+fan): 176g, 103x90.5x34.77mm
 - 2x extra 18650 cells: 45g each, 18mm diameter x 65mm long
-- DC-DC boost converter: 20g, 50x25x15mm
+- DC-DC boost converter (XL6009): 15g, 43x21x14mm
+- Thermal partition wall (PLA, 2mm thick): ~25g, ~110x90x2mm
+- Mica insulation sheet (1mm thick, bonded to partition): ~12g, ~110x90x1mm
+- Additional wiring/cables: ~8g (estimated lump mass at trunk CoM)
 
 **Steps:**
-1. Determine Jetson placement position in the trunk_assembly coordinate frame. Target: forward-mid cavity, approximately pos=(-0.03, 0.0, 0.035) in trunk frame (between the neck motor and the battery pack, above the trunk bottom).
+1. Determine Jetson placement position in the trunk_assembly coordinate frame. Target: forward-mid cavity, approximately pos=(-0.03, 0.0, 0.035) in trunk frame (between the neck motor and the battery pack, above the trunk bottom). Note: the full dev kit is 103x90.5x35mm — verify clearance against trunk cavity bounds.
 2. Compute Jetson's inertia tensor as a rectangular solid:
-   - Ixx = m/12 * (height^2 + depth^2) = 0.176/12 * (0.021^2 + 0.079^2)
-   - Iyy = m/12 * (height^2 + width^2) = 0.176/12 * (0.021^2 + 0.100^2)
-   - Izz = m/12 * (width^2 + depth^2) = 0.176/12 * (0.100^2 + 0.079^2)
+   - Ixx = m/12 * (height^2 + depth^2) = 0.176/12 * (0.03477^2 + 0.0905^2)
+   - Iyy = m/12 * (height^2 + width^2) = 0.176/12 * (0.03477^2 + 0.103^2)
+   - Izz = m/12 * (width^2 + depth^2) = 0.176/12 * (0.103^2 + 0.0905^2)
 3. Compute extra battery inertia (2 cylinders, I_axial = m*r^2/2, I_transverse = m/12*(3r^2+h^2))
-4. Compute DC-DC converter inertia (rectangular solid, same formula as Jetson)
-5. Use the parallel axis theorem to compute the new composite trunk_assembly inertia:
-   - I_composite = I_existing + I_jetson_at_new_pos + I_batteries_at_pos + I_dcdc_at_pos
+4. Compute DC-DC converter inertia (rectangular solid, 0.015 kg, 43x21x14mm)
+5. Compute thermal partition + mica inertia (thin slab, ~0.037 kg total, 110x90x3mm composite at partition position X ≈ -0.08m)
+6. Use the parallel axis theorem to compute the new composite trunk_assembly inertia:
+   - I_composite = I_existing + I_jetson_at_new_pos + I_batteries_at_pos + I_dcdc_at_pos + I_partition_at_pos + I_wiring
    - New CoM = (m_existing * pos_existing + m_jetson * pos_jetson + ...) / m_total
-6. Subtract Pi Zero contribution from head_assembly inertia using parallel axis theorem in reverse
-7. Document all values with full derivation
+7. Subtract Pi Zero contribution from head_assembly inertia using parallel axis theorem in reverse
+8. Document all values with full derivation
 
 **Output:**
 A file `docs/jetson-mod/mass_inertia_calculations.md` containing:
@@ -338,13 +346,13 @@ class TestMassInertiaCalculations:
     def test_total_mass_is_correct(self, expected_values):
         """Total mass should equal sum of all body masses."""
         # Sum all body masses from the updated XML
-        # Compare against expected total (~2318g)
+        # Compare against expected total (~2406g)
         assert abs(total_mass - expected_values["total_mass_kg"]) < 0.001
 
     def test_trunk_mass_increased(self, expected_values):
-        """trunk_assembly mass should reflect Jetson + extra batteries."""
+        """trunk_assembly mass should reflect Jetson + extra batteries + thermal partition + wiring."""
         expected = expected_values["trunk_assembly_mass_kg"]
-        # Should be ~0.9645 kg (original 0.6985 + 0.176 + 0.090)
+        # Should be ~1.0545 kg (original 0.6985 + 0.176 + 0.090 + 0.015 + 0.037 + 0.008)
         assert abs(trunk_mass - expected) < 0.001
 
     def test_head_mass_decreased(self, expected_values):
@@ -381,9 +389,9 @@ class TestMassInertiaCalculations:
 
 *Manual verification:*
 - [ ] Open the calculations spreadsheet/document and verify each formula step
-- [ ] Cross-check: new trunk mass ≈ 0.6985 + 0.176 + 0.090 + 0.020 = 0.9845 kg
+- [ ] Cross-check: new trunk mass ≈ 0.6985 + 0.176 + 0.090 + 0.015 + 0.037 + 0.008 = 1.0245 kg
 - [ ] Cross-check: new head mass ≈ 0.3526 - 0.010 = 0.3426 kg
-- [ ] Cross-check: new total mass ≈ 2.062 + 0.176 + 0.090 + 0.020 - 0.010 = 2.338 kg
+- [ ] Cross-check: new total mass ≈ 2.062 + 0.176 + 0.090 + 0.015 + 0.037 + 0.008 - 0.010 = 2.378 kg
 
 ---
 
@@ -392,12 +400,13 @@ class TestMassInertiaCalculations:
 **Description:**
 Create a simple box-shaped STL file representing the Jetson Orin Nano Dev Kit for use in the MuJoCo simulation. The mesh units must be in **meters** (matching other meshes in the `robots/open_duck_mini_v2/` directory).
 
-**Dimensions:** 0.100 x 0.079 x 0.021 meters (100 x 79 x 21 mm)
+**Dimensions:** 0.103 x 0.0905 x 0.03477 meters (103 x 90.5 x 34.77 mm) — full dev kit including carrier board + module + heatsink + fan
 
 **Steps:**
 1. Write a Python script to generate a box STL with the correct dimensions
 2. Save as `mini_bdx/robots/open_duck_mini_v2/jetson_orin_nano.stl`
-3. Optionally create `mini_bdx/robots/open_duck_mini_v2/dcdc_converter.stl` (0.050 x 0.025 x 0.015 m)
+3. Create `mini_bdx/robots/open_duck_mini_v2/thermal_partition.stl` — thin slab (0.110 x 0.090 x 0.003 m) representing the PLA partition wall + mica insulation
+4. Optionally create `mini_bdx/robots/open_duck_mini_v2/dcdc_converter.stl` (0.043 x 0.021 x 0.014 m)
 
 **How to test:**
 
@@ -419,13 +428,13 @@ class TestJetsonMesh:
         assert os.path.exists(os.path.join(ROBOT_DIR, "jetson_orin_nano.stl"))
 
     def test_jetson_stl_dimensions(self):
-        """Jetson STL bounding box must match 100x79x21mm (in meters)."""
+        """Jetson STL bounding box must match 103x90.5x34.77mm (in meters)."""
         vertices = load_stl_vertices(os.path.join(ROBOT_DIR, "jetson_orin_nano.stl"))
         dims = vertices.max(axis=0) - vertices.min(axis=0)
         # Tolerance of 0.5mm
-        assert abs(dims[0] - 0.100) < 0.0005, f"X dimension wrong: {dims[0]}"
-        assert abs(dims[1] - 0.079) < 0.0005, f"Y dimension wrong: {dims[1]}"
-        assert abs(dims[2] - 0.021) < 0.0005, f"Z dimension wrong: {dims[2]}"
+        assert abs(dims[0] - 0.103) < 0.0005, f"X dimension wrong: {dims[0]}"
+        assert abs(dims[1] - 0.0905) < 0.0005, f"Y dimension wrong: {dims[1]}"
+        assert abs(dims[2] - 0.03477) < 0.0005, f"Z dimension wrong: {dims[2]}"
 
     def test_jetson_stl_units_are_meters(self):
         """All coordinates should be < 0.2 (meters, not mm)."""
@@ -452,6 +461,7 @@ Modify the primary MuJoCo simulation model to reflect the Jetson modification. T
 1. **Add Jetson mesh asset** (near line 65):
    ```xml
    <mesh name="jetson_orin_nano" file="jetson_orin_nano.stl" />
+   <mesh name="thermal_partition" file="thermal_partition.stl" />
    ```
 
 2. **Remove Pi Zero mesh asset** (line 61):
@@ -469,17 +479,28 @@ Modify the primary MuJoCo simulation model to reflect the Jetson modification. T
        mesh="jetson_orin_nano"
    />
    ```
-   The position values come from Task 1.1.
+   The position values come from Task 1.1. Note: the full dev kit bounding box is 103x90.5x35mm — verify it fits within the trunk cavity.
 
-4. **Remove Pi Zero geom from head_assembly** (lines 682-688):
+4. **Add thermal partition geom in trunk_assembly** (near Jetson geom):
+   ```xml
+   <geom
+       pos="-0.08 0 CALCULATED_Z"
+       type="mesh"
+       rgba="0.8 0.2 0.2 0.5"
+       mesh="thermal_partition"
+   />
+   ```
+   Position X ≈ -0.08m (between battery zone and compute zone). The partition mass (~37g) is included in the trunk_assembly inertial from Task 1.1.
+
+5. **Remove Pi Zero geom from head_assembly** (lines 682-688):
    ```xml
    <!-- REMOVE the raspberrypizerow geom -->
    ```
 
-5. **Update trunk_assembly inertial** (lines 112-117):
-   Replace mass, pos, quat, and diaginertia with values from Task 1.1.
+6. **Update trunk_assembly inertial** (lines 112-117):
+   Replace mass, pos, quat, and diaginertia with values from Task 1.1 (includes Jetson + batteries + DC-DC + thermal partition + wiring).
 
-6. **Update head_assembly inertial** (lines 649-653):
+7. **Update head_assembly inertial** (lines 649-653):
    Replace mass, pos, quat, and diaginertia with values from Task 1.1.
 
 **How to test:**
@@ -558,10 +579,10 @@ class TestRobotMotorsXML:
                 break
 
     def test_trunk_mass_updated(self, model):
-        """trunk_assembly mass should be approximately 0.96-0.99 kg."""
+        """trunk_assembly mass should be approximately 1.0-1.06 kg."""
         trunk_id = model.body("trunk_assembly").id
         mass = model.body_mass[trunk_id]
-        assert 0.90 < mass < 1.10, f"trunk mass out of expected range: {mass}"
+        assert 0.95 < mass < 1.15, f"trunk mass out of expected range: {mass}"
 
     def test_head_mass_updated(self, model):
         """head_assembly mass should be approximately 0.34 kg."""
@@ -1497,7 +1518,7 @@ class TestTrunkTopSTL:
     def test_jetson_fits_inside_trunk(self):
         """
         The trunk_top internal cavity must be at least
-        105x84x25mm (Jetson 100x79 + 5mm clearance each side, + 4mm height for standoffs).
+        113x100.5x43.77mm (Jetson 103x90.5x34.77 + 5mm clearance each side, + 4mm height for standoffs).
         """
         # Load trunk_top STL and compute internal cavity dimensions
         # This is approximate — measure bounding box and subtract wall thickness
@@ -1511,7 +1532,7 @@ class TestTrunkTopSTL:
 *Manual verification:*
 - [ ] Open the modified STL in a slicer (Cura, PrusaSlicer) — verify it is printable without support issues
 - [ ] Measure the M3 hole spacing in the slicer — must match 58x86mm
-- [ ] Physically test-fit a Jetson dev kit mockup (cardboard cutout 100x79mm) into a print of the part
+- [ ] Physically test-fit a Jetson dev kit mockup (cardboard cutout 103x90.5mm) into a print of the part
 - [ ] Verify USB-C, DC barrel jack, and CSI connectors are accessible
 
 ---
@@ -1562,7 +1583,7 @@ The Jetson dissipates 20-22W at 25W mode. Its heatsink surface can reach 55-80°
 **Description:**
 If clearance analysis from Phase 2 shows the Jetson protrudes beyond the current body cavity, extend these parts by 10-15mm in the X (depth) dimension.
 
-**Decision criteria:** Only needed if the Jetson + heatsink (21mm + standoffs) does not fit within the vertical space between trunk_bottom and body_middle_top.
+**Decision criteria:** Almost certainly needed — the full Jetson dev kit is 34.77mm tall (including heatsink + fan), so with standoffs (~3-5mm) the total is ~38-40mm. This is likely to exceed the available vertical space between trunk_bottom and body_middle_top.
 
 **How to test:**
 
@@ -1590,7 +1611,7 @@ class TestBodyMiddleDimensions:
 ### Task 3.4 — Redesign Battery Pack (Thermally Isolated)
 
 **Description:**
-Redesign the battery_pack_lid to hold 4x 18650 cells instead of 2x, add space for the DC-DC boost converter, and ensure the battery pack is thermally isolated from the Jetson compute zone.
+Redesign the battery_pack_lid to hold 4x 18650 cells instead of 2x, and ensure the battery pack is thermally isolated from the Jetson compute zone. Note: the DC-DC boost converter is placed in the **compute zone** (near the Jetson) for a short 19V cable run, not in the battery zone.
 
 **Thermal isolation requirements:**
 - The battery pack must sit entirely within the **battery zone** (behind the thermal partition wall from Task 3.6)
@@ -1643,8 +1664,9 @@ The Jetson Orin Nano dissipates 20-22W at 25W power mode. Its heatsink surface t
     │  (cool, sealed)  │  (hot, ventilated)            │
     │                  │                                │
     │  [4x 18650]      │  [JETSON ORIN NANO]            │
-    │  [BMS]           │  [SERVO DRIVER]                │
-    │  [DC-DC conv]    │  [IMU]                         │
+    │  [BMS]           │  [DC-DC conv]                  │
+    │                  │  [SERVO DRIVER]                │
+    │                  │  [IMU]                         │
     │                  │  [FAN → exhaust vents]         │
     │                  │                                │
     │  ~50mm depth     │  ~100mm depth                  │
@@ -1656,9 +1678,10 @@ The Jetson Orin Nano dissipates 20-22W at 25W power mode. Its heatsink surface t
 **Partition wall construction:**
 - **Base material:** PLA, 2mm thick, printed to span the full width (Y: 110mm) and height (Z: ~90mm) of the trunk cavity
 - **Thermal insulation:** Bond a 1mm **mica sheet** (cut to size) to the compute-zone-facing side of the partition wall
-  - Mica thermal conductivity: ~0.08 W/mK (excellent insulator)
-  - Mica is flame resistant, electrically insulating, lightweight (<5g for this size)
-  - Alternative: silicone thermal insulation pad (similar performance, easier to source)
+  - Mica thermal conductivity: ~0.5-0.7 W/mK (good insulator; note: silicone thermal pads are designed to *conduct* heat, not insulate — mica is the correct choice here)
+  - Mica density: ~2.2-2.3 g/cm³ → a 110x90x1mm sheet weighs ~12g
+  - Mica is flame resistant (rated to 500°C+), electrically insulating
+  - Total partition assembly weight: ~37g (25g PLA wall + 12g mica sheet)
 - **Mounting:** Slot into grooves in `trunk_top` and `trunk_bottom` (add matching slots in Task 3.1 and existing trunk_bottom redesign)
 - **Cable pass-through:** Small notch (~5mm wide) at the bottom for power cables from battery zone to compute zone. Notch should be as small as possible to minimize thermal leakage; fill remaining gap with thermal insulation tape if needed
 - **Estimated position:** X ≈ -0.08m in trunk frame (between BMS at -0.075 and servo driver at 0.001)
@@ -1737,7 +1760,7 @@ Add matching slots/grooves in `trunk_top` and `trunk_bottom` to accept the therm
 |---|---|---|---|
 | NVIDIA Jetson Orin Nano Super Developer Kit | 1 | $249 | Amazon (B0BZJTQ5YP) |
 | 18650 Li-ion cells (e.g., Samsung 30Q) | 2 | $15 | Amazon/18650batterystore |
-| DC-DC boost converter (7.4V to 19V, 3A+) | 1 | $12 | Amazon/AliExpress |
+| DC-DC boost converter XL6009/XL6019 (7.4V to 19V, 4A+) | 1 | $5 | Amazon/AliExpress |
 | CSI camera module (IMX219) | 1 | $15 | Amazon/Arducam |
 | CSI ribbon cable 30cm | 1 | $5 | Amazon |
 | M3 standoffs + screws (assorted) | 1 set | $8 | Amazon |

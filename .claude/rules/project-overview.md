@@ -4,7 +4,7 @@ This project is modifying the Open Duck Mini v2 bipedal robot to use NVIDIA hard
 
 ## What Changed and Why
 
-The original robot uses a Raspberry Pi Zero 2W (65x30x5mm, 10g, no GPU) in the head. We are replacing it with a Jetson Orin Nano Super Dev Kit (100x79x21mm, 176g, 67 TOPS GPU) relocated to the trunk/body cavity.
+The original robot uses a Raspberry Pi Zero 2W (65x30x5mm, 10g, no GPU) in the head. We are replacing it with a Jetson Orin Nano Super Dev Kit (103x90.5x34.77mm incl. heatsink+fan, 176g, 67 TOPS GPU) relocated to the trunk/body cavity.
 
 **Why:** To add physical AI capabilities (vision, language understanding, autonomous navigation) and learn the NVIDIA robotics stack (Isaac Sim, Isaac Lab, TensorRT, Cosmos).
 

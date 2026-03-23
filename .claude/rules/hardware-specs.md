@@ -5,7 +5,7 @@
 | Parameter | Value |
 |---|---|
 | Total height | ~420 mm (legs extended) |
-| Total mass (after mod) | ~2,338 g |
+| Total mass (after mod) | ~2,378 g |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
 | Servos | 14x Feetech STS3215 (7.4V, 19.5 kg.cm stall, 55g each) |
 | Ear servos | 2x SG90 micro servos (in head) |
@@ -16,7 +16,7 @@
 
 | Spec | Value |
 |---|---|
-| Dimensions | 100 x 79 x 21 mm |
+| Dimensions | 103 x 90.5 x 34.77 mm (full dev kit incl. heatsink+fan) |
 | Weight | 176 g |
 | GPU | 1024 CUDA + 32 Tensor cores (Ampere) |
 | AI Performance | 67 TOPS |
@@ -41,9 +41,9 @@ Total:                         ~7.7 GB  (fits)
 
 | Body | Original (g) | Modified (g) | Change |
 |---|---|---|---|
-| trunk_assembly | 698.5 | ~984.5 | +176 (Jetson) +90 (batteries) +20 (DC-DC) |
+| trunk_assembly | 698.5 | ~1,024.5 | +176 (Jetson) +90 (batteries) +15 (DC-DC) +37 (thermal partition+mica) +8 (wiring) |
 | head_assembly | 352.6 | ~342.6 | -10 (Pi removed) |
-| Total robot | 2,062 | ~2,338 | +276 g (+13.4%) |
+| Total robot | 2,062 | ~2,378 | +316 g (+15.3%) |
 
 ## Raspberry Pi Zero 2W (being removed)
 
