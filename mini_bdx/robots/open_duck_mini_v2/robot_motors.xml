@@ -58,7 +58,9 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
         <mesh name="head_bot_sheet" file="head_bot_sheet.stl" />
         <mesh name="head" file="head.stl" />
         <mesh name="head_roll_mount" file="head_roll_mount.stl" />
-        <mesh name="raspberrypizerow" file="raspberrypizerow.stl" />
+        <mesh name="jetson_orin_nano" file="jetson_orin_nano.stl" />
+        <mesh name="thermal_partition" file="thermal_partition.stl" />
+        <mesh name="dcdc_converter" file="dcdc_converter.stl" />
         <mesh name="sg90" file="sg90.stl" />
         <mesh name="antenna" file="antenna.stl" />
         <mesh name="left_antenna_holder" file="left_antenna_holder.stl" />
@@ -110,10 +112,9 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
             <freejoint />
             <body name="trunk_assembly">
                 <inertial
-                    pos="-0.0483259 -9.97823e-05 0.0384971"
-                    quat="0.505499 0.490695 0.496207 0.507413"
-                    mass="0.698526"
-                    diaginertia="0.00344489 0.00292719 0.00167606"
+                    pos="-0.0535209 0.0003704 0.0380119"
+                    mass="1.024526"
+                    diaginertia="0.00369962 0.00380763 0.00270784"
                 />
                 <geom
                     pos="-0.019 0 0.0648909"
@@ -189,6 +190,33 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                     type="mesh"
                     rgba="0.180392 0.180392 0.180392 1"
                     mesh="trunk_top"
+                />
+                <!-- Jetson Orin Nano Dev Kit (103x90.5x34.77mm) in compute zone -->
+                <geom
+                    pos="-0.03 0 0.04"
+                    type="mesh"
+                    rgba="0.1 0.6 0.1 1"
+                    mesh="jetson_orin_nano"
+                    contype="0"
+                    conaffinity="0"
+                />
+                <!-- Thermal partition wall between battery and compute zones -->
+                <geom
+                    pos="-0.08 0 0.04"
+                    type="mesh"
+                    rgba="0.8 0.2 0.2 0.5"
+                    mesh="thermal_partition"
+                    contype="0"
+                    conaffinity="0"
+                />
+                <!-- DC-DC boost converter in compute zone -->
+                <geom
+                    pos="-0.05 0.03 0.035"
+                    type="mesh"
+                    rgba="0.9 0.8 0.1 1"
+                    mesh="dcdc_converter"
+                    contype="0"
+                    conaffinity="0"
                 />
                 <geom
                     pos="-0.06349 0.0165 0.0603909"
@@ -647,10 +675,9 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                                 quat="0.707107 0 -0.707107 0"
                             >
                                 <inertial
-                                    pos="0.00761779 0.00018098 0.0242575"
-                                    quat="0.999221 -0.0025776 -0.0393431 -0.00138049"
-                                    mass="0.352583"
-                                    diaginertia="0.00207104 0.00144128 0.000909578"
+                                    pos="0.0069046 -0.0012149 0.0247919"
+                                    mass="0.342583"
+                                    diaginertia="0.00204329 0.00142815 0.00087563"
                                 />
                                 <joint
                                     name="head_roll"
@@ -679,13 +706,7 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                                     rgba="0.501961 0.501961 0.501961 1"
                                     mesh="head_roll_mount"
                                 />
-                                <geom
-                                    pos="0.03205 0.048 0.00595"
-                                    quat="0.5 0.5 -0.5 0.5"
-                                    type="mesh"
-                                    rgba="0.231373 0.380392 0.705882 1"
-                                    mesh="raspberrypizerow"
-                                />
+                                <!-- Pi Zero 2W removed (replaced by Jetson in trunk) -->
                                 <geom
                                     pos="0 -0.035 0.167325"
                                     type="mesh"
