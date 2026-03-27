@@ -19,7 +19,7 @@ A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork replaces th
 | **Onboard computer** | Raspberry Pi Zero 2W (no GPU) | NVIDIA Jetson Orin Nano Super (67 TOPS) |
 | **Computer location** | Head | Trunk (relocated for better CoG) |
 | **Simulation** | MuJoCo | NVIDIA Isaac Sim (PhysX 5) |
-| **RL training** | MuJoCo Playground + SB3 | NVIDIA Isaac Lab (RSL-RL + SKRL) |
+| **RL training** | MuJoCo Playground + SB3 | NVIDIA Isaac Lab (RSL-RL for PPO, optional SKRL for AMP) |
 | **Training hardware** | Single GPU | NVIDIA DGX Spark |
 | **Policy deployment** | ONNX on CPU | TensorRT on Jetson GPU (<1 ms) |
 | **Physical AI** | None | Cosmos Reason2-2B (vision + language + reasoning) |
@@ -79,23 +79,22 @@ The full modification is documented in a 5-phase, 28-task plan: **[docs/jetson-m
 |---|---|
 | [Isaac Sim](https://docs.isaacsim.omniverse.nvidia.com) | Physics simulation (PhysX 5, GPU-accelerated) |
 | [Isaac Lab](https://isaac-sim.github.io/IsaacLab) | RL training framework |
-| [RSL-RL](https://github.com/leggedrobotics/rsl_rl) | PPO implementation for locomotion |
-| [SKRL](https://github.com/Toni-SM/skrl) | SAC, AMP, RPO, TRPO, TD3 algorithms |
+| [RSL-RL](https://github.com/leggedrobotics/rsl_rl) | PPO training + built-in ONNX export (primary) |
+| [SKRL](https://github.com/Toni-SM/skrl) | AMP (Adversarial Motion Priors) — optional stretch goal |
 | [TensorRT](https://developer.nvidia.com/tensorrt) | On-device policy inference (<1 ms) |
 | [Cosmos Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) | Physical AI reasoning VLM |
 | [DGX Spark](https://www.nvidia.com/en-us/products/workstations/dgx-spark/) | Training hardware (Grace Blackwell) |
 
 ## RL Algorithms
 
-We train and compare multiple RL algorithms to find the best walking gait:
+PPO is the primary algorithm. AMP is an optional stretch goal that requires a separate `DirectRLEnv` implementation.
 
-| Algorithm | Framework | Type | Why |
-|---|---|---|---|
-| **PPO** | RSL-RL | On-policy | Proven baseline for locomotion |
-| **RPO** | SKRL | On-policy | PPO + random perturbation, outperforms PPO in 93% of envs |
-| **AMP** | SKRL | Imitation | Adversarial Motion Priors for natural-looking gaits |
-| **SAC** | SKRL | Off-policy | Sample-efficient, potentially smoother gaits |
-| **TRPO** | SKRL | On-policy | Conservative updates, stable convergence |
+| Algorithm | Framework | Type | Priority | Why |
+|---|---|---|---|---|
+| **PPO** | RSL-RL | On-policy | Primary | Proven baseline for locomotion. All Isaac Lab locomotion examples use it. Built-in ONNX export for Jetson. |
+| **AMP** | SKRL | On-policy + imitation | Optional stretch goal | Adversarial Motion Priors for natural-looking gaits. Requires separate DirectRLEnv + reference motion data. |
+
+**Note:** The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP`. Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts with no existing locomotion examples.
 
 <!-- TODO: Add algorithm comparison results table after Phase 2 -->
 <!-- See docs/jetson-mod/algorithm_comparison.md when available -->
@@ -185,14 +184,15 @@ The original Pi Zero runtime is in a separate repo: https://github.com/apirrone/
 Training uses Isaac Lab on a DGX Spark (or any NVIDIA GPU with Isaac Sim installed):
 
 ```bash
-# PPO (baseline)
-python -m isaaclab.train --task OpenDuckLocomotion-v0 --headless --num_envs 4096
+# PPO via RSL-RL (primary)
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task Isaac-OpenDuck-v0 \
+    --headless --video --video_length 200 --video_interval 5000
 
-# AMP (imitation learning, best gait quality)
-python -m isaaclab.train --task OpenDuckLocomotion-v0 --algorithm AMP --headless --num_envs 4096
-
-# SAC (off-policy)
-python -m isaaclab.train --task OpenDuckLocomotion-v0 --algorithm SAC --headless --num_envs 512
+# AMP via SKRL (optional — requires separate DirectRLEnv implementation)
+./isaaclab.sh -p scripts/reinforcement_learning/skrl/train.py \
+    --task Isaac-OpenDuck-AMP-v0 \
+    --algorithm AMP --headless --video --video_length 200 --video_interval 5000
 ```
 
 See [docs/sim2real.md](docs/sim2real.md) for the original MuJoCo-based sim2real guide (for reference).
