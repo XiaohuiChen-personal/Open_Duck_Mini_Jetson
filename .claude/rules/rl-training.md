@@ -45,7 +45,7 @@ Note: The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--
 
 ## Reward Functions
 
-Inherited from `LocomotionVelocityRoughEnvCfg` base + biped-specific overrides (following H1 pattern):
+Inherited from `LocomotionVelocityRoughEnvCfg` base + biped-specific overrides (following H1/G1/Digit patterns):
 
 - `track_lin_vel_xy_yaw_frame_exp`: Exponential reward for tracking commanded velocity in yaw frame
 - `track_ang_vel_z_world_exp`: Exponential reward for tracking angular velocity
@@ -53,9 +53,16 @@ Inherited from `LocomotionVelocityRoughEnvCfg` base + biped-specific overrides (
 - `feet_slide`: Penalize feet sliding on ground
 - `flat_orientation_l2`: Penalize non-upright orientation
 - `action_rate_l2`: Penalize jerky actions (smoothness)
-- `joint_deviation_l1`: Penalize head/antenna deviation from default
+- `joint_deviation_l1` (head): Penalize head/antenna deviation from default
+- `joint_deviation_l1` (hips): Penalize hip yaw/roll deviation — conserves servo torque
+- `joint_pos_limits`: Penalize ankle/knee joints approaching position limits — protects servos
+- `ang_vel_xy_l2`: Penalize pitch/roll angular velocity (increased to -0.1 for top-heavy trunk)
 - `joint_acc_l2`: Penalize joint accelerations
 - `is_terminated`: Strong penalty (-200) for falling
+
+Conditional (add after initial training if needed):
+- `base_height_l2`: Add if policy learns excessively crouched gait (target ~0.15-0.17m)
+- `stand_still_joint_deviation_l1`: Add if robot can't stand still on zero velocity command
 
 ## Policy Network Architecture
 

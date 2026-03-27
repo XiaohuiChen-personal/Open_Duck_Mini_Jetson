@@ -987,6 +987,26 @@ Create an Isaac Lab RL environment for the Open Duck Mini v2 by **extending the 
                             "left_antenna", "right_antenna"])},
        )
 
+       # Penalize hip yaw/roll deviation from default — prevents unnecessary
+       # hip splaying and conserves torque on the weak Feetech servos.
+       # Following H1/G1/Digit biped configs which all penalize hip deviation.
+       joint_deviation_hips = RewTerm(
+           func=mdp.joint_deviation_l1, weight=-0.2,
+           params={"asset_cfg": SceneEntityCfg("robot",
+               joint_names=["right_hip_yaw", "left_hip_yaw",
+                            "right_hip_roll", "left_hip_roll"])},
+       )
+
+       # Penalize joints approaching position limits — protects real Feetech
+       # STS3215 servos from hitting hard stops and causing gear damage.
+       # All Isaac Lab biped configs (H1, G1, Cassie, Digit) include this.
+       joint_pos_limits = RewTerm(
+           func=mdp.joint_pos_limits, weight=-1.0,
+           params={"asset_cfg": SceneEntityCfg("robot",
+               joint_names=["right_ankle", "left_ankle",
+                            "right_knee", "left_knee"])},
+       )
+
    @configclass
    class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
        """Open Duck Mini v2 locomotion environment configuration."""
@@ -1037,6 +1057,19 @@ Create an Isaac Lab RL environment for the Open Duck Mini v2 by **extending the 
            self.rewards.action_rate_l2.weight = -0.005
            self.rewards.dof_acc_l2.weight = -1.25e-7
            self.rewards.dof_torques_l2.weight = 0.0  # Disable torque penalty initially
+           # Increase pitch/roll angular velocity penalty (default -0.05) to
+           # compensate for top-heavy trunk after Jetson relocation (+316g).
+           # Digit biped (also top-heavy) uses -0.1.
+           self.rewards.ang_vel_xy_l2.weight = -0.1
+
+           # --- Conditional rewards (add after initial training if needed) ---
+           # base_height_l2: Add if policy learns excessively crouched gait.
+           #   Target ~0.15-0.17m. The original MuJoCo env used tight height
+           #   control (weight 0.15, target 0.15m). Not added initially to
+           #   avoid over-constraining early training.
+           # stand_still_joint_deviation_l1: Add if robot can't stand still on
+           #   zero velocity command (shuffles/wiggles in place). Digit uses
+           #   this at weight -0.4. Not needed until basic walking works.
 
    @configclass
    class OpenDuckRoughEnvCfg_PLAY(OpenDuckRoughEnvCfg):
