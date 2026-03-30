@@ -1,11 +1,11 @@
 ---
-description: Task plan summary — 5 phases, 28 tasks, dependencies, and output files reference
+description: Task plan summary — 5 phases, 31 tasks, dependencies, and output files reference
 alwaysApply: true
 ---
 
 # Task Plan Reference
 
-The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2500+ lines, 28 tasks).
+The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lines, 31 tasks).
 
 ## Phase Summary
 
@@ -13,8 +13,8 @@ The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2500+ lin
 |---|---|---|---|
 | Phase 1: Sim Model Update | 1.1-1.6 | Pending | Local machine |
 | Phase 2: Isaac Lab + RL Training | 2.1-2.7 | Pending | DGX Spark |
-| Phase 3: CAD Redesign | 3.1-3.5 | Pending | OnShape/Fusion |
-| Phase 4: Hardware Build | 4.1-4.5 | Pending | Jetson + 3D printer |
+| Phase 3: CAD Redesign + Thermal | 3.1-3.7 | Pending | OnShape/Fusion |
+| Phase 4: Hardware Build + Thermal Mgmt | 4.1-4.6 | Pending | Jetson + 3D printer |
 | Phase 5: Cosmos VLM Integration | 5.1-5.5 | Pending | Jetson |
 
 ## Key Task Dependencies
@@ -41,4 +41,6 @@ The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2500+ lin
 | 2.5 | `docs/jetson-mod/algorithm_comparison.md` |
 | 2.6 | `exported_policies/open_duck_*.onnx` |
 | 2.7 | `docs/jetson-mod/validation_results.md` |
+| 3.6 | `print/thermal_partition.stl` |
+| 4.6 | `jetson_runtime/thermal_manager.py` |
 | 5.4 | `docs/jetson-mod/prompt_engineering_results.md` |

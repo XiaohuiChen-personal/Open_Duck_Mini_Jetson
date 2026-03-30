@@ -60,6 +60,12 @@ Query via HTTP: `POST http://localhost:8000/v1/chat/completions` with camera fra
 ## Safety Rules
 
 - All velocity commands from Cosmos MUST be clamped: forward [-0.2, 0.3], lateral [-0.2, 0.2], turn [-0.3, 0.3]
-- On any Cosmos inference failure, fall back to last known good command
+- On any Cosmos inference failure, fall back to last known good command (not zero — that could cause mid-stride fall)
 - IMU-based emergency stop: if tilt > 60 degrees, cut all motors
-- Run Jetson at 7W eco mode for max battery life (67 TOPS still available)
+- Servo current monitoring: if any servo exceeds safe current, reduce velocity
+
+## Power
+
+- Battery: 6x 18650 Li-ion cells (3S2P, 11.1V) → DC-DC boost (11.1V → 19V) for Jetson barrel jack
+- Run Jetson at 7W eco mode for maximum battery life (67 TOPS still available)
+- Estimated battery life: ~1-2 hours at 7W, ~30 min at 25W
