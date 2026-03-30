@@ -54,13 +54,13 @@
 
         <!-- ==================== BATTERY ZONE COMPONENTS ==================== -->
 
-        <!-- 18650 x4 (2S2P) — CHANGED from x2 -->
-        <mxCell id="bat" value="18650 x4 (2S2P)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+        <!-- 18650 x6 (3S2P) — CHANGED: 3S2P for STS3250 (12V servo voltage) -->
+        <mxCell id="bat" value="18650 x6 (3S2P)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
           <mxGeometry x="70" y="530" width="160" height="70" as="geometry" />
         </mxCell>
 
         <!-- BMS -->
-        <mxCell id="bms" value="BMS&lt;br&gt;(2S, ≥10A)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+        <mxCell id="bms" value="BMS&lt;br&gt;(3S, ≥15A)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
           <mxGeometry x="310" y="530" width="130" height="70" as="geometry" />
         </mxCell>
 
@@ -79,8 +79,8 @@
           <mxGeometry x="70" y="840" width="160" height="50" as="geometry" />
         </mxCell>
 
-        <!-- 7.4V label between battery and BMS -->
-        <mxCell id="lbl_74v" value="7.4V" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+        <!-- 11.1V label between battery and BMS -->
+        <mxCell id="lbl_74v" value="11.1V" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="240" y="545" width="60" height="30" as="geometry" />
         </mxCell>
 
@@ -92,7 +92,7 @@
         </mxCell>
 
         <!-- DC-DC Boost converter — NEW -->
-        <mxCell id="ddc" value="DC-DC Boost&lt;br&gt;7.4V → 19V" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+        <mxCell id="ddc" value="DC-DC Boost&lt;br&gt;11.1V → 19V" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
           <mxGeometry x="700" y="660" width="160" height="60" as="geometry" />
         </mxCell>
 
@@ -112,7 +112,7 @@
         </mxCell>
 
         <!-- MCB 7.4V DC in -->
-        <mxCell id="mcb_dc" value="7.4V DC in" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
+        <mxCell id="mcb_dc" value="11.1V DC in" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
           <mxGeometry x="1130" y="600" width="80" height="40" as="geometry" />
         </mxCell>
 
@@ -329,7 +329,7 @@
             <mxPoint x="-20" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="P5b" value="7.4V out" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P5" vertex="1" connectable="0">
+        <mxCell id="P5b" value="11.1V out" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P5" vertex="1" connectable="0">
           <mxGeometry x="0.4" y="-1" relative="1" as="geometry">
             <mxPoint x="-25" as="offset" />
           </mxGeometry>
@@ -346,13 +346,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="P6a" value="7.4V" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P6" vertex="1" connectable="0">
+        <mxCell id="P6a" value="11.1V" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P6" vertex="1" connectable="0">
           <mxGeometry x="-0.6" y="-1" relative="1" as="geometry">
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
 
-        <!-- P7: Power Switch → MCB 7.4V DC in (through partition, dashed) -->
+        <!-- P7: Power Switch → MCB 11.1V DC in (through partition, dashed) -->
         <mxCell id="P7" value="" style="endArrow=classic;html=1;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;dashed=1;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="440" y="725" as="sourcePoint" />
@@ -365,7 +365,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="P7a" value="7.4V" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P7" vertex="1" connectable="0">
+        <mxCell id="P7a" value="11.1V" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="P7" vertex="1" connectable="0">
           <mxGeometry x="0.3" y="-1" relative="1" as="geometry">
             <mxPoint y="-10" as="offset" />
           </mxGeometry>

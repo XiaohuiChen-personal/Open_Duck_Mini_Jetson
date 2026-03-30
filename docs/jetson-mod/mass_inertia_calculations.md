@@ -113,14 +113,77 @@ I_new_head = (0.00204329, 0.00142815, 0.00087563) kg·m²
 - Ixx + Izz = 0.00291892 ≥ Iyy = 0.00142815 ✓
 - Iyy + Izz = 0.00230377 ≥ Ixx = 0.00204329 ✓
 
+---
+
+## STS3250 Servo Migration
+
+The STS3215 servos (55g each) are replaced with STS3250 servos (74.5g each), adding +19.5g per servo. The battery is upgraded from 2S2P (4x 18650, 7.4V) to 3S2P (6x 18650, 11.1V), adding 2 more cells (+90g) and a larger BMS (+5g).
+
+### Servo Mass Changes
+
+14 STS3215→STS3250 servo upgrades distributed across the robot:
+
+| Body | Servos in Body | Mass Delta (g) |
+|---|---|---|
+| trunk_assembly | 3 (hip_yaw_L, hip_yaw_R, neck_pitch) | +58.5 |
+| hip_roll_assembly (L) | 1 (hip_roll_L) | +19.5 |
+| left_roll_to_pitch_assembly | 1 (hip_pitch_L) | +19.5 |
+| knee_and_ankle_assembly | 1 (knee_L) | +19.5 |
+| knee_and_ankle_assembly_2 | 1 (ankle_L) | +19.5 |
+| neck_pitch_assembly | 1 (head_pitch) | +19.5 |
+| neck_yaw_assembly | 1 (head_yaw) | +19.5 |
+| head_assembly | 1 (head_roll) | +19.5 |
+| hip_roll_assembly_2 (R) | 1 (hip_roll_R) | +19.5 |
+| right_roll_to_pitch_assembly | 1 (hip_pitch_R) | +19.5 |
+| knee_and_ankle_assembly_3 | 1 (knee_R) | +19.5 |
+| knee_and_ankle_assembly_4 | 1 (ankle_R) | +19.5 |
+| **Total** | **14** | **+273.0** |
+
+### Battery/BMS Changes (in trunk_assembly)
+
+| Component | Delta (g) |
+|---|---|
+| 2× additional 18650 cells | +90 |
+| BMS upgrade (2S→3S, ≥15A) | +5 |
+| **Subtotal** | **+95** |
+
+### Trunk Assembly (STS3250 update)
+
+```
+M_trunk_sts3250 = 1.024526 + 3×0.0195 + 0.095
+                = 1.024526 + 0.0585 + 0.095
+                = 1.178026 kg
+```
+
+Inertia scaled by mass ratio (1.178026 / 1.024526 = 1.1498):
+```
+I_trunk_sts3250 = (0.00425322, 0.00437742, 0.00311345) kg·m²
+```
+
+### Head Assembly (STS3250 update)
+
+```
+M_head_sts3250 = 0.342583 + 0.0195
+               = 0.362083 kg
+```
+
+Inertia scaled by mass ratio (0.362083 / 0.342583 = 1.0569):
+```
+I_head_sts3250 = (0.00215945, 0.00150937, 0.00092542) kg·m²
+```
+
+### Other Body Mass Updates
+
+Each non-trunk, non-head servo body gets +19.5g with inertia scaled proportionally. See robot_motors.xml for exact values.
+
 ## Final Values for robot_motors.xml
 
 ### trunk_assembly
 ```xml
 <inertial
     pos="-0.0535209 0.0003704 0.0380119"
-    mass="1.024526"
-    diaginertia="0.00369962 0.00380763 0.00270784"
+    mass="1.178026"
+    diaginertia="0.00425322 0.00437742 0.00311345"
 />
 ```
 
@@ -128,16 +191,16 @@ I_new_head = (0.00204329, 0.00142815, 0.00087563) kg·m²
 ```xml
 <inertial
     pos="0.0069046 -0.0012149 0.0247919"
-    mass="0.342583"
-    diaginertia="0.00204329 0.00142815 0.00087563"
+    mass="0.362083"
+    diaginertia="0.00215945 0.00150937 0.00092542"
 />
 ```
 
 ### Mass Summary
 
-| Body | Original (g) | Modified (g) | Change |
-|---|---|---|---|
-| trunk_assembly | 698.5 | 1024.5 | +326.0 |
-| head_assembly | 352.6 | 342.6 | -10.0 |
-| Other bodies | 1010.4 | 1010.4 | 0 |
-| **Total** | **2061.5** | **2377.5** | **+316.0 (+15.3%)** |
+| Body | Original (g) | After Jetson Mod (g) | After STS3250 (g) | Total Change |
+|---|---|---|---|---|
+| trunk_assembly | 698.5 | 1024.5 | 1178.0 | +479.5 |
+| head_assembly | 352.6 | 342.6 | 362.1 | +9.5 |
+| Other bodies (12 servo bodies) | 1010.4 | 1010.4 | 1205.4 | +195.0 |
+| **Total** | **2061.5** | **2377.5** | **2745.5** | **+684.0 (+33.2%)** |

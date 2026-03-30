@@ -220,7 +220,7 @@ mujoco.mj_step(mj_model, mj_data)
 mj_test_idx = 7  # head_yaw in MJCF qpos order
 mj_target = init_pos_mj.copy()
 mj_target[mj_test_idx] += step_size
-kp, kd = 6.55, 0.65
+kp, kd = 45.53, 1.346
 
 mj_positions = []
 for _ in range(200):
@@ -228,7 +228,7 @@ for _ in range(200):
         q = mj_data.qpos[7 + i]
         dq = mj_data.qvel[6 + i]
         tau = kp * (mj_target[i] - q) - kd * dq
-        mj_data.ctrl[i] = np.clip(tau, -3.57, 3.57)
+        mj_data.ctrl[i] = np.clip(tau, -8.716, 8.716)
     mujoco.mj_step(mj_model, mj_data)
     mj_positions.append(float(mj_data.qpos[7 + mj_test_idx]))
 
