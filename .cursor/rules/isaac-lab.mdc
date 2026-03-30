@@ -23,11 +23,11 @@ The environment is defined in `isaac_lab_env/open_duck_mini_v2/env_cfg.py`:
 Use `ImplicitActuatorCfg` or `IdealPDActuatorCfg` with BAM-identified parameters:
 
 ```python
-stiffness = 6.55      # kp from BAM
-damping = 0.65         # kd from BAM
-armature = 0.027       # From robot_motors.xml
-friction = 0.083       # frictionloss from robot_motors.xml
-effort_limit = 3.57    # Torque limit in Nm
+stiffness = 45.53     # kp from BAM (STS3250 id008)
+damping = 1.346       # kd from BAM (STS3250 id008)
+armature = 0.040      # From BAM id008
+friction = 0.200      # frictionloss from BAM id008
+effort_limit = 8.716  # Torque limit in Nm (BAM forcerange)
 ```
 
 ## Domain Randomization

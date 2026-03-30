@@ -68,7 +68,7 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
     </asset>
     <default>
         <geom contype="1" conaffinity="1" />
-        <joint damping="0.0" armature="0.027" frictionloss="0.083" />
+        <joint damping="0.0" armature="0.040" frictionloss="0.200" />
     </default>
     <contact>
         <exclude name="exclude1" body1="trunk_assembly" body2="neck_yaw_assembly" />
@@ -113,8 +113,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
             <body name="trunk_assembly">
                 <inertial
                     pos="-0.0535209 0.0003704 0.0380119"
-                    mass="1.024526"
-                    diaginertia="0.00369962 0.00380763 0.00270784"
+                    mass="1.178026"
+                    diaginertia="0.00425392 0.00437811 0.00311354"
                 />
                 <geom
                     pos="-0.019 0 0.0648909"
@@ -314,8 +314,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                     <inertial
                         pos="0.000795081 -5.46541e-06 -0.03306"
                         quat="0.70723 0.0130259 0.0134112 0.706737"
-                        mass="0.06648"
-                        diaginertia="2.81818e-05 2.44554e-05 1.42544e-05"
+                        mass="0.08598"
+                        diaginertia="3.64481e-05 3.16287e-05 1.84355e-05"
                     />
                     <joint
                         name="left_hip_yaw"
@@ -361,8 +361,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                         <inertial
                             pos="0.0508042 -0.00041105 0.0204704"
                             quat="0.549997 0.448819 0.449902 0.541898"
-                            mass="0.07516"
-                            diaginertia="4.13874e-05 2.82416e-05 2.5117e-05"
+                            mass="0.09466"
+                            diaginertia="5.21252e-05 3.55688e-05 3.16335e-05"
                         />
                         <joint
                             name="left_hip_roll"
@@ -402,8 +402,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                             <inertial
                                 pos="0.00253369 -0.0390636 0.0102776"
                                 quat="0.576793 0.413738 -0.51125 0.484515"
-                                mass="0.12407"
-                                diaginertia="0.000228502 0.000216625 7.02746e-05"
+                                mass="0.14357"
+                                diaginertia="0.000264416 0.000250672 8.13196e-05"
                             />
                             <joint
                                 name="left_hip_pitch"
@@ -460,8 +460,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                                 <inertial
                                     pos="5.01859e-06 -0.0577465 0.0181136"
                                     quat="0.708422 0.705789 1.07934e-05 0.00022447"
-                                    mass="0.07259"
-                                    diaginertia="4.99575e-05 4.23935e-05 1.8727e-05"
+                                    mass="0.09209"
+                                    diaginertia="6.33777e-05 5.37818e-05 2.37577e-05"
                                 />
                                 <joint
                                     name="left_knee"
@@ -568,8 +568,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                     <inertial
                         pos="-5.63137e-06 0.0492968 0.0181786"
                         quat="0.70651 0.707703 0.000283172 6.23387e-05"
-                        mass="0.06618"
-                        diaginertia="3.49456e-05 2.80043e-05 1.70231e-05"
+                        mass="0.08568"
+                        diaginertia="4.52424e-05 3.62558e-05 2.2039e-05"
                     />
                     <joint
                         name="neck_pitch"
@@ -636,8 +636,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                             <inertial
                                 pos="0.00412907 3.95745e-06 -0.0222828"
                                 quat="-0.00110425 0.66693 -0.00105488 0.745118"
-                                mass="0.0918099"
-                                diaginertia="7.08927e-05 6.94935e-05 3.06805e-05"
+                                mass="0.1113099"
+                                diaginertia="8.595e-05 8.42536e-05 3.71969e-05"
                             />
                             <joint
                                 name="head_yaw"
@@ -676,8 +676,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                             >
                                 <inertial
                                     pos="0.0069046 -0.0012149 0.0247919"
-                                    mass="0.342583"
-                                    diaginertia="0.00204329 0.00142815 0.00087563"
+                                    mass="0.362083"
+                                    diaginertia="0.0021596 0.00150944 0.000925471"
                                 />
                                 <joint
                                     name="head_roll"
@@ -834,8 +834,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                     <inertial
                         pos="0.000795081 -5.46541e-06 -0.03306"
                         quat="0.70723 0.0130259 0.0134112 0.706737"
-                        mass="0.06648"
-                        diaginertia="2.81818e-05 2.44554e-05 1.42544e-05"
+                        mass="0.08598"
+                        diaginertia="3.64481e-05 3.16287e-05 1.84355e-05"
                     />
                     <joint
                         name="right_hip_yaw"
@@ -880,8 +880,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                         <inertial
                             pos="-0.0508042 -0.000420742 0.0204704"
                             quat="0.449467 0.542039 0.549858 0.449254"
-                            mass="0.07516"
-                            diaginertia="4.13872e-05 2.82413e-05 2.51163e-05"
+                            mass="0.09466"
+                            diaginertia="5.2125e-05 3.55684e-05 3.16326e-05"
                         />
                         <joint
                             name="right_hip_roll"
@@ -921,8 +921,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                             <inertial
                                 pos="0.00253369 0.0390636 0.010809"
                                 quat="0.411107 0.577419 -0.487141 0.510169"
-                                mass="0.12407"
-                                diaginertia="0.000228782 0.00021758 7.09527e-05"
+                                mass="0.14357"
+                                diaginertia="0.00026474 0.000251777 8.21043e-05"
                             />
                             <joint
                                 name="right_hip_pitch"
@@ -983,8 +983,8 @@ IN THE ACTUATORS AND ALSO IN THE TREE -->
                                 <inertial
                                     pos="5.01859e-06 -0.0577465 0.0181136"
                                     quat="0.708422 0.705789 1.07934e-05 0.00022447"
-                                    mass="0.07259"
-                                    diaginertia="4.99575e-05 4.23935e-05 1.8727e-05"
+                                    mass="0.09209"
+                                    diaginertia="6.33777e-05 5.37818e-05 2.37577e-05"
                                 />
                                 <joint
                                     name="right_knee"

@@ -1,0 +1,20 @@
+{
+  "kt": 1.0005874626213263,
+  "R": 1.3890462492623645,
+  "armature": 0.03999977737144798,
+  "friction_base": 0.19999504581400715,
+  "friction_viscous": 0.6256393187557033,
+  "max_velocity": 8.93762009169868,
+  "score": 0.021825927001042567,
+  "model": "m1",
+  "actuator": "sts3250",
+  "source": "kscalelabs/sysid feetech/sts3250/params/id008-params/m1.json",
+  "vin": 12.1,
+  "mujoco_export": {
+    "forcerange": 8.716130441407099,
+    "armature": 0.03999977737144798,
+    "kp": 45.53,
+    "damping": 1.3464038511725651,
+    "frictionloss": 0.19999504581400715
+  }
+}

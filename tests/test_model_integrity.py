@@ -138,21 +138,21 @@ class TestRobotMotorsXML:
                 break
 
     def test_trunk_mass_updated(self, model):
-        """trunk_assembly mass should be approximately 1.0-1.06 kg."""
+        """trunk_assembly mass should be approximately 1.18 kg (Jetson + STS3250 servos)."""
         trunk_id = model.body("trunk_assembly").id
         mass = model.body_mass[trunk_id]
-        assert 0.95 < mass < 1.15, f"trunk mass out of expected range: {mass}"
+        assert 1.05 < mass < 1.30, f"trunk mass out of expected range: {mass}"
 
     def test_head_mass_updated(self, model):
-        """head_assembly mass should be approximately 0.34 kg."""
+        """head_assembly mass should be approximately 0.36 kg (STS3250 servos)."""
         head_id = model.body("head_assembly").id
         mass = model.body_mass[head_id]
-        assert 0.30 < mass < 0.36, f"head mass out of expected range: {mass}"
+        assert 0.30 < mass < 0.40, f"head mass out of expected range: {mass}"
 
     def test_total_mass_in_range(self, model):
-        """Total robot mass should be approximately 2.2-2.5 kg."""
+        """Total robot mass should be approximately 2.7 kg (STS3250 servos)."""
         total = sum(model.body_mass)
-        assert 2.1 < total < 2.6, f"Total mass out of expected range: {total}"
+        assert 2.5 < total < 3.0, f"Total mass out of expected range: {total}"
 
     def test_simulation_does_not_diverge(self):
         """Stepping the simulation 1000 times should not produce NaN or Inf."""

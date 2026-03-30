@@ -10,11 +10,11 @@ alwaysApply: true
 | Parameter | Value |
 |---|---|
 | Total height | ~420 mm (legs extended) |
-| Total mass (after mod) | ~2,378 g |
+| Total mass (after mod) | ~2,746 g |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
-| Servos | 14x Feetech STS3215 (7.4V, 19.5 kg.cm stall, 55g each) |
+| Servos | 14x Feetech STS3250 (12V, 50 kg.cm stall, 74.5g each) |
 | Ear servos | 2x SG90 micro servos (in head) |
-| Battery | 4x 18650 cells (7.4V, expanded from 2 for Jetson power) |
+| Battery | 6x 18650 Li-ion cells (3S2P, 11.1V) |
 | IMU | BNO055 (I2C, mounted in trunk) |
 
 ## Jetson Orin Nano Super Developer Kit
@@ -46,20 +46,21 @@ Total:                         ~7.7 GB  (fits)
 
 | Body | Original (g) | Modified (g) | Change |
 |---|---|---|---|
-| trunk_assembly | 698.5 | ~1,024.5 | +176 (Jetson) +90 (batteries) +15 (DC-DC) +37 (thermal partition+mica) +8 (wiring) |
+| trunk_assembly | 698.5 | ~1,178 | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +90 (batteries) +5 (BMS) +15 (DC-DC) +37 (thermal partition+mica) +8 (wiring) |
 | head_assembly | 352.6 | ~342.6 | -10 (Pi removed) |
-| Total robot | 2,062 | ~2,378 | +316 g (+15.3%) |
+| All 14 servos | 770 (14x55g) | 1,043 (14x74.5g) | +273 g total (+19.5g each x14, 11 allocated to limbs) |
+| Total robot | 2,062 | ~2,746 | +684 g (+33.2%) |
 
 ## Motor Parameters (from BAM identification)
 
-Source: `experiments/v2/params_m6.json`
+Source: `experiments/v2/params_sts3250_id008.json` (kscalelabs/sysid STS3250 id008)
 
 | Parameter | Value | Used in |
 |---|---|---|
-| kp (position gain) | 6.55 | Isaac Lab actuator config |
-| kd (velocity gain) | 0.65 | Isaac Lab actuator config |
-| armature | 0.027 | MuJoCo/Isaac Sim joint model |
-| frictionloss | 0.083 | MuJoCo/Isaac Sim joint model |
-| torque limit | 3.57 Nm | Actuator effort_limit |
-| kt (torque constant) | 1.4303 | BAM motor model |
-| R (resistance) | 2.0431 | BAM motor model |
+| kp (position gain) | 45.53 | Isaac Lab actuator config |
+| kd (velocity gain) | 1.346 | Isaac Lab actuator config |
+| armature | 0.040 | MuJoCo/Isaac Sim joint model |
+| frictionloss | 0.200 | MuJoCo/Isaac Sim joint model |
+| torque limit | 8.716 Nm | Actuator effort_limit |
+| kt (torque constant) | 1.0006 | BAM motor model |
+| R (resistance) | 1.3890 | BAM motor model |

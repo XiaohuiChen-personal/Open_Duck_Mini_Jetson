@@ -19,7 +19,7 @@ Cosmos Reason2-2B (VLM, 2-3 Hz)     — "where should I go?" (text reasoning)
 Locomotion Policy (PPO/AMP, 50 Hz)  — "how do I walk there?" (joint control)
          │ joint position targets
          v
-Feetech STS3215 Servos (14x)        — physical motors
+Feetech STS3250 Servos (14x)        — physical motors
 ```
 
 ## Key Decisions Made

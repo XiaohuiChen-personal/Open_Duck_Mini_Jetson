@@ -71,6 +71,6 @@ docker run --rm -it --runtime=nvidia --network host --shm-size=4g \
 
 ## Power
 
-- Battery: 4x 18650 cells (7.4V) → DC-DC boost to 19V for Jetson barrel jack
+- Battery: 6x 18650 Li-ion cells (3S2P, 11.1V) → DC-DC boost (11.1V → 19V) for Jetson barrel jack
 - Run Jetson at 7W eco mode for maximum battery life (67 TOPS still available)
 - Estimated battery life: ~1-2 hours at 7W, ~30 min at 25W

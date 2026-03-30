@@ -46,7 +46,7 @@ Voice / Text command: "Walk to the red cup"
                      │
                      v
 ┌─────────────────────────────────────────────────┐
-│  Feetech STS3215 Servos (14x)     200+ Hz      │
+│  Feetech STS3250 Servos (14x)     200+ Hz      │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -105,7 +105,7 @@ For AMP (imitation learning), reference walking motions are generated using [Ope
 
 ### Actuator Identification
 
-Motor parameters identified using Rhoban's [BAM](https://github.com/Rhoban/bam). Results in `experiments/v2/params_m6.json`.
+Motor parameters identified using BAM system identification. STS3250 parameters from [kscalelabs/sysid](https://github.com/kscalelabs/sysid) in `experiments/v2/params_sts3250_id008.json`. Legacy STS3215 parameters (Rhoban's [BAM](https://github.com/Rhoban/bam)) in `experiments/v2/params_m6.json`.
 
 ## Hardware
 
@@ -118,13 +118,15 @@ Additional parts for Jetson modification:
 | Item | Qty | Est. Cost |
 |---|---|---|
 | NVIDIA Jetson Orin Nano Super Developer Kit | 1 | $249 |
-| 18650 Li-ion cells (e.g., Samsung 30Q) | 2 | $15 |
-| DC-DC boost converter (7.4V to 19V, 3A+) | 1 | $12 |
+| Feetech STS3250 servos (replacing STS3215) | 14 | $280 |
+| 18650 Li-ion cells (e.g., Samsung 30Q) | 6 | $45 |
+| 3S BMS (>=15A) | 1 | $8 |
+| DC-DC boost converter (11.1V to 19V, 3A+) | 1 | $12 |
 | CSI camera module (IMX219) | 1 | $15 |
 | CSI ribbon cable 30cm | 1 | $5 |
 | M3 standoffs + screws (assorted) | 1 set | $8 |
 
-**Additional cost for Jetson mod: ~$309**
+**Additional cost for Jetson mod: ~$627**
 
 ### CAD
 
@@ -186,12 +188,12 @@ Training uses Isaac Lab on a DGX Spark (or any NVIDIA GPU with Isaac Sim install
 ```bash
 # PPO via RSL-RL (primary)
 ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
-    --task Isaac-OpenDuck-v0 \
+    --task Isaac-Velocity-Rough-OpenDuck-v0 \
     --headless --video --video_length 200 --video_interval 5000
 
 # AMP via SKRL (optional — requires separate DirectRLEnv implementation)
 ./isaaclab.sh -p scripts/reinforcement_learning/skrl/train.py \
-    --task Isaac-OpenDuck-AMP-v0 \
+    --task Isaac-Velocity-Rough-OpenDuck-AMP-v0 \
     --algorithm AMP --headless --video --video_length 200 --video_interval 5000
 ```
 

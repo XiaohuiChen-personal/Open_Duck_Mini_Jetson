@@ -1,9 +1,9 @@
 {
-  "trunk_assembly_mass_kg": 1.024526,
+  "trunk_assembly_mass_kg": 1.178026,
   "trunk_assembly_com": [-0.0535209, 0.0003704, 0.0380119],
-  "trunk_assembly_diaginertia": [0.00369962, 0.00380763, 0.00270784],
-  "head_assembly_mass_kg": 0.342583,
+  "trunk_assembly_diaginertia": [0.00425322, 0.00437742, 0.00311345],
+  "head_assembly_mass_kg": 0.362083,
   "head_assembly_com": [0.0069046, -0.0012149, 0.0247919],
-  "head_assembly_diaginertia": [0.00204329, 0.00142815, 0.00087563],
-  "total_mass_kg": 2.377549
+  "head_assembly_diaginertia": [0.00215945, 0.00150937, 0.00092542],
+  "total_mass_kg": 2.745549
 }

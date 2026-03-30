@@ -107,8 +107,8 @@ Open_Duck_Mini_Jetson/
 | Current total robot mass | 2,062 g | Sum of all body masses in robot_motors.xml |
 | trunk_assembly mass | 698.526 g | robot_motors.xml line 115 |
 | head_assembly mass | 352.583 g | robot_motors.xml line 652 |
-| Servo model | Feetech STS3215 (7.4V, 19.5 kg.cm stall) | setup.cfg, params_m6.json |
-| Servo weight | 55g each, 14 servos total | Datasheet |
+| Servo model | Feetech STS3250 (12V, 50 kg.cm stall) | setup.cfg, params_sts3250_id008.json |
+| Servo weight | 74.5g each, 14 servos total | Datasheet |
 
 ### Hardware Change Summary
 
@@ -122,13 +122,20 @@ Open_Duck_Mini_Jetson/
 
 ### Additional Hardware
 
-- 2x extra 18650 battery cells: ~45g each, 18mm diameter x 65mm long
-- DC-DC boost converter (7.4V to 19V): ~15g, ~43x21x14mm (XL6009-based module)
+- 4x extra 18650 battery cells (6 total, 3S2P at 11.1V): ~45g each, 18mm diameter x 65mm long
+- 3S BMS (>=15A): ~10g
+- DC-DC boost converter (11.1V to 19V): ~15g, ~43x21x14mm (XL6009-based module)
 - CSI camera module: ~3g, mounted in head
 - Thermal partition wall (PLA, 2mm thick, ~110x90mm): ~25g
 - Mica insulation sheet (1mm thick, ~110x90mm): ~12g
 - NTC 10kΩ thermistor: ~0.5g (negligible)
 - Additional wiring/cables: ~8g estimated
+
+**Power system note (STS3250 + Jetson migration):**
+- Servo operating voltage: 11.1V nominal (3S LiPo / 3S2P 18650)
+- DC-DC boost: 11.1V → 19V for Jetson barrel jack input
+- BMS: 3S rated, >=15A continuous (handles servo + Jetson draw)
+- STS3250 servos operate at 6-12.6V; 11.1V nominal is within spec
 
 ### NVIDIA Stack Overview
 
@@ -825,17 +832,19 @@ class TestUSDConversion:
 ### Task 2.2 — Create Robot ArticulationCfg
 
 **Description:**
-Define the Isaac Lab `ArticulationCfg` for the Open Duck Mini v2, including the actuator model with BAM-identified Feetech STS3215 servo parameters. This config is used by the environment to spawn the robot.
+Define the Isaac Lab `ArticulationCfg` for the Open Duck Mini v2, including the actuator model with BAM-identified Feetech STS3250 servo parameters. This config is used by the environment to spawn the robot.
 
-**Motor parameters (from `experiments/v2/params_m6.json` and `robot_motors.xml`):**
+**Motor parameters (from `experiments/v2/params_sts3250_id008.json` — kscalelabs/sysid STS3250 id008):**
 
 | Parameter | Value | Source |
 |---|---|---|
-| armature | 0.027 | robot_motors.xml default joint attribute |
-| frictionloss | 0.083 | robot_motors.xml default joint attribute |
-| kp (position gain) | 6.55 | onnx_AWD_mujoco_motor_control.py line 194 |
-| kd (velocity gain) | 0.65 | onnx_AWD_mujoco_motor_control.py line 195 |
-| effort_limit | 3.57 Nm | onnx_AWD_mujoco_motor_control.py line 216 |
+| armature | 0.040 | BAM id008 params |
+| frictionloss | 0.200 | BAM id008 params |
+| kp (position gain) | 45.53 | BAM id008 mujoco_export.kp |
+| kd (velocity gain) | 1.346 | BAM id008 mujoco_export.damping |
+| effort_limit | 8.716 Nm | BAM id008 mujoco_export.forcerange |
+| kt (torque constant) | 1.0006 | BAM id008 params |
+| R (resistance) | 1.3890 | BAM id008 params |
 
 **Steps:**
 1. Create the robot asset configuration:
@@ -875,20 +884,20 @@ Define the Isaac Lab `ArticulationCfg` for the Open Duck Mini v2, including the 
            "legs": ImplicitActuatorCfg(
                joint_names_expr=[".*_hip_yaw", ".*_hip_roll", ".*_hip_pitch",
                                  ".*_knee", ".*_ankle"],
-               stiffness=6.55,
-               damping=0.65,
-               armature=0.027,
-               friction=0.083,
-               effort_limit=3.57,
+               stiffness=45.53,
+               damping=1.346,
+               armature=0.040,
+               friction=0.200,
+               effort_limit=8.716,
            ),
            "head": ImplicitActuatorCfg(
                joint_names_expr=["neck_pitch", "head_pitch", "head_yaw",
                                  "head_roll", ".*_antenna"],
-               stiffness=6.55,
-               damping=0.65,
-               armature=0.027,
-               friction=0.083,
-               effort_limit=3.57,
+               stiffness=45.53,
+               damping=1.346,
+               armature=0.040,
+               friction=0.200,
+               effort_limit=8.716,
            ),
        },
    )
@@ -998,7 +1007,7 @@ Create an Isaac Lab RL environment for the Open Duck Mini v2 by **extending the 
        )
 
        # Penalize joints approaching position limits — protects real Feetech
-       # STS3215 servos from hitting hard stops and causing gear damage.
+       # STS3250 servos from hitting hard stops and causing gear damage.
        # All Isaac Lab biped configs (H1, G1, Cassie, Digit) include this.
        joint_pos_limits = RewTerm(
            func=mdp.joint_pos_limits, weight=-1.0,
@@ -1088,23 +1097,28 @@ Create an Isaac Lab RL environment for the Open Duck Mini v2 by **extending the 
            self.events.push_robot = None
    ```
 
-3. Register the environment with Gymnasium:
+3. Register the environment with Gymnasium (following the H1 pattern):
    ```python
    # isaac_lab_env/open_duck_mini_v2/__init__.py
-   import gymnasium
-   gymnasium.register(
-       id="Isaac-OpenDuck-v0",
+   import gymnasium as gym
+   from . import agents
+
+   gym.register(
+       id="Isaac-Velocity-Rough-OpenDuck-v0",
        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+       disable_env_checker=True,
        kwargs={
-           "env_cfg_entry_point": "isaac_lab_env.open_duck_mini_v2.env_cfg:OpenDuckRoughEnvCfg",
-           "rsl_rl_cfg_entry_point": "isaac_lab_env.open_duck_mini_v2.train_cfg:DuckPPORunnerCfg",
+           "env_cfg_entry_point": f"{__name__}.env_cfg:OpenDuckRoughEnvCfg",
+           "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:OpenDuckPPORunnerCfg",
        },
    )
-   gymnasium.register(
-       id="Isaac-OpenDuck-Play-v0",
+   gym.register(
+       id="Isaac-Velocity-Rough-OpenDuck-Play-v0",
        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+       disable_env_checker=True,
        kwargs={
-           "env_cfg_entry_point": "isaac_lab_env.open_duck_mini_v2.env_cfg:OpenDuckRoughEnvCfg_PLAY",
+           "env_cfg_entry_point": f"{__name__}.env_cfg:OpenDuckRoughEnvCfg_PLAY",
+           "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:OpenDuckPPORunnerCfg",
        },
    )
    ```
@@ -1129,14 +1143,14 @@ class TestIsaacLabEnv:
     def test_env_creates_successfully(self):
         """Environment must instantiate without errors."""
         import gymnasium as gym
-        env = gym.make("Isaac-OpenDuck-v0", num_envs=2)
+        env = gym.make("Isaac-Velocity-Rough-OpenDuck-v0", num_envs=2)
         assert env is not None
         env.close()
 
     def test_env_step_produces_valid_output(self):
         """A single env.step() must return obs, reward, done, info."""
         import gymnasium as gym
-        env = gym.make("Isaac-OpenDuck-v0", num_envs=2)
+        env = gym.make("Isaac-Velocity-Rough-OpenDuck-v0", num_envs=2)
         obs, info = env.reset()
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
@@ -1147,7 +1161,7 @@ class TestIsaacLabEnv:
         """Environment must auto-reset when robot falls."""
         import gymnasium as gym
         import torch
-        env = gym.make("Isaac-OpenDuck-v0", num_envs=4)
+        env = gym.make("Isaac-Velocity-Rough-OpenDuck-v0", num_envs=4)
         env.reset()
         for _ in range(500):
             obs, reward, terminated, truncated, info = env.step(
@@ -1230,7 +1244,7 @@ class DuckPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 ```bash
 # Train PPO via RSL-RL
 ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
-    --task Isaac-OpenDuck-v0 \
+    --task Isaac-Velocity-Rough-OpenDuck-v0 \
     --headless --video --video_length 200 --video_interval 5000
 ```
 
@@ -1302,7 +1316,7 @@ trainer:
 ```bash
 # Train AMP via SKRL (only if DirectRLEnv is implemented)
 ./isaaclab.sh -p scripts/reinforcement_learning/skrl/train.py \
-    --task Isaac-OpenDuck-AMP-v0 \
+    --task Isaac-Velocity-Rough-OpenDuck-AMP-v0 \
     --algorithm AMP --headless --video --video_length 200 --video_interval 5000
 ```
 
@@ -1377,7 +1391,7 @@ Evaluate the trained PPO policy (and AMP if available) using quantitative metric
 3. Record evaluation videos using:
    ```bash
    ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py \
-       --task Isaac-OpenDuck-Play-v0 \
+       --task Isaac-Velocity-Rough-OpenDuck-Play-v0 \
        --checkpoint <path_to_best_model.pt> \
        --video --video_length 500
    ```
@@ -1509,7 +1523,7 @@ Run the selected best policy in Isaac Sim with full rendering to visually valida
 1. Play the best policy with the Isaac Sim viewer:
    ```bash
    ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py \
-       --task Isaac-OpenDuck-Play-v0 \
+       --task Isaac-Velocity-Rough-OpenDuck-Play-v0 \
        --checkpoint <path_to_best_checkpoint> \
        --num_envs 4
    ```
@@ -1664,7 +1678,7 @@ class TestBodyMiddleDimensions:
 ### Task 3.4 — Redesign Battery Pack (Thermally Isolated)
 
 **Description:**
-Redesign the battery_pack_lid to hold 4x 18650 cells instead of 2x, and ensure the battery pack is thermally isolated from the Jetson compute zone. Note: the DC-DC boost converter is placed in the **compute zone** (near the Jetson) for a short 19V cable run, not in the battery zone.
+Redesign the battery_pack_lid to hold 6x 18650 cells (3S2P configuration, 11.1V nominal) instead of 2x, and ensure the battery pack is thermally isolated from the Jetson compute zone. Note: the DC-DC boost converter is placed in the **compute zone** (near the Jetson) for a short 19V cable run, not in the battery zone.
 
 **Thermal isolation requirements:**
 - The battery pack must sit entirely within the **battery zone** (behind the thermal partition wall from Task 3.6)
@@ -1675,7 +1689,7 @@ Redesign the battery_pack_lid to hold 4x 18650 cells instead of 2x, and ensure t
 **How to test:**
 
 *Manual verification:*
-- [ ] Print and test-fit with 4x 18650 cells
+- [ ] Print and test-fit with 6x 18650 cells (3S2P)
 - [ ] Verify cells are held securely and cannot rattle
 - [ ] Confirm DC-DC converter mounting location and wire routing
 - [ ] Verify partition wall slot aligns with Task 3.6 thermal partition
@@ -1716,7 +1730,7 @@ The Jetson Orin Nano dissipates 20-22W at 25W power mode. Its heatsink surface t
     │  BATTERY ZONE    │  COMPUTE ZONE                 │
     │  (cool, sealed)  │  (hot, ventilated)            │
     │                  │                                │
-    │  [4x 18650]      │  [JETSON ORIN NANO]            │
+    │  [6x 18650]      │  [JETSON ORIN NANO]            │
     │  [BMS]           │  [DC-DC conv]                  │
     │                  │  [SERVO DRIVER]                │
     │                  │  [IMU]                         │
@@ -1812,8 +1826,10 @@ Add matching slots/grooves in `trunk_top` and `trunk_bottom` to accept the therm
 | Item | Qty | Est. Cost | Source |
 |---|---|---|---|
 | NVIDIA Jetson Orin Nano Super Developer Kit | 1 | $249 | Amazon (B0BZJTQ5YP) |
-| 18650 Li-ion cells (e.g., Samsung 30Q) | 2 | $15 | Amazon/18650batterystore |
-| DC-DC boost converter XL6009/XL6019 (7.4V to 19V, 4A+) | 1 | $5 | Amazon/AliExpress |
+| Feetech STS3250 servos | 14 | $280 | Feetech/AliExpress |
+| 18650 Li-ion cells (e.g., Samsung 30Q) | 6 | $45 | Amazon/18650batterystore |
+| 3S BMS (>=15A) | 1 | $8 | Amazon/AliExpress |
+| DC-DC boost converter XL6009/XL6019 (11.1V to 19V, 4A+) | 1 | $5 | Amazon/AliExpress |
 | CSI camera module (IMX219) | 1 | $15 | Amazon/Arducam |
 | CSI ribbon cable 30cm | 1 | $5 | Amazon |
 | M3 standoffs + screws (assorted) | 1 set | $8 | Amazon |
@@ -1822,7 +1838,7 @@ Add matching slots/grooves in `trunk_top` and `trunk_bottom` to accept the therm
 | NTC 10kΩ thermistor (3950B, with leads) | 1 | $1 | Amazon/AliExpress |
 | Thermal insulation tape (kapton or silicone) | 1 roll | $5 | Amazon |
 
-**Total estimated additional cost:** ~$318
+**Total estimated additional cost:** ~$627
 
 **How to test:**
 - [ ] Verify all items received and undamaged
@@ -1843,7 +1859,7 @@ Add matching slots/grooves in `trunk_top` and `trunk_bottom` to accept the therm
 | body_front (modified) | PLA | ~1.5 hr | Inlet vents (compute zone side only) |
 | body_middle_top (if modified) | PLA | ~3 hr | Extended depth |
 | body_middle_bottom (if modified) | PLA | ~3 hr | Extended depth |
-| battery_pack_lid (modified) | PLA | ~1.5 hr | 4-cell capacity + thermistor clip |
+| battery_pack_lid (modified) | PLA | ~1.5 hr | 6-cell (3S2P) capacity + thermistor clip |
 | thermal_partition (new) | PLA | ~1 hr | Thermal barrier wall between battery and compute zones |
 
 **How to test:**
@@ -1864,8 +1880,8 @@ Add matching slots/grooves in `trunk_top` and `trunk_bottom` to accept the therm
 1. Disassemble the head: remove Pi Zero 2W, retain SG90 servos and wiring
 2. **Install thermal partition wall:** Slide the thermal partition (Task 3.6) into the trunk_top/trunk_bottom slots. Bond the mica insulation sheet to the compute-zone-facing side using high-temp adhesive or thermal tape
 3. Mount Jetson dev kit in trunk **compute zone** using M3 standoffs — ensure the dev kit fan exhaust points toward the body_back ventilation slots
-4. Mount the 4-cell battery pack in the **battery zone** (behind the partition wall). Attach the NTC thermistor to one of the middle cells using thermal tape or the printed clip (Task 3.4)
-5. Wire power: Battery → BMS → DC-DC boost (19V) → route power cable through partition wall notch → Jetson DC barrel jack
+4. Mount the 6-cell (3S2P) battery pack in the **battery zone** (behind the partition wall). Attach the NTC thermistor to one of the middle cells using thermal tape or the printed clip (Task 3.4)
+5. Wire power: Battery (3S2P, 11.1V) → 3S BMS → DC-DC boost (11.1V → 19V) → route power cable through partition wall notch → Jetson DC barrel jack
 6. Wire thermistor: Route thermistor leads through partition wall notch → Jetson GPIO ADC pin (or external ADC like ADS1115 on I2C)
 7. Wire servo driver board: USB cable from trunk-mounted servo driver to Jetson USB port
 8. Wire IMU (BNO055): I2C from trunk-mounted IMU to Jetson GPIO (SDA=pin 3, SCL=pin 5)
@@ -2913,7 +2929,7 @@ Task 5.5 (Voice input — optional) ── depends on 5.3
 | Isaac Sim PhysX behaves differently from MuJoCo | Medium | High | Carefully tune actuator model (Task 2.2). Compare step responses. PhysX and MuJoCo will never match exactly — domain randomization compensates. |
 | PPO training fails to produce walking gait | Low-Med | High | Use proven Isaac Lab locomotion configs (ANYmal, humanoid) as starting points. Iterate on reward weights. Add imitation reward from reference motions. |
 | Jetson doesn't physically fit in trunk cavity | Low | High | CAD clearance checks (Task 3.1). Worst case: extend body_middle parts by 10-15mm. |
-| STS3215 servos lack torque for heavier robot | Low-Med | High | Domain randomization in training includes mass variation. Monitor servo current in real tests. Fallback: 7W eco mode. |
+| STS3250 servos lack torque for heavier robot | Low | Medium | **Mitigated by servo upgrade.** STS3250 provides 50 kg.cm stall torque (vs 19.5 kg.cm STS3215), a 2.5x increase. Domain randomization in training includes mass variation. Monitor servo current in real tests. |
 | Thermal issues — Jetson heat damages batteries | Medium | High | **Three-layer defense:** (1) Thermal partition wall with mica insulation between battery and compute zones (Task 3.6), (2) Directed cross-flow ventilation — inlet on body_front, exhaust on body_back, compute zone only (Task 3.2), (3) Software thermal management — NTC thermistor on battery pack + auto power-mode throttling (7W/15W/25W) with emergency shutdown at 50°C (Task 4.6). |
 | TensorRT conversion fails for the policy MLP | Low | Medium | Fallback to `onnxruntime-gpu` (CUDAExecutionProvider). Slightly slower but still fast enough. |
 | DC-DC converter introduces electrical noise | Low | Medium | Use shielded cables. Add capacitors to servo power lines. |

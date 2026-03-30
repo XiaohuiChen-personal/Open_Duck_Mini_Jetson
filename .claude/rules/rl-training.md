@@ -64,6 +64,16 @@ Conditional (add after initial training if needed):
 - `base_height_l2`: Add if policy learns excessively crouched gait (target ~0.15-0.17m)
 - `stand_still_joint_deviation_l1`: Add if robot can't stand still on zero velocity command
 
+## Actuator Configuration (STS3250)
+
+```python
+stiffness = 45.53     # kp from BAM (STS3250 id008)
+damping = 1.346       # kd from BAM (STS3250 id008)
+armature = 0.040      # From BAM id008
+friction = 0.200      # frictionloss from BAM id008
+effort_limit = 8.716  # Torque limit in Nm (BAM forcerange)
+```
+
 ## Policy Network Architecture
 
 MLP with 3 hidden layers: [512, 256, 128], ELU activation. Separate policy and value networks.
@@ -89,5 +99,6 @@ Isaac Lab (DGX Spark) → .pt checkpoint → ONNX export → TensorRT engine →
 - `isaac_lab_env/open_duck_mini_v2/env_cfg.py` — Environment config
 - `isaac_lab_env/open_duck_mini_v2/train_cfg.py` — Training hyperparameters
 - `exported_policies/*.onnx` — Exported policies
-- `experiments/v2/params_m6.json` — BAM motor identification parameters
+- `experiments/v2/params_sts3250_id008.json` — BAM motor identification parameters (STS3250)
+- `experiments/v2/params_m6.json` — Legacy BAM motor parameters (STS3215, for reference)
 - `mini_bdx/mini_bdx/utils/rl_utils.py` — Joint order conversion, action scaling
