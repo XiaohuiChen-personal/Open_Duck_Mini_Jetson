@@ -3,13 +3,22 @@
 
 """Isaac Lab locomotion environment for the Open Duck Mini v2.
 
-Extends the built-in LocomotionVelocityRoughEnvCfg following the H1 humanoid
-biped pattern. Overrides rewards for biped-specific gait control and adjusts
-simulation/scene parameters for the duck robot.
+Reward design based on:
+- Disney BDX paper (Grandia et al., arXiv:2501.05204v1) — survival bonus, action rate
+- Open Duck Playground (apirrone/Open_Duck_Playground) — velocity ranges, tracking sigma
+- First training run analysis — removed H1-specific penalty bloat
+
+Key differences from the H1 humanoid biped config:
+- Alive bonus (+5.0/step) — structurally positive reward
+- Sharper velocity tracking (std=0.1 vs 0.5)
+- Conservative velocity ranges matching a 42cm robot
+- Reduced action scale (0.25 vs 0.5)
+- Fewer penalty terms (8 total vs 13 in H1-derived config)
 """
 
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.utils import configclass
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
@@ -23,91 +32,72 @@ from isaac_lab_env.open_duck_mini_v2.robot_cfg import OPEN_DUCK_MINI_V2_CFG
 
 @configclass
 class DuckRewards(RewardsCfg):
-    """Biped-specific rewards for the Open Duck Mini v2.
+    """Reward function for Open Duck Mini v2 locomotion.
 
-    Follows the H1/G1/Digit humanoid biped reward pattern with duck-specific
-    body names and weight tuning for Feetech STS3250 servos.
+    Designed from first principles for a small (42cm, 2.75kg) bipedal duck robot
+    with STS3250 position-controlled servos. 8 reward terms: 4 positive, 4 negative.
+
+    References:
+    - Disney BDX: survival bonus structure (weight=20, we use 5.0 adjusted for Isaac Lab)
+    - Open Duck Playground: velocity ranges, tracking sigma=0.01, action_scale=0.25
+    - Cassie/H1: biped gait rewards (feet_air_time_positive_biped)
     """
 
-    # --- Termination penalty (strong negative signal for falling) ---
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+    # ========== POSITIVE REWARDS ==========
 
-    # --- Override velocity tracking with yaw-frame versions (biped best practice) ---
-    lin_vel_z_l2 = None  # Disable default bouncing penalty — not needed for biped
+    # Survival bonus: +5.0 per step for staying alive.
+    # Disney BDX uses +20.0, Open Duck Playground uses +20.0 (multiplied by dt=0.02 = 0.4 effective).
+    # Isaac Lab does NOT multiply rewards by dt, so +5.0 here gives a similar positive budget.
+    # This makes the reward structurally positive — the policy is always incentivized to survive.
+    alive_bonus = RewTerm(func=mdp.is_alive, weight=5.0)
+
+    # Velocity tracking: exponential reward for matching commanded linear velocity.
+    # std=0.1 (sharper than H1's 0.5; Playground uses 0.01 but different implementation).
+    # Weight 2.0 (Playground uses 2.5 but their reward is per-dt).
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=1.0,
-        params={"command_name": "base_velocity", "std": 0.5},
+        weight=2.0,
+        params={"command_name": "base_velocity", "std": 0.1},
     )
+
+    # Yaw velocity tracking: exponential reward for matching commanded turn rate.
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
         weight=1.0,
-        params={"command_name": "base_velocity", "std": 0.5},
+        params={"command_name": "base_velocity", "std": 0.25},
     )
 
-    # --- Biped-specific gait reward — encourages alternating single-stance ---
+    # Biped gait: reward alternating single-stance phases.
+    # threshold=0.2s (reduced from H1's 0.4 — small robot takes faster, shorter steps).
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
         weight=0.25,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=["left_foot", "right_foot"]
+                "contact_forces", body_names=["foot_assembly", "foot_assembly_2"]
             ),
-            "threshold": 0.4,
+            "threshold": 0.2,
         },
     )
 
-    # --- Penalize feet sliding on ground ---
-    feet_slide = RewTerm(
-        func=mdp.feet_slide,
-        weight=-0.25,
-        params={
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=["left_foot", "right_foot"]
-            ),
-            "asset_cfg": SceneEntityCfg(
-                "robot", body_names=["left_foot", "right_foot"]
-            ),
-        },
-    )
+    # ========== NEGATIVE REWARDS (penalties) ==========
 
-    # --- Joint deviation penalties ---
+    # Termination penalty: strong negative signal for falling.
+    # Universal across all biped configs. -200.0 is standard.
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
-    # Penalize deviation of non-locomotion joints (head/antennas) from default
-    joint_deviation_head = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.1,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    "neck_pitch", "head_pitch", "head_yaw", "head_roll",
-                    "left_antenna", "right_antenna",
-                ],
-            )
-        },
-    )
+    # Flat orientation: penalize tilting. Weight -1.0 (same as H1).
+    # Important for the top-heavy duck (64% mass above hips).
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
 
-    # Penalize hip yaw/roll deviation — prevents unnecessary hip splaying
-    # and conserves torque on the Feetech STS3250 servos.
-    # Following H1/G1/Digit biped configs which all penalize hip deviation.
-    joint_deviation_hips = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.2,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    "right_hip_yaw", "left_hip_yaw",
-                    "right_hip_roll", "left_hip_roll",
-                ],
-            )
-        },
-    )
+    # Action smoothness: penalize jerky motor commands.
+    # Weight -0.005 (same as H1, validated in first training run as not dominant
+    # once other penalties are removed).
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.005)
 
-    # --- Joint position limits — protects real Feetech STS3250 servos ---
-    # All Isaac Lab biped configs (H1, G1, Cassie, Digit) include this.
+    # Joint position limits: penalize ankle/knee joints approaching hard limits.
+    # Protects real STS3250 servos from hitting hard stops.
     joint_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-1.0,
@@ -122,17 +112,25 @@ class DuckRewards(RewardsCfg):
         },
     )
 
+    # ========== DISABLED BASE-CLASS REWARDS ==========
+    # Explicitly disable rewards from LocomotionVelocityRoughEnvCfg that don't
+    # apply to our robot or were causing issues in the first training run.
+
+    lin_vel_z_l2 = None           # Bouncing penalty — not needed for biped
+    ang_vel_xy_l2 = None          # Redundant with flat_orientation_l2
+    dof_torques_l2 = None         # Negligible at -1e-5, adds noise
+    dof_acc_l2 = None             # Negligible at -1.25e-7, adds noise
+    feet_air_time_base = None     # We override with biped version above
+    undesired_contacts = None     # Re-enable after verifying body names
+    dof_pos_limits = None         # We define our own joint_pos_limits above
+
 
 @configclass
 class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     """Open Duck Mini v2 locomotion environment configuration.
 
-    Extends the base rough locomotion config with duck-specific:
-    - Robot asset (OPEN_DUCK_MINI_V2_CFG)
-    - Biped reward overrides (DuckRewards)
-    - Simulation timing (200 Hz physics, 50 Hz policy)
-    - Velocity command ranges for a small biped
-    - Duck-specific body names for termination and events
+    Designed for a 42cm, 2.75kg bipedal duck with STS3250 servos.
+    Velocity ranges and reward structure based on Open Duck Playground.
     """
 
     rewards: DuckRewards = DuckRewards()
@@ -154,11 +152,27 @@ class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
         # --- Height scanner: disabled for flat-ground training ---
         self.scene.height_scanner = None
+        self.observations.policy.height_scan = None
 
-        # --- Commands: velocity ranges for a small biped ---
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.5, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.5, 0.5)
-        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        # --- Contact sensor: fix prim path for MJCF-converted USD ---
+        # The MJCF→USD converter nests bodies under /base/, so the default
+        # sensor path "{ENV_REGEX_NS}/Robot/.*" doesn't find them.
+        self.scene.contact_forces = ContactSensorCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/base/.*",
+            history_length=3,
+            track_air_time=True,
+        )
+
+        # --- Commands: velocity ranges for a 42cm duck ---
+        # Open Duck Playground uses lin_vel_x [-0.15, 0.15] m/s.
+        # We allow slightly more forward (0.3 m/s) for initial exploration.
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.15, 0.3)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.15, 0.15)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
+
+        # --- Action scale: reduce from default 0.5 to 0.25 ---
+        # Matches Open Duck Playground. Conservative control for position servos.
+        self.actions.joint_pos.scale = 0.25
 
         # --- Terminations: use duck trunk body ---
         self.terminations.base_contact.params["sensor_cfg"].body_names = (
@@ -189,16 +203,6 @@ class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             },
         }
 
-        # --- Rewards: tune base-class weights for duck ---
-        self.rewards.undesired_contacts = None  # Re-enable after verifying body names
-        self.rewards.flat_orientation_l2.weight = -1.0
-        self.rewards.action_rate_l2.weight = -0.005
-        self.rewards.dof_acc_l2.weight = -1.25e-7
-        self.rewards.dof_torques_l2.weight = -1e-5  # Enable now that STS3250 servos have headroom
-        # Increase pitch/roll angular velocity penalty (default -0.05) to
-        # compensate for top-heavy trunk after Jetson relocation (+316g).
-        self.rewards.ang_vel_xy_l2.weight = -0.1
-
 
 @configclass
 class OpenDuckRoughEnvCfg_PLAY(OpenDuckRoughEnvCfg):
@@ -219,8 +223,8 @@ class OpenDuckRoughEnvCfg_PLAY(OpenDuckRoughEnvCfg):
             self.scene.terrain.terrain_generator.num_cols = 5
             self.scene.terrain.terrain_generator.curriculum = False
 
-        # Fixed forward walk command for evaluation
-        self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
+        # Fixed forward walk command (within trained range)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.2, 0.2)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
 

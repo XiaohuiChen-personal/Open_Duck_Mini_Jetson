@@ -8,7 +8,6 @@ and are skipped by default.
 """
 
 import os
-import importlib
 
 import pytest
 
@@ -21,8 +20,6 @@ class TestRobotCfgModule:
 
     def test_robot_cfg_importable(self):
         """robot_cfg module must be importable without Isaac Sim."""
-        # The module imports isaaclab which requires Isaac Sim runtime,
-        # so we verify the file exists and has the right structure.
         cfg_path = os.path.join(
             REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "robot_cfg.py"
         )
@@ -46,7 +43,7 @@ class TestRobotCfgModule:
         )
         with open(cfg_path) as f:
             content = f.read()
-        # BAM-identified Feetech STS3250 parameters
+        # BAM-identified Feetech STS3250 parameters (kscalelabs/sysid id008)
         assert "stiffness=45.53" in content, "kp (stiffness) should be 45.53"
         assert "damping=1.346" in content, "kd (damping) should be 1.346"
         assert "armature=0.04" in content, "armature should be 0.04"
@@ -83,7 +80,7 @@ class TestRobotCfgModule:
 
 @pytest.mark.phase2
 class TestEnvCfgModule:
-    """Verify env_cfg.py module structure (Task 2.3)."""
+    """Verify env_cfg.py reward and environment structure."""
 
     def test_env_cfg_exists(self):
         """env_cfg.py must exist."""
@@ -112,21 +109,43 @@ class TestEnvCfgModule:
             content = f.read()
         assert "LocomotionVelocityRoughEnvCfg" in content
 
-    def test_env_cfg_has_biped_rewards(self):
-        """Environment must include biped-specific reward terms."""
+    def test_env_cfg_has_alive_bonus(self):
+        """Environment must have a positive alive/survival bonus reward."""
         path = os.path.join(
             REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
         )
         with open(path) as f:
             content = f.read()
-        # Key biped rewards
-        assert "feet_air_time_positive_biped" in content
+        assert "is_alive" in content, "Missing alive bonus reward"
+        assert "weight=5.0" in content, "Alive bonus should be weight=5.0"
+
+    def test_env_cfg_has_core_rewards(self):
+        """Environment must include core reward terms."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        # Positive rewards
         assert "track_lin_vel_xy_yaw_frame_exp" in content
         assert "track_ang_vel_z_world_exp" in content
-        assert "feet_slide" in content
-        assert "joint_deviation_l1" in content
-        assert "joint_pos_limits" in content
+        assert "feet_air_time_positive_biped" in content
+        # Penalties
         assert "is_terminated" in content
+        assert "flat_orientation_l2" in content
+        assert "action_rate_l2" in content
+        assert "joint_pos_limits" in content
+
+    def test_env_cfg_has_no_h1_bloat(self):
+        """H1-specific penalty terms should NOT be present."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        # These were removed because they don't apply to the duck
+        assert "joint_deviation_head" not in content, "joint_deviation_head should be removed"
+        assert "joint_deviation_hips" not in content, "joint_deviation_hips should be removed"
 
     def test_env_cfg_duck_body_names(self):
         """Environment must reference correct duck body names."""
@@ -135,8 +154,8 @@ class TestEnvCfgModule:
         )
         with open(path) as f:
             content = f.read()
-        assert "left_foot" in content
-        assert "right_foot" in content
+        assert "foot_assembly" in content
+        assert "foot_assembly_2" in content
         assert "trunk_assembly" in content
 
     def test_env_cfg_simulation_timing(self):
@@ -149,10 +168,52 @@ class TestEnvCfgModule:
         assert "self.sim.dt = 0.005" in content  # 200 Hz
         assert "self.decimation = 4" in content  # 200/4 = 50 Hz
 
+    def test_env_cfg_velocity_ranges_conservative(self):
+        """Velocity ranges must be conservative for a 42cm robot."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        # Should NOT have the old wide ranges for linear velocity
+        assert "(-0.5, 1.0)" not in content, "lin_vel_x range too wide"
+        # Should have conservative ranges
+        assert "(-0.15, 0.3)" in content, "lin_vel_x should be (-0.15, 0.3)"
+        assert "(-0.15, 0.15)" in content, "lin_vel_y should be (-0.15, 0.15)"
+        assert "(-0.5, 0.5)" in content, "ang_vel_z should be (-0.5, 0.5)"
+
+    def test_env_cfg_action_scale(self):
+        """Action scale must be 0.25 (matching Open Duck Playground)."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "scale = 0.25" in content or "scale=0.25" in content, \
+            "Action scale should be 0.25"
+
+    def test_env_cfg_tracking_sigma_sharp(self):
+        """Velocity tracking std must be sharp (0.1 or smaller)."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        assert '"std": 0.1' in content, "Lin vel tracking std should be 0.1"
+
+    def test_env_cfg_contact_sensor_path(self):
+        """Contact sensor must use Robot/base/* path for MJCF-converted USD."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "Robot/base/.*" in content, "Contact sensor path must target Robot/base/*"
+
 
 @pytest.mark.phase2
 class TestTrainingCfgModule:
-    """Verify PPO training configuration (Task 2.3)."""
+    """Verify PPO training configuration."""
 
     def test_ppo_cfg_exists(self):
         """PPO runner config must exist."""
@@ -182,6 +243,29 @@ class TestTrainingCfgModule:
         with open(path) as f:
             content = f.read()
         assert "[512, 256, 128]" in content
+
+    def test_ppo_cfg_obs_normalization_enabled(self):
+        """Observation normalization must be enabled."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "agents",
+            "rsl_rl_ppo_cfg.py",
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "actor_obs_normalization=True" in content
+        assert "critic_obs_normalization=True" in content
+
+    def test_ppo_cfg_tuned_hyperparameters(self):
+        """PPO hyperparameters must be tuned for small biped."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "agents",
+            "rsl_rl_ppo_cfg.py",
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "gamma=0.97" in content, "gamma should be 0.97 for faster convergence"
+        assert "entropy_coef=0.005" in content, "entropy_coef should be 0.005"
+        assert "init_noise_std=0.5" in content, "init_noise_std should be 0.5"
 
 
 @pytest.mark.phase2

@@ -17,7 +17,7 @@ The robot learns to walk through trial-and-error in simulation (Isaac Sim). A ne
 
 ## Action Space (16 dimensions)
 
-Joint position targets for all 16 actuators. Scaled by `action_scale` (typically 0.25-0.5) and offset by `init_pos`.
+Joint position targets for all 16 actuators. Scaled by `action_scale` (0.25, matching Open Duck Playground) and offset by `init_pos`.
 
 ## Joint Order (MuJoCo convention)
 
@@ -45,24 +45,37 @@ Note: The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--
 
 ## Reward Functions
 
-Inherited from `LocomotionVelocityRoughEnvCfg` base + biped-specific overrides (following H1/G1/Digit patterns):
+Redesigned from first principles based on Disney BDX paper and Open Duck Playground.
+8 reward terms (4 positive, 4 negative). Removed all H1-specific penalty bloat.
 
-- `track_lin_vel_xy_yaw_frame_exp`: Exponential reward for tracking commanded velocity in yaw frame
-- `track_ang_vel_z_world_exp`: Exponential reward for tracking angular velocity
-- `feet_air_time_positive_biped`: Reward alternating single-stance phases (biped gait)
-- `feet_slide`: Penalize feet sliding on ground
-- `flat_orientation_l2`: Penalize non-upright orientation
-- `action_rate_l2`: Penalize jerky actions (smoothness)
-- `joint_deviation_l1` (head): Penalize head/antenna deviation from default
-- `joint_deviation_l1` (hips): Penalize hip yaw/roll deviation — conserves servo torque
-- `joint_pos_limits`: Penalize ankle/knee joints approaching position limits — protects servos
-- `ang_vel_xy_l2`: Penalize pitch/roll angular velocity (increased to -0.1 for top-heavy trunk)
-- `joint_acc_l2`: Penalize joint accelerations
-- `is_terminated`: Strong penalty (-200) for falling
+Positive rewards:
+- `is_alive`: Survival bonus, weight +5.0 — structurally positive reward budget
+- `track_lin_vel_xy_yaw_frame_exp`: Velocity tracking (std=0.1, weight=2.0)
+- `track_ang_vel_z_world_exp`: Yaw tracking (std=0.25, weight=1.0)
+- `feet_air_time_positive_biped`: Biped gait (threshold=0.2, body_names=foot_assembly/foot_assembly_2)
 
-Conditional (add after initial training if needed):
-- `base_height_l2`: Add if policy learns excessively crouched gait (target ~0.15-0.17m)
-- `stand_still_joint_deviation_l1`: Add if robot can't stand still on zero velocity command
+Penalties:
+- `is_terminated`: Fall penalty (-200)
+- `flat_orientation_l2`: Stay upright (-1.0)
+- `action_rate_l2`: Smoothness (-0.005)
+- `joint_pos_limits`: Servo protection for ankle/knee (-1.0)
+
+Removed (H1-specific, not applicable to duck):
+- joint_deviation_head, joint_deviation_hips, dof_acc_l2, dof_torques_l2, ang_vel_xy_l2, feet_slide
+
+Velocity command ranges (conservative for 42cm robot):
+- lin_vel_x: (-0.15, 0.3) m/s
+- lin_vel_y: (-0.15, 0.15) m/s
+- ang_vel_z: (-0.5, 0.5) rad/s
+
+Action scale: 0.25 (reduced from 0.5, matching Open Duck Playground)
+
+## PPO Hyperparameters
+
+- gamma: 0.97
+- entropy_coef: 0.005
+- init_noise_std: 0.5
+- obs_normalization: True
 
 ## Actuator Configuration (STS3250)
 
