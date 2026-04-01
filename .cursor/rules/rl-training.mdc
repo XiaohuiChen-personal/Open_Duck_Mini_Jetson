@@ -1,5 +1,5 @@
 ---
-description: Reinforcement learning training details — observation/action spaces, algorithms, rewards, and pipeline
+description: Reinforcement learning training details — observation/action spaces, imitation reward, joint orders, and pipeline
 alwaysApply: true
 ---
 
@@ -7,25 +7,28 @@ alwaysApply: true
 
 ## RL Overview for This Project
 
-The robot learns to walk through trial-and-error in simulation (Isaac Sim). A neural network "policy" observes the robot's state and outputs motor commands. PPO is the primary algorithm.
+The robot learns to walk through trial-and-error in simulation (Isaac Sim). A neural network "policy" observes the robot's state and outputs motor commands. PPO is the primary algorithm, with reference motion imitation as the dominant reward signal.
 
-## Observation Space (56 dimensions for AWD policy)
+## Observation Space
+
+Standard Isaac Lab locomotion observations plus gait phase:
 
 | Component | Dimensions | Description |
 |---|---|---|
 | Projected gravity | 3 | Gravity direction in robot frame (from IMU) |
 | Joint positions | 16 | Current angle of each joint (rad) |
 | Joint velocities | 16 | Current speed of each joint (rad/s) |
-| Feet contacts | 2 | Binary: is left/right foot touching ground? |
 | Previous action | 16 | Last motor command sent |
 | Velocity command | 3 | Desired (vx, vy, yaw_rate) from user or VLM |
+| Gait phase | 2 | [cos(phase), sin(phase)] of gait cycle |
 
 ## Action Space (16 dimensions)
 
 Joint position targets for all 16 actuators. Scaled by `action_scale` (0.25, matching Open Duck Playground) and offset by `init_pos`.
 
-## Joint Order (MuJoCo convention)
+## Joint Orders
 
+**MuJoCo convention** (used in MJCF model):
 ```
 0: right_hip_yaw     5: left_hip_yaw     10: neck_pitch
 1: right_hip_roll    6: left_hip_roll     11: head_pitch
@@ -35,52 +38,76 @@ Joint position targets for all 16 actuators. Scaled by `action_scale` (0.25, mat
                                           15: right_antenna
 ```
 
-Note: Isaac Gym uses a different joint order (left leg first). See `mini_bdx/mini_bdx/utils/rl_utils.py` for conversion functions.
+**Isaac Lab / USD order** (from MJCF→USD conversion, interleaved):
+```
+0: left_hip_yaw      8: right_hip_pitch
+1: neck_pitch        9: left_knee
+2: right_hip_yaw    10: head_roll
+3: left_hip_roll    11: right_knee
+4: head_pitch       12: left_ankle
+5: right_hip_roll   13: left_antenna
+6: left_hip_pitch   14: right_antenna
+7: head_yaw         15: right_ankle
+```
 
-## RL Algorithms (Phase 2)
+**Playground polynomial order** (used in polynomial_coefficients.pkl):
+```
+0: left_hip_yaw      8: head_roll
+1: left_hip_roll     9: left_antenna
+2: left_hip_pitch   10: right_antenna
+3: left_knee        11: right_hip_yaw
+4: left_ankle       12: right_hip_roll
+5: neck_pitch       13: right_hip_pitch
+6: head_pitch       14: right_knee
+7: head_yaw         15: right_ankle
+```
 
-Training is done on DGX Spark with Isaac Lab. The environment extends `LocomotionVelocityRoughEnvCfg` (H1 biped pattern).
+See `mini_bdx/mini_bdx/utils/rl_utils.py` for MuJoCo↔IsaacGym conversion. The Isaac Lab imitation reward (`imitation_reward.py`) builds the Playground↔Isaac Lab mapping dynamically from joint names.
 
-| Algorithm | Framework | Type | Status |
-|---|---|---|---|
-| **PPO** | RSL-RL | On-policy | Primary — built-in ONNX export for Jetson |
-| **AMP** | SKRL | On-policy + imitation | Optional stretch goal — requires DirectRLEnv + reference motions |
+## RL Algorithm
 
-Note: The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP`. Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts.
+PPO via RSL-RL on DGX Spark. 4096 parallel envs. Environment extends `LocomotionVelocityRoughEnvCfg`.
 
-## Reward Functions
+## Reward Functions (v4 — Imitation Reward)
 
-Redesigned from first principles based on Disney BDX paper and Open Duck Playground.
-8 reward terms (4 positive, 4 negative). Removed all H1-specific penalty bloat.
+11 reward terms: 4 positive + 7 negative. No alive bonus.
 
-Positive rewards:
-- `is_alive`: Survival bonus, weight +5.0 — structurally positive reward budget
-- `track_lin_vel_xy_yaw_frame_exp`: Velocity tracking (std=0.1, weight=2.0)
-- `track_ang_vel_z_world_exp`: Yaw tracking (std=0.25, weight=1.0)
-- `feet_air_time_positive_biped`: Biped gait (threshold=0.2, body_names=foot_assembly/foot_assembly_2)
+The imitation reward is the **dominant positive signal** — it tracks reference leg joint positions from the Open Duck Playground polynomial gait library (240 motions, degree-15 polynomials, 0.54s period).
 
-Penalties:
+**Positive rewards:**
+- `imitation_reward` (ImitationReward class): weight=**10.0** — exp(-2 * squared_error) over 10 leg joints vs polynomial reference. Matches closest velocity command.
+- `track_lin_vel_xy_yaw_frame_exp`: Velocity tracking (std=0.25, weight=2.0)
+- `track_ang_vel_z_world_exp`: Yaw tracking (std=0.5, weight=1.0)
+- `feet_air_time_positive_biped`: Biped gait (weight=0.25, threshold=0.2, body_names=foot_assembly/foot_assembly_2)
+
+**Penalties:**
 - `is_terminated`: Fall penalty (-200)
+- `base_height_l2`: Height control at 0.20m (-2.0)
 - `flat_orientation_l2`: Stay upright (-1.0)
+- `lin_vel_z_l2`: Vertical bouncing (-1.0)
 - `action_rate_l2`: Smoothness (-0.005)
 - `joint_pos_limits`: Servo protection for ankle/knee (-1.0)
+- `joint_deviation_head`: Head stabilization (-0.1) — head is 21% of body mass
 
-Removed (H1-specific, not applicable to duck):
-- joint_deviation_head, joint_deviation_hips, dof_acc_l2, dof_torques_l2, ang_vel_xy_l2, feet_slide
+**Reward evolution:**
+- v1: H1-derived, 13 penalties → structurally negative, failed
+- v2: Added alive bonus → crouching/shuffling exploit, failed
+- v3: No alive bonus, height control → improved but unnatural gait
+- v4: Imitation reward + phase observation → natural bipedal gait, mean reward 147 at 100 iterations
 
 Velocity command ranges (conservative for 42cm robot):
 - lin_vel_x: (-0.15, 0.3) m/s
 - lin_vel_y: (-0.15, 0.15) m/s
 - ang_vel_z: (-0.5, 0.5) rad/s
 
-Action scale: 0.25 (reduced from 0.5, matching Open Duck Playground)
+Action scale: 0.25 (matching Open Duck Playground)
 
 ## PPO Hyperparameters
 
 - gamma: 0.97
 - entropy_coef: 0.005
 - init_noise_std: 0.5
-- obs_normalization: True
+- obs_normalization: True (actor and critic)
 
 ## Actuator Configuration (STS3250)
 
@@ -104,7 +131,7 @@ Always record training progress videos for debugging and documentation. Use thes
 --video --video_length 200 --video_interval 5000
 ```
 
-This records a 200-step clip every 2000 training steps. Videos are saved to `logs/<workflow>/<task>/<run>/videos/train/`. Use `play.py --video` after training for clean evaluation clips of the final policy.
+Videos saved to `logs/<workflow>/<task>/<run>/videos/train/`. Use `play.py --video` for evaluation clips.
 
 ## Training → Deployment Pipeline
 
@@ -114,9 +141,11 @@ Isaac Lab (DGX Spark) → .pt checkpoint → ONNX export → TensorRT engine →
 
 ## Key Files
 
-- `isaac_lab_env/open_duck_mini_v2/env_cfg.py` — Environment config
-- `isaac_lab_env/open_duck_mini_v2/train_cfg.py` — Training hyperparameters
+- `isaac_lab_env/open_duck_mini_v2/env_cfg.py` — Environment config (rewards, observations, terrain)
+- `isaac_lab_env/open_duck_mini_v2/imitation_reward.py` — ImitationReward class + gait_phase_observation
+- `isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl` — 240 polynomial walking gaits
+- `isaac_lab_env/open_duck_mini_v2/agents/rsl_rl_ppo_cfg.py` — PPO hyperparameters
+- `isaac_lab_env/open_duck_mini_v2/robot_cfg.py` — Robot articulation config
 - `exported_policies/*.onnx` — Exported policies
 - `experiments/v2/params_sts3250_id008.json` — BAM motor identification parameters (STS3250)
-- `experiments/v2/params_m6.json` — Legacy BAM motor parameters (STS3215, for reference)
 - `mini_bdx/mini_bdx/utils/rl_utils.py` — Joint order conversion, action scaling

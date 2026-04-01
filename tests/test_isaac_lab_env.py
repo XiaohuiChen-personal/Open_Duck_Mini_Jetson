@@ -109,15 +109,17 @@ class TestEnvCfgModule:
             content = f.read()
         assert "LocomotionVelocityRoughEnvCfg" in content
 
-    def test_env_cfg_has_alive_bonus(self):
-        """Environment must have a positive alive/survival bonus reward."""
+    def test_env_cfg_has_imitation_reward(self):
+        """Environment must have imitation reward as dominant positive signal."""
         path = os.path.join(
             REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
         )
         with open(path) as f:
             content = f.read()
-        assert "is_alive" in content, "Missing alive bonus reward"
-        assert "weight=5.0" in content, "Alive bonus should be weight=5.0"
+        assert "ImitationReward" in content, "Missing imitation reward"
+        assert "weight=10.0" in content, "Imitation reward should be weight=10.0"
+        # NO alive bonus (causes crouching — lesson from Run 2)
+        assert "is_alive" not in content, "Alive bonus must NOT be present"
 
     def test_env_cfg_has_core_rewards(self):
         """Environment must include core reward terms."""
@@ -136,16 +138,19 @@ class TestEnvCfgModule:
         assert "action_rate_l2" in content
         assert "joint_pos_limits" in content
 
-    def test_env_cfg_has_no_h1_bloat(self):
-        """H1-specific penalty terms should NOT be present."""
+    def test_env_cfg_has_no_hip_deviation_reward(self):
+        """joint_deviation_hips reward term must not be defined (imitation handles hips)."""
         path = os.path.join(
             REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
         )
         with open(path) as f:
             content = f.read()
-        # These were removed because they don't apply to the duck
-        assert "joint_deviation_head" not in content, "joint_deviation_head should be removed"
-        assert "joint_deviation_hips" not in content, "joint_deviation_hips should be removed"
+        # The reward term assignment pattern should not exist
+        assert "joint_deviation_hips = RewTerm" not in content, \
+            "joint_deviation_hips reward should be removed"
+        # joint_deviation_head IS intentional — head is 21% of mass, must be stabilized
+        assert "joint_deviation_head = RewTerm" in content, \
+            "joint_deviation_head reward must be present"
 
     def test_env_cfg_duck_body_names(self):
         """Environment must reference correct duck body names."""
@@ -192,14 +197,14 @@ class TestEnvCfgModule:
         assert "scale = 0.25" in content or "scale=0.25" in content, \
             "Action scale should be 0.25"
 
-    def test_env_cfg_tracking_sigma_sharp(self):
-        """Velocity tracking std must be sharp (0.1 or smaller)."""
+    def test_env_cfg_tracking_sigma(self):
+        """Velocity tracking std must be 0.25 (tuned for duck scale)."""
         path = os.path.join(
             REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
         )
         with open(path) as f:
             content = f.read()
-        assert '"std": 0.1' in content, "Lin vel tracking std should be 0.1"
+        assert '"std": 0.25' in content, "Lin vel tracking std should be 0.25"
 
     def test_env_cfg_contact_sensor_path(self):
         """Contact sensor must use Robot/base/* path for MJCF-converted USD."""
@@ -209,6 +214,84 @@ class TestEnvCfgModule:
         with open(path) as f:
             content = f.read()
         assert "Robot/base/.*" in content, "Contact sensor path must target Robot/base/*"
+
+
+@pytest.mark.phase2
+class TestImitationRewardModule:
+    """Verify imitation_reward.py module structure."""
+
+    def test_imitation_reward_exists(self):
+        """imitation_reward.py must exist."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "imitation_reward.py"
+        )
+        assert os.path.exists(path)
+
+    def test_imitation_reward_defines_class(self):
+        """Must define ImitationReward class and gait_phase_observation function."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "imitation_reward.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "class ImitationReward" in content
+        assert "ManagerTermBase" in content
+        assert "def gait_phase_observation" in content
+
+    def test_imitation_reward_has_joint_mapping(self):
+        """Must define Playground joint order and leg joint names."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "imitation_reward.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "PLAYGROUND_JOINT_ORDER" in content
+        assert "LEG_JOINT_NAMES" in content
+        # Must have all 10 leg joints
+        for joint in ["left_hip_yaw", "left_knee", "right_hip_pitch", "right_ankle"]:
+            assert joint in content
+
+    def test_imitation_reward_loads_polynomial_data(self):
+        """Must load polynomial_coefficients.pkl."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "imitation_reward.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "polynomial_coefficients.pkl" in content
+
+    def test_polynomial_data_exists(self):
+        """Polynomial coefficient data file must exist."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "data",
+            "polynomial_coefficients.pkl",
+        )
+        assert os.path.exists(path)
+
+    def test_polynomial_data_structure(self):
+        """Polynomial data must have 240 entries with correct structure."""
+        import pickle
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "data",
+            "polynomial_coefficients.pkl",
+        )
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+        assert len(data) == 240, f"Expected 240 motions, got {len(data)}"
+        entry = data[list(data.keys())[0]]
+        assert "coefficients" in entry
+        assert "period" in entry
+        assert len(entry["coefficients"]) == 40, "Expected 40 dimensions"
+
+    def test_env_cfg_has_phase_observation(self):
+        """Environment must add gait_phase observation term."""
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        assert "gait_phase" in content, "Missing gait_phase observation"
+        assert "gait_phase_observation" in content
 
 
 @pytest.mark.phase2

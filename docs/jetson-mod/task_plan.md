@@ -208,7 +208,7 @@ Reinforcement Learning trains a neural network (the "policy") to control the rob
 |---|---|
 | **Observation** | What the robot senses: joint angles (15), joint velocities (15), gravity direction (3), foot contacts (2), previous action (16), walk command (3) = 54-86 dimensions depending on policy |
 | **Action** | Motor position targets for all 15-16 joints, output by the neural network |
-| **Reward** | A scalar score per timestep. Current rewards: +0.05 for surviving, penalty for jerky motion, bonus for staying near natural pose. Advanced: imitation reward (match reference walking motion from Disney BDX paper) |
+| **Reward** | A scalar score per timestep. v4 reward design: imitation reward (weight=10.0, dominant signal matching reference gait), velocity tracking, biped stepping reward, plus penalties for falling, tilting, jerky motion, and joint limit violations |
 | **Episode** | One attempt at walking. Ends when robot falls (trunk Z < 0.08m or tilts > 90 deg) or time limit reached |
 | **Policy** | The neural network (MLP with 3 hidden layers). Maps observation → action |
 | **PPO** | Proximal Policy Optimization — the RL algorithm. Collects batches of experience from thousands of parallel environments, then updates the policy network in small steps. Very stable for locomotion. |
@@ -922,7 +922,7 @@ Create an Isaac Lab RL environment for the Open Duck Mini v2 by **extending the 
 - Observations: `base_lin_vel` (3), `base_ang_vel` (3), `projected_gravity` (3), `velocity_commands` (3), `joint_pos_rel` (N), `joint_vel_rel` (N), `last_action` (N) — with noise for sim2real
 - Actions: `JointPositionActionCfg` with `scale=0.5` and `use_default_offset=True`
 - Commands: `UniformVelocityCommandCfg` with `rel_standing_envs=0.02`
-- Rewards: `track_lin_vel_xy_exp`, `track_ang_vel_z_exp`, `lin_vel_z_l2`, `ang_vel_xy_l2`, `flat_orientation_l2`, `action_rate_l2`, `joint_torques_l2`, `joint_acc_l2`, `feet_air_time`, `undesired_contacts` — **Note:** Our `DuckRewards` class explicitly disables most of these base-class rewards (set to `None`) and defines a custom set of 8 terms optimized for the duck.
+- Rewards: Base class defines many terms. Our `DuckRewards` class disables most and defines 11 custom terms (v4) with imitation reward as the dominant signal.
 - Terminations: `time_out` (with `time_out=True`), `base_contact`, `root_height_below_minimum`
 - Events: mass/friction/CoM randomization, push disturbances, joint/base reset randomization
 - Curriculum: terrain difficulty based on velocity tracking performance
@@ -932,181 +932,29 @@ Create an Isaac Lab RL environment for the Open Duck Mini v2 by **extending the 
 
 **Steps:**
 1. Create a new directory: `isaac_lab_env/open_duck_mini_v2/`
-2. Define duck-specific reward overrides (biped gait rewards):
+2. Define duck-specific reward overrides with imitation reward (see `env_cfg.py` for full implementation):
 
-   ```python
-   # isaac_lab_env/open_duck_mini_v2/env_cfg.py
+   **Reward design v4** — 11 terms (4 positive + 7 negative), imitation reward dominant:
 
-   import math
-   from isaaclab.managers import RewardTermCfg as RewTerm
-   from isaaclab.managers import SceneEntityCfg
-   from isaaclab.utils import configclass
+   Positive rewards:
+   - `imitation_reward` (ImitationReward class, weight=**10.0**) — tracks reference leg joint positions from polynomial gait library
+   - `track_lin_vel_xy_exp` (weight=2.0, std=0.25) — velocity tracking
+   - `track_ang_vel_z_exp` (weight=1.0, std=0.5) — yaw tracking
+   - `feet_air_time` (weight=0.25, threshold=0.2) — biped stepping reward
 
-   import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
-   from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
-       LocomotionVelocityRoughEnvCfg, RewardsCfg,
-   )
-   from isaac_lab_env.open_duck_mini_v2.robot_cfg import OPEN_DUCK_MINI_V2_CFG
+   Penalties:
+   - `termination_penalty` (-200) — fall penalty
+   - `base_height` (-2.0, target=0.20m) — height control
+   - `flat_orientation_l2` (-1.0) — upright posture
+   - `lin_vel_z_l2` (-1.0) — vertical bouncing
+   - `action_rate_l2` (-0.005) — smoothness
+   - `joint_pos_limits` (-1.0) — servo protection (ankle/knee)
+   - `joint_deviation_head` (-0.1) — head stabilization (21% of body mass)
 
-   @configclass
-   class DuckRewards(RewardsCfg):
-       """Biped-specific rewards for the Open Duck Mini v2.
-
-       Complete redesign based on Disney BDX paper and Open Duck Playground.
-       8 reward terms (down from 13 in the original H1-derived config).
-       All base-class rewards explicitly disabled to prevent hidden penalties.
-       """
-
-       # === Explicitly disable ALL base-class rewards ===
-       # LocomotionVelocityRoughEnvCfg defines many rewards by default.
-       # We set them to None so only our 8 terms are active.
-       lin_vel_z_l2 = None
-       ang_vel_xy_l2 = None
-       dof_torques_l2 = None
-       dof_acc_l2 = None
-       dof_pos_limits = None
-       undesired_contacts = None
-       feet_stumble = None
-
-       # === Positive rewards (3 terms) ===
-
-       # Survival bonus — provides positive reward per step. Without this,
-       # the reward budget is entirely negative and the policy has no
-       # incentive to survive longer episodes.
-       alive_bonus = RewTerm(func=mdp.is_alive, weight=5.0)
-
-       # Velocity tracking in yaw frame (biped best practice).
-       # weight=2.0 (up from 1.0) makes velocity tracking the dominant
-       # positive signal after alive_bonus. std=0.1 (down from 0.25)
-       # gives much sharper reward gradient near zero error.
-       track_lin_vel_xy_exp = RewTerm(
-           func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=2.0,
-           params={"command_name": "base_velocity", "std": 0.1},
-       )
-       track_ang_vel_z_exp = RewTerm(
-           func=mdp.track_ang_vel_z_world_exp, weight=1.0,
-           params={"command_name": "base_velocity", "std": 0.25},
-       )
-
-       # === Gait reward (1 term) ===
-
-       # Biped-specific gait reward — encourages alternating single-stance.
-       # body_names use actual URDF link names (foot_assembly, foot_assembly_2)
-       # not the incorrect left_foot/right_foot from the H1 config.
-       # threshold=0.2 (down from 0.4) — easier to achieve for small robot.
-       feet_air_time = RewTerm(
-           func=mdp.feet_air_time_positive_biped, weight=0.25,
-           params={
-               "command_name": "base_velocity",
-               "sensor_cfg": SceneEntityCfg("contact_forces",
-                   body_names=["foot_assembly", "foot_assembly_2"]),
-               "threshold": 0.2,
-           },
-       )
-
-       # === Penalties (4 terms) ===
-
-       # Termination penalty (strong negative signal for falling)
-       termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
-
-       # Penalize non-upright orientation
-       flat_orientation_l2 = RewTerm(
-           func=mdp.flat_orientation_l2, weight=-1.0,
-       )
-
-       # Penalize jerky actions (smoothness). weight=-0.005 is deliberately
-       # light — the old -0.005 was fine but earlier configs at -0.001 were
-       # too permissive.
-       action_rate_l2 = RewTerm(
-           func=mdp.action_rate_l2, weight=-0.005,
-       )
-
-       # Penalize joints approaching position limits — protects real Feetech
-       # STS3215 servos from hitting hard stops and causing gear damage.
-       joint_pos_limits = RewTerm(
-           func=mdp.joint_pos_limits, weight=-1.0,
-           params={"asset_cfg": SceneEntityCfg("robot",
-               joint_names=["right_ankle", "left_ankle",
-                            "right_knee", "left_knee"])},
-       )
-
-       # === REMOVED from previous config ===
-       # feet_slide: Returned zero due to body name mismatch; not needed
-       #   with correct feet_air_time encouraging proper gait.
-       # joint_deviation_head: Over-constrained head joints. Let policy
-       #   learn natural head movement.
-       # joint_deviation_hips: Over-constrained hip exploration needed
-       #   for gait discovery on a small biped.
-       # dof_acc_l2: H1-specific; not relevant for small servo robot.
-       # dof_torques_l2: H1-specific; not relevant for small servo robot.
-       # ang_vel_xy_l2: Redundant with flat_orientation_l2 penalty.
-
-   @configclass
-   class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
-       """Open Duck Mini v2 locomotion environment configuration."""
-
-       rewards: DuckRewards = DuckRewards()
-
-       def __post_init__(self):
-           super().__post_init__()
-
-           # --- Scene: swap robot asset ---
-           self.scene.robot = OPEN_DUCK_MINI_V2_CFG.replace(
-               prim_path="{ENV_REGEX_NS}/Robot"
-           )
-           self.scene.num_envs = 4096
-           self.scene.env_spacing = 2.5
-
-           # --- Simulation timing ---
-           self.sim.dt = 0.005       # 200 Hz physics
-           self.decimation = 4       # Policy at 50 Hz
-           self.episode_length_s = 20.0
-
-           # --- Height scanner (optional, set to None for flat-ground only) ---
-           self.scene.height_scanner = None
-
-           # --- Actions: reduce action scale for small robot ---
-           # Default base class uses scale=0.5. Reduced to 0.25 so the policy
-           # outputs smaller joint position deltas per step, preventing
-           # overshooting on the lightweight Feetech STS3215 servos.
-           self.actions.joint_pos.scale = 0.25
-
-           # --- Commands: velocity ranges for the duck ---
-           # Conservative ranges for a 42cm robot. Disney BDX paper uses
-           # similar ranges for small bipeds. 0.3 m/s forward = ~0.7 body
-           # lengths/s, which is realistic for servo-driven legs.
-           self.commands.base_velocity.ranges.lin_vel_x = (-0.15, 0.3)
-           self.commands.base_velocity.ranges.lin_vel_y = (-0.15, 0.15)
-           self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
-
-           # --- Terminations: adjust body names for duck ---
-           self.terminations.base_contact.params["sensor_cfg"].body_names = "trunk_assembly"
-
-           # --- Events: adjust for duck-specific bodies ---
-           self.events.push_robot = None  # Disable push initially, enable after basic walking works
-           self.events.base_external_force_torque.params["asset_cfg"].body_names = ["trunk_assembly"]
-           self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
-           self.events.reset_base.params = {
-               "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-               "velocity_range": {
-                   "x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0),
-                   "roll": (0.0, 0.0), "pitch": (0.0, 0.0), "yaw": (0.0, 0.0),
-               },
-           }
-
-           # --- Rewards: all defined in DuckRewards class ---
-           # No per-weight overrides needed here. The DuckRewards class
-           # explicitly disables all base-class rewards (set to None) and
-           # defines exactly 8 reward terms. This avoids the earlier problem
-           # where hidden base-class penalties dominated the reward budget.
-
-   @configclass
-   class OpenDuckRoughEnvCfg_PLAY(OpenDuckRoughEnvCfg):
-       """Playback configuration with fewer envs and no randomization."""
-       def __post_init__(self):
-           super().__post_init__()
-           self.scene.num_envs = 50
-           self.scene.env_spacing = 2.5
+   Additional features:
+   - Gait phase observation [cos(phase), sin(phase)] added to policy obs
+   - Polynomial reference data: 240 motions, degree-15, 0.54s period
+   - ImitationReward uses ManagerTermBase for stateful phase tracking
            self.episode_length_s = 40.0
            self.scene.terrain.max_init_terrain_level = None
            self.commands.base_velocity.ranges.lin_vel_x = (0.2, 0.2)
@@ -1216,31 +1064,24 @@ Train locomotion policies using PPO (primary) and optionally AMP (stretch goal).
 
 **Note on algorithm scope:** The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP` via the built-in CLI (verified in `scripts/reinforcement_learning/skrl/train.py` line 54: `choices=["AMP", "PPO", "IPPO", "MAPPO"]`). Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts with no existing locomotion examples. We focus on PPO as the primary policy.
 
-#### First Training Run Results and Complete Reward Redesign
+#### Reward Function Evolution (4 iterations)
 
-The initial PPO training run (3000 iterations, 5.1 hours on DGX Spark) revealed fundamental issues with the H1-derived reward structure:
+The reward function went through 4 major iterations before reaching a working design:
 
-- Robot learned to balance (89% survival at 20s episodes) but reward plateaued at -5.7
-- `feet_air_time` and `feet_slide` returned zero throughout — contact sensor body names were wrong (`left_foot`/`right_foot` instead of `foot_assembly`/`foot_assembly_2`)
-- No survival bonus meant the reward budget was structurally negative
-- H1-specific penalty terms (dof_acc_l2, dof_torques_l2, ang_vel_xy_l2, joint_deviation_head, joint_deviation_hips) dominated the reward budget and were not relevant for a small servo-driven biped
-- Velocity command ranges too wide for a 42cm robot (1.0 m/s = 2.4 body lengths/s)
-- Action rate penalty (-0.413/step) at weight -0.005 with scale=0.5 was excessive
+**v1 — H1-derived (failed):** 13 terms from the H1 humanoid config. Reward plateaued at -5.7 (structurally negative). Contact sensor body names were wrong. H1-specific penalties dominated.
 
-**Complete reward function redesign** (not just weight tweaks) based on the Disney BDX paper and Open Duck Playground:
+**v2 — Alive bonus (failed):** Added `is_alive` bonus (+5.0), removed H1 bloat, fixed contact sensor names. Robot learned to CROUCH and SHUFFLE — alive bonus rewarded survival in any posture without height constraint.
 
-1. **Contact sensor fix:** Changed foot body names from `left_foot`/`right_foot` to `foot_assembly`/`foot_assembly_2` (actual URDF link names)
-2. **Removed all H1-specific penalty terms:** `feet_slide`, `joint_deviation_head`, `joint_deviation_hips`, `dof_acc_l2`, `dof_torques_l2`, `ang_vel_xy_l2` — these were designed for a 180cm, 47kg humanoid, not a 42cm, 2.4kg duck
-3. **Explicitly disabled all base-class rewards** (`lin_vel_z_l2=None`, `ang_vel_xy_l2=None`, `dof_torques_l2=None`, `dof_acc_l2=None`, `dof_pos_limits=None`, `undesired_contacts=None`, `feet_stumble=None`) to prevent hidden penalties
-4. **Added `alive_bonus`** (+5.0/step) — survival reward that gives the policy a reason to stay upright
-5. **Increased velocity tracking weight** from 1.0 to 2.0 and **sharpened std** from 0.25 to 0.1 for `track_lin_vel_xy_exp`
-6. **Narrowed velocity ranges** to match 42cm robot: lin_vel_x [-0.15, 0.3], lin_vel_y [-0.15, 0.15], ang_vel_z [-0.5, 0.5]
-7. **Reduced action scale** from 0.5 to 0.25 — smaller joint position deltas per step
-8. **Reduced `feet_air_time` threshold** from 0.4 to 0.2 — easier to achieve for small robot
-9. **PPO hyperparameters tuned:** gamma=0.97 (shorter horizon), entropy_coef=0.005 (less exploration noise), init_noise_std=0.5, obs_normalization enabled
-10. **Final reward set:** 8 terms (alive_bonus, track_lin_vel_xy_exp, track_ang_vel_z_exp, feet_air_time, termination_penalty, flat_orientation_l2, action_rate_l2, joint_pos_limits) — down from 13
+**v3 — Isaac Lab biped pattern (improved):** Removed alive bonus, added `base_height_l2` at -5.0 targeting 0.20m. Restored `joint_deviation_head` (-0.1) and `joint_deviation_hips` (-0.05). Robot stood upright but gait was unnatural.
 
-**Smoke test result:** Positive reward (+0.71 at iteration 4) vs old config (-5.3 at same point). The robot immediately shows learning signal instead of being trapped in a penalty-dominated regime.
+**v4 — Imitation reward (current, working):** Added `ImitationReward` (weight=10.0) using polynomial reference motions from the Open Duck Playground gait library. Added gait phase observation [cos(phase), sin(phase)]. Reduced penalties since imitation implicitly enforces correct posture. Removed `joint_deviation_hips` (imitation handles hip movement). **100-iteration validation: mean reward 147, 85% survival, upright posture, natural bipedal gait.**
+
+Key fixes applied across iterations:
+- Contact sensor body names: `foot_assembly`/`foot_assembly_2` (not `left_foot`/`right_foot`)
+- Contact sensor path: `{ENV_REGEX_NS}/Robot/base/.*` (bodies nested under `/base/`)
+- Flat terrain: `terrain_type="plane"`, `terrain_generator=None`
+- Camera close to robot: `ViewerCfg(eye=(1.0, 1.0, 0.5), origin_type="asset_root")`
+- Observation: `height_scan=None` when `height_scanner=None`
 
 #### 2.4a — PPO (Proximal Policy Optimization) via RSL-RL
 
