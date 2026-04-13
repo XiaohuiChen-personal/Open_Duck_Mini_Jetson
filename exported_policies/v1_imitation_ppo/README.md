@@ -107,25 +107,29 @@ The robot successfully walks with bipedal gait, maintains upright posture, and s
 
 ### Issues Identified
 
-1. **Permanent crouch ("Groucho Marx walk")** — Knees never fully extend during stance phase. The robot walks in a constant semi-squat across the entire gait cycle.
+Note: The bent-knee posture is **correct for this robot** — the Open Duck Mini
+is a BDX-derived bird-like biped where the standing pose has 78° of knee
+flexion by design. The polynomial reference gaits encode this bent-knee walk.
+"Crouching" is not a defect for this morphology.
 
-2. **Very short stride length** — Steps are small and shuffling rather than full strides. Feet barely move forward/backward between frames.
+The actual issues are:
 
-3. **Minimal foot clearance** — Feet appear to skim just above the ground during swing phase rather than lifting clearly (target should be ~2cm per placo_defaults).
+1. **Short stride length** — Steps are small and shuffling rather than full strides. Feet barely move forward/backward between frames.
 
-4. **Constant forward lean** — Trunk tilted forward in most frames, making the robot look hunched. Head droops down.
+2. **Minimal foot clearance** — Feet appear to skim just above the ground during swing phase rather than lifting clearly (target should be ~2cm per placo_defaults).
 
-5. **Stiff/monotonous motion** — No visible weight shift, lateral sway, or dynamic body movement. The posture barely changes over 10 seconds.
+3. **Constant forward lean** — Trunk tilted forward in most frames, making the robot look hunched. Head droops down.
+
+4. **Stiff/monotonous motion** — No visible weight shift, lateral sway, or dynamic body movement. The posture barely changes over 10 seconds.
 
 ### Root Cause Analysis
 
 | Issue | Root Cause |
 |-------|-----------|
-| Crouch | `exp(-2*L2)` imitation kernel saturates — policy gets high reward without precise joint matching. BDX paper uses raw `-L2*15.0` which scales linearly |
-| Short steps | No reference velocity or contact tracking. Only joint positions tracked, missing the dynamic trajectory |
+| Short steps | No reference velocity or contact tracking. Only joint positions tracked (dims 0-15), missing dynamic trajectory from dims 16-36 |
 | No clearance | No foot height reward. `feet_air_time` at 0.25 only measures contact duration, not lift height |
 | Forward lean | `flat_orientation` at -1.0 too weak vs imitation at 10.0. No explicit trunk pitch penalty |
-| Stiff motion | `action_rate` at -0.005 is 100-300x weaker than BDX (-1.5) and Playground (-0.5) |
+| Stiff motion | `action_rate` at -0.005 is 100-300x weaker than BDX (-1.5) and Playground (-0.5). Exp kernel saturates, allowing imprecise tracking |
 
 ## What Needs to Improve (v2 Design Direction)
 
@@ -134,7 +138,7 @@ Based on research into the Disney BDX paper ("Design and Control of a Bipedal Ro
 1. **Switch from exp kernel to raw quadratic** for joint position tracking (matching BDX's `-L2 * 15.0`)
 2. **Add reference velocity tracking** using polynomial dims 16-31 (joint velocities) and 34-36 (base velocity)
 3. **Add reference contact matching** using polynomial dims 32-33 (foot contacts)
-4. **Re-add alive bonus** (+10 to +20) — safe with strong imitation signal preventing crouching exploit
+4. **Re-add alive bonus** (+10 to +20) — safe with strong imitation signal preventing survival-only exploit
 5. **Increase action_rate penalty** from -0.005 to -0.5 or -1.0 for smooth, natural-looking motion
 6. **Add action acceleration penalty** for second-order smoothness (BDX uses this)
 7. **Remove base_height, lin_vel_z, feet_air_time** — these are handled implicitly by the comprehensive BDX-style imitation
@@ -148,7 +152,7 @@ Prior to this first usable policy, three failed reward designs were attempted an
 | iter 1 | H1-derived, 13 penalties | Structurally negative, reward -5.7, failed |
 | iter 2 | Added alive bonus (+5.0) | Crouching/shuffling exploit, failed |
 | iter 3 | No alive bonus, height control | Improved but unnatural gait |
-| **iter 4 (this)** | **Imitation reward (exp kernel)** | **First usable policy — walking but crouched, short steps, stiff** |
+| **iter 4 (this)** | **Imitation reward (exp kernel)** | **First usable policy — walking but forward lean, short steps, stiff motion** |
 | v2 (planned) | BDX-aligned composite imitation | Expected: natural bipedal gait |
 
 ## How to Use This Checkpoint
@@ -158,7 +162,7 @@ Prior to this first usable policy, three failed reward designs were attempted an
 cd ~/IsaacLab && ./isaaclab.sh -p ~/Projects/Open_Duck_Mini_Jetson/scripts/play_policy.py \
     --task Isaac-Velocity-Rough-OpenDuck-Play-v0 \
     --num_envs 50 \
-    --checkpoint ~/Projects/Open_Duck_Mini_Jetson/exported_policies/v1_imitation_ppo/model_2999.pt \
+    --checkpoint ~/Projects/Open_Duck_Mini_Jetson/exported_policies/imitation_ppo/model_2999.pt \
     --headless --video --video_length 500
 ```
 

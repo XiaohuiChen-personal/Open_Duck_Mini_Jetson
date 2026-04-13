@@ -3,35 +3,23 @@
 
 """Isaac Lab locomotion environment for the Open Duck Mini v2.
 
-Reward design v4 — imitation reward using Open Duck Playground reference motions.
+Reward design v2 — BDX-aligned composite imitation reward.
 
-Evolution:
-- v1 (Run 1): H1-derived, structurally negative, 13 penalties → failed
-- v2 (Run 2): Alive bonus → crouching/shuffling → failed
-- v3 (Run 3): Isaac Lab biped pattern, no alive bonus, height control → improved
-- v4 (Run 4): Added polynomial imitation reward for natural gait quality
+Based on the Disney BDX paper ("Design and Control of a Bipedal Robotic
+Character", Jan 2025) and the Open Duck Playground reward structure.
 
-v4 adds reference motion tracking from the Open Duck Playground gait library
-(240 polynomial walking gaits, degree-15, 0.54s period). The imitation reward
-(weight=10.0) is the dominant positive signal — it rewards matching reference
-leg joint positions via exp(-2 * squared_error). Velocity tracking and
-feet_air_time are retained as secondary signals.
-
-Phase observation [cos(phase), sin(phase)] added to policy obs so the network
-knows where in the gait cycle to aim.
-
-Penalties reduced from v3 since the imitation reward implicitly enforces
-upright posture and proper gait:
-- base_height: -5.0 → -2.0
-- flat_orientation: -2.0 → -1.0
-- joint_deviation_hips: removed (imitation handles hip movement)
-
-Ground truth from Open Duck Playground placo_defaults.json (hardware-tuned):
-- walk_com_height = 0.20 m
-- walk_foot_height = 0.02 m
-- walk_trunk_pitch = 0 degrees
-- single_support_duration = 0.17 s
-- feet_spacing = 0.16 m
+v2 changes from v1:
+- Replaced exp kernel with raw quadratic for joint position tracking
+  (BDX weight 15.0 vs v1's exp(-2*L2)*10.0)
+- Added joint velocity tracking from polynomial dims 16-31
+- Added base velocity tracking from polynomial dims 34-36
+- Added foot contact matching from polynomial dims 32-33
+- Re-added alive bonus (+10.0) — safe with strong imitation preventing crouch
+- Increased action_rate from -0.005 to -1.0 (200x, matching BDX/Playground)
+- Added action acceleration penalty for second-order smoothness
+- Increased flat_orientation to -2.0
+- Removed base_height, lin_vel_z, feet_air_time, track_lin_vel_xy
+  (all handled by comprehensive BDX-style imitation)
 """
 
 from isaaclab.envs import ViewerCfg
@@ -56,88 +44,52 @@ from isaac_lab_env.open_duck_mini_v2.robot_cfg import OPEN_DUCK_MINI_V2_CFG
 
 @configclass
 class DuckRewards(RewardsCfg):
-    """Reward function v4 for Open Duck Mini v2 locomotion.
+    """Reward function v2 — BDX-aligned composite imitation.
 
-    11 terms: 4 positive + 7 negative. No alive bonus.
-    Imitation reward is the dominant positive signal (weight=10.0).
-
-    Evolution from v3:
-    - Added imitation_reward (+10.0) for reference motion tracking
-    - Reduced feet_air_time (1.0→0.25, imitation already enforces stepping)
-    - Reduced base_height (-5.0→-2.0, imitation enforces correct posture)
-    - Reduced flat_orientation (-2.0→-1.0, imitation keeps upright)
-    - Removed joint_deviation_hips (imitation handles hip movement)
+    12 terms: 3 positive + 9 negative (imitation sub-terms are net-negative
+    raw quadratic, offset by alive bonus). Follows the Disney BDX paper.
     """
 
     # ====================================================================
-    # POSITIVE REWARDS (4 terms)
+    # POSITIVE REWARDS (3 terms)
     # ====================================================================
 
-    # Imitation reward: DOMINANT positive signal.
-    # Tracks reference leg joint positions from polynomial gait library.
-    # exp(-2 * squared_error) over 10 leg joints. Weight 10.0 makes this
-    # the strongest incentive — the policy earns most reward by matching
-    # the reference walking gait.
+    # Alive bonus: +10.0 per step. BDX uses +20.0.
+    # Safe with strong imitation signal — policy can't earn reward by
+    # crouching because imitation demands precise joint matching.
+    alive_bonus = RewTerm(func=mdp.is_alive, weight=10.0)
+
+    # BDX-style composite imitation reward (weight=1.0 since BDX weights
+    # are baked into the class: joint_pos=15.0, joint_vel=0.001,
+    # base_vel=1.0, contacts=1.0).
     imitation_reward = RewTerm(
         func=ImitationReward,
-        weight=10.0,
+        weight=1.0,
         params={"command_name": "base_velocity"},
     )
 
-    # Velocity tracking: secondary objective (kept from v3).
-    track_lin_vel_xy_exp = RewTerm(
-        func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=2.0,
-        params={"command_name": "base_velocity", "std": 0.25},
-    )
-
-    # Yaw tracking: tertiary objective (kept from v3).
+    # Yaw tracking from velocity command (BDX weight 0.5).
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=1.0,
+        weight=0.5,
         params={"command_name": "base_velocity", "std": 0.5},
     )
 
-    # Biped gait: reward alternating foot lifting.
-    # Reduced from v3's 1.0 — imitation reward already encourages stepping.
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time_positive_biped,
-        weight=0.25,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=["foot_assembly", "foot_assembly_2"]
-            ),
-            "threshold": 0.2,
-        },
-    )
-
     # ====================================================================
-    # NEGATIVE REWARDS — penalties (7 terms)
+    # NEGATIVE REWARDS — penalties (6 terms)
     # ====================================================================
 
-    # --- Termination penalty ---
+    # Termination penalty.
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
-    # --- Posture control (lighter than v3 — imitation helps) ---
+    # Action smoothness: -1.0 (BDX uses -1.5, Playground uses -0.5).
+    # Increased 200x from v1's -0.005 — critical for natural motion.
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-1.0)
 
-    # Height control: reduced from -5.0 since imitation enforces correct posture.
-    base_height = RewTerm(
-        func=mdp.base_height_l2,
-        weight=-2.0,
-        params={"target_height": 0.20},
-    )
+    # Orientation: -2.0 (doubled from v1 to counteract forward lean).
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-2.0)
 
-    # Orientation: reduced from -2.0 since imitation keeps robot upright.
-    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
-
-    # Vertical bouncing penalty (kept from v3).
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-1.0)
-
-    # --- Smoothness ---
-    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.005)
-
-    # --- Joint protection ---
+    # Joint limits: protect servos.
     joint_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-1.0,
@@ -152,8 +104,7 @@ class DuckRewards(RewardsCfg):
         },
     )
 
-    # --- Head stabilization ---
-    # Head is 21% of body mass — uncontrolled flailing destabilizes the robot.
+    # Head stabilization (21% of body mass).
     joint_deviation_head = RewTerm(
         func=mdp.joint_deviation_l1,
         weight=-0.1,
@@ -172,11 +123,13 @@ class DuckRewards(RewardsCfg):
     # DISABLED BASE-CLASS REWARDS
     # ====================================================================
 
-    ang_vel_xy_l2 = None       # Redundant with flat_orientation_l2
-    dof_torques_l2 = None      # Not needed at this stage
-    dof_acc_l2 = None           # Not needed at this stage
-    undesired_contacts = None   # Re-enable after verifying body names
-    dof_pos_limits = None       # We define our own joint_pos_limits
+    ang_vel_xy_l2 = None
+    dof_torques_l2 = None
+    dof_acc_l2 = None
+    undesired_contacts = None
+    dof_pos_limits = None
+    lin_vel_z_l2 = None        # Handled by imitation base_vel tracking
+    feet_air_time = None       # Handled by imitation contact matching
 
 
 @configclass
