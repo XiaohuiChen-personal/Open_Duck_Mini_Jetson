@@ -8,24 +8,87 @@
    </tr>
 </table>
 
-A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork replaces the Raspberry Pi Zero 2W with an **NVIDIA Jetson Orin Nano Super** and migrates the entire simulation, training, and deployment pipeline to the **NVIDIA stack** (Isaac Sim, Isaac Lab, TensorRT, Cosmos Reason2).
+A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork migrates the Open Duck Mini v2 from a Raspberry Pi / MuJoCo / Stable-Baselines3 pipeline to the **NVIDIA stack** (Isaac Sim, Isaac Lab, Jetson Orin Nano, TensorRT, Cosmos Reason2). The work is being done in 5 phases over a longer arc; see status table below for what's currently shipped versus planned.
 
 > Based on the original [Open Duck Mini](https://github.com/apirrone/Open_Duck_Mini) by Antoine Pirrone.
+
+---
+
+## Project Status
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 1 | Simulation model update (Jetson mass/inertia in trunk) | ✅ Complete |
+| Phase 2 | Isaac Lab environment + PPO locomotion training on DGX Spark | ✅ Complete (PPO baseline shipped; ONNX export and domain randomization remaining) |
+| Phase 3 | CAD redesign of trunk / body / battery for Jetson cavity | 🟡 Planned |
+| Phase 4 | Hardware build, TensorRT deployment, real-robot walking | 🟡 Planned |
+| Phase 5 | Cosmos Reason2 VLM for vision-language-action control | 🟡 Planned |
+
+Full task breakdown (5 phases, 28 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
+
+---
+
+## What's Working Today
+
+A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. Two reward function iterations (v1 and v2) shipped with documented before/after evaluation.
+
+**Training setup:**
+- NVIDIA Isaac Lab + RSL-RL PPO on DGX Spark (Grace Blackwell)
+- 4096 parallel environments, 50 Hz policy / 200 Hz physics
+- MLP [512, 256, 128] with ELU, observation normalization enabled
+- 3000 iterations, ~20s episodes
+
+**Imitation reward design** (`isaac_lab_env/open_duck_mini_v2/imitation_reward.py`):
+- Polynomial gait library: 240 reference motions × 40 dimensions × 16 polynomial coefficients
+- Joint position tracking (raw quadratic, BDX weight 15.0)
+- Joint velocity tracking (raw quadratic, BDX weight 0.001)
+- Base velocity tracking (exponential, BDX weight 1.0)
+- Foot contact matching (binary, BDX weight 1.0)
+
+**v2 final results (iteration 3000):**
+
+| Metric | Value |
+|---|---|
+| Mean reward | ~239 |
+| Fall rate | **0.0%** at final iteration (down from 99.9% at iter 31) |
+| Reference tracking | **3.80° RMS** error across 6 leg joints |
+| Mean episode length | 1000 steps (full 20s, no early termination) |
+| Action std | 0.07 (precise, confident policy) |
+
+**v1 → v2 reward design improvements:**
+
+| Metric | v1 | v2 | Improvement |
+|---|---|---|---|
+| Mean reward | 235 | 239 | +2% |
+| Fall rate | 1.3% | **0.0%** | Eliminated |
+| Flat orientation | -0.05 | **-0.008** | 6× less tilt |
+| Action std | 0.48 | **0.07** | 7× more precise |
+| Convergence | ~500 iter to plateau | ~200 iter to plateau | 2.5× faster |
+
+**Full training report:** [`exported_policies/v2_bdx_imitation_ppo/README.md`](exported_policies/v2_bdx_imitation_ppo/README.md)
+
+**Showcase videos** (training progression, untrained → iter 2999): [`showcase_videos/`](showcase_videos/)
+
+---
 
 ## What's Different in This Fork
 
 | | Original | Jetson Edition |
 |---|---|---|
-| **Onboard computer** | Raspberry Pi Zero 2W (no GPU) | NVIDIA Jetson Orin Nano Super (67 TOPS) |
-| **Computer location** | Head | Trunk (relocated for better CoG) |
-| **Simulation** | MuJoCo | NVIDIA Isaac Sim (PhysX 5) |
-| **RL training** | MuJoCo Playground + SB3 | NVIDIA Isaac Lab (RSL-RL for PPO, optional SKRL for AMP) |
-| **Training hardware** | Single GPU | NVIDIA DGX Spark |
-| **Policy deployment** | ONNX on CPU | TensorRT on Jetson GPU (<1 ms) |
-| **Physical AI** | None | Cosmos Reason2-2B (vision + language + reasoning) |
-| **Camera** | None | CSI camera (IMX219) in head |
+| **Onboard computer** | Raspberry Pi Zero 2W (no GPU) | NVIDIA Jetson Orin Nano Super (67 TOPS) — *planned* |
+| **Computer location** | Head | Trunk (relocated for better CoG) — *physics updated, hardware planned* |
+| **Simulation** | MuJoCo | NVIDIA Isaac Sim (PhysX 5) — ✅ migrated |
+| **RL training** | MuJoCo Playground + SB3 | NVIDIA Isaac Lab (RSL-RL PPO) — ✅ migrated |
+| **Training hardware** | Single GPU | NVIDIA DGX Spark — ✅ in use |
+| **Policy deployment** | ONNX on CPU | TensorRT on Jetson GPU — *planned* |
+| **Physical AI** | None | Cosmos Reason2-2B VLM — *planned* |
+| **Camera** | None | CSI camera (IMX219) in head — *planned* |
 
-## Architecture
+---
+
+## Target Architecture
+
+The diagram below describes the **end-state system after all 5 phases are complete**, not the current implementation. Currently only the locomotion policy (Phase 2) is shipped.
 
 ```
 Voice / Text command: "Walk to the red cup"
@@ -33,14 +96,15 @@ Voice / Text command: "Walk to the red cup"
          v
 ┌─────────────────────────────────────────────────┐
 │  Cosmos Reason2-2B (VLM)           ~2-3 Hz      │
-│  Sees camera, reasons about scene,              │
+│  Sees camera, reasons about scene,              │   PLANNED (Phase 5)
 │  outputs velocity commands                       │
 └────────────────────┬────────────────────────────┘
                      │  (vx, vy, yaw_rate)
                      v
 ┌─────────────────────────────────────────────────┐
-│  Locomotion Policy (PPO/AMP)       50 Hz        │
-│  Trained in Isaac Lab, runs via TensorRT        │
+│  Locomotion Policy (PPO)           50 Hz        │
+│  Trained in Isaac Lab                            │   ✅ TRAINED (Phase 2)
+│  TensorRT deployment on Jetson                   │   PLANNED (Phase 4)
 │  Outputs 16 joint position targets              │
 └────────────────────┬────────────────────────────┘
                      │
@@ -50,62 +114,63 @@ Voice / Text command: "Walk to the red cup"
 └─────────────────────────────────────────────────┘
 ```
 
+---
+
 ## State of Sim2Real
 
-<!-- TODO: Add videos of Jetson-modified robot walking -->
-<!-- Placeholder: sim2real videos will be added after Phase 4 (hardware build) -->
-
-Original sim2real results (Pi Zero version):
+Original sim2real results from the Pi Zero version (reference, not this fork):
 
 https://github.com/user-attachments/assets/58721d0f-2f95-4088-8900-a5d02f41bba7
 
 https://github.com/user-attachments/assets/4129974a-9d97-4651-9474-c078043bb182
 
-## Task Plan
+Sim2real videos for the Jetson edition will be added after Phase 4 (hardware build).
 
-The full modification is documented in a 5-phase, 28-task plan: **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
-
-| Phase | Description | Status |
-|---|---|---|
-| Phase 1 | Simulation model update (mass/inertia for Jetson in trunk) | Pending |
-| Phase 2 | Isaac Lab setup + multi-algorithm RL training on DGX Spark | Pending |
-| Phase 3 | CAD redesign of trunk/body parts | Pending |
-| Phase 4 | Hardware build, assembly, real-robot walking | Pending |
-| Phase 5 | Cosmos Reason2 VLM integration for autonomous behavior | Pending |
+---
 
 ## NVIDIA Stack
 
-| Tool | Purpose |
-|---|---|
-| [Isaac Sim](https://docs.isaacsim.omniverse.nvidia.com) | Physics simulation (PhysX 5, GPU-accelerated) |
-| [Isaac Lab](https://isaac-sim.github.io/IsaacLab) | RL training framework |
-| [RSL-RL](https://github.com/leggedrobotics/rsl_rl) | PPO training + built-in ONNX export (primary) |
-| [SKRL](https://github.com/Toni-SM/skrl) | AMP (Adversarial Motion Priors) — optional stretch goal |
-| [TensorRT](https://developer.nvidia.com/tensorrt) | On-device policy inference (<1 ms) |
-| [Cosmos Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) | Physical AI reasoning VLM |
-| [DGX Spark](https://www.nvidia.com/en-us/products/workstations/dgx-spark/) | Training hardware (Grace Blackwell) |
+| Tool | Purpose | Status in This Fork |
+|---|---|---|
+| [Isaac Sim](https://docs.isaacsim.omniverse.nvidia.com) | Physics simulation (PhysX 5, GPU-accelerated) | ✅ In use |
+| [Isaac Lab](https://isaac-sim.github.io/IsaacLab) | RL training framework | ✅ In use |
+| [RSL-RL](https://github.com/leggedrobotics/rsl_rl) | PPO training + built-in ONNX export | ✅ In use (PPO) |
+| [SKRL](https://github.com/Toni-SM/skrl) | AMP (Adversarial Motion Priors) | 🟡 Planned (optional stretch goal) |
+| [TensorRT](https://developer.nvidia.com/tensorrt) | On-device policy inference | 🟡 Planned (Phase 4) |
+| [Cosmos Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) | Physical AI reasoning VLM | 🟡 Planned (Phase 5) |
+| [DGX Spark](https://www.nvidia.com/en-us/products/workstations/dgx-spark/) | Training hardware (Grace Blackwell) | ✅ In use |
+
+---
 
 ## RL Algorithms
 
-PPO is the primary algorithm. AMP is an optional stretch goal that requires a separate `DirectRLEnv` implementation.
+PPO is the primary algorithm and is currently shipped. AMP is an optional stretch goal that requires a separate `DirectRLEnv` implementation and is not planned for the initial release.
 
-| Algorithm | Framework | Type | Priority | Why |
+| Algorithm | Framework | Type | Status | Why |
 |---|---|---|---|---|
-| **PPO** | RSL-RL | On-policy | Primary | Proven baseline for locomotion. All Isaac Lab locomotion examples use it. Built-in ONNX export for Jetson. |
-| **AMP** | SKRL | On-policy + imitation | Optional stretch goal | Adversarial Motion Priors for natural-looking gaits. Requires separate DirectRLEnv + reference motion data. |
+| **PPO** | RSL-RL | On-policy | ✅ Shipped | Proven baseline for locomotion. All Isaac Lab locomotion examples use it. Built-in ONNX export for Jetson. |
+| **AMP** | SKRL | On-policy + imitation | 🟡 Optional future work | Adversarial Motion Priors for natural-looking gaits. Requires separate DirectRLEnv + reference motion data. |
 
-**Note:** The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP`. Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts with no existing locomotion examples.
-
-<!-- TODO: Add algorithm comparison results table after Phase 2 -->
-<!-- See docs/jetson-mod/algorithm_comparison.md when available -->
+> **Note:** The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP`. Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts with no existing locomotion examples in the Isaac Lab ecosystem.
 
 ### Reference Motion Generation
 
-For AMP (imitation learning), reference walking motions are generated using [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator).
+For AMP (if pursued in the future), reference walking motions are generated using [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator).
 
 ### Actuator Identification
 
 Motor parameters identified using BAM system identification. STS3250 parameters from [kscalelabs/sysid](https://github.com/kscalelabs/sysid) in `experiments/v2/params_sts3250_id008.json`. Legacy STS3215 parameters (Rhoban's [BAM](https://github.com/Rhoban/bam)) in `experiments/v2/params_m6.json`.
+
+---
+
+## Engineering Rigor
+
+- **Test suite:** 743 lines of pytest tests across 4 files covering model integrity, mass/inertia validation, USD conversion, and Isaac Lab environment correctness ([`tests/`](tests/))
+- **Phase markers:** Tests are tagged by phase (`pytest -m "phase1"`, `pytest -m "phase2"`, etc.)
+- **Training monitoring:** TensorBoard event log parser ([`scripts/monitor_training.py`](scripts/monitor_training.py))
+- **MJCF→USD pipeline:** Headless converter using Isaac Lab's MjcfConverter API ([`scripts/convert_mjcf_to_usd.py`](scripts/convert_mjcf_to_usd.py))
+
+---
 
 ## Hardware
 
@@ -113,7 +178,7 @@ Motor parameters identified using BAM system identification. STS3250 parameters 
 
 Original BOM (Pi Zero version): https://docs.google.com/spreadsheets/d/1gq4iWWHEJVgAA_eemkTEsshXqrYlFxXAPwO515KpCJc/edit?usp=sharing
 
-Additional parts for Jetson modification:
+Additional parts for Jetson modification (planned for Phase 4):
 
 | Item | Qty | Est. Cost |
 |---|---|---|
@@ -132,9 +197,9 @@ Additional parts for Jetson modification:
 
 Original CAD: https://cad.onshape.com/documents/64074dfcfa379b37d8a47762/w/3650ab4221e215a4f65eb7fe/e/0505c262d882183a25049d05
 
-Modified parts (Phase 3): `trunk_top`, `trunk_bottom`, `body_back`, `body_middle_top/bottom`, `battery_pack_lid`
+Modified parts (planned for Phase 3): `trunk_top`, `trunk_bottom`, `body_back`, `body_middle_top/bottom`, `battery_pack_lid`
 
-<!-- TODO: Link to modified CAD/STL files after Phase 3 -->
+---
 
 ## Build Guide
 
@@ -146,99 +211,100 @@ Modified parts (Phase 3): `trunk_top`, `trunk_bottom`, `body_back`, `body_middle
 
 ### Jetson Modification Build
 
-<!-- TODO: Add Jetson-specific build guide after Phase 4 -->
+The Jetson-specific build guide will be added after Phase 4 (hardware assembly). See [docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md) — Phase 3 (CAD) and Phase 4 (assembly) for the planned scope.
 
-See [docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md) — Phase 3 (CAD) and Phase 4 (assembly) for details.
+---
 
-## Deployment
-
-### On-Robot Runtime (Jetson)
-
-<!-- TODO: Add runtime setup instructions after Phase 4 -->
-
-The Jetson runtime code lives in `jetson_runtime/`:
-- `trt_infer.py` — TensorRT locomotion policy inference
-- `cosmos_commander.py` — Cosmos Reason2 VLM interface
-- `autonomous_walk.py` — Main control loop (Cosmos + locomotion)
-- `walk_controller.py` — Manual walk control (keyboard/gamepad)
-- `prompts/` — Cosmos prompt library for different behaviors
-
-```bash
-# Start Cosmos Reason2 server
-docker run --rm -it --runtime=nvidia --network host --shm-size=4g \
-  ghcr.io/nvidia-ai-iot/vllm:latest-jetson-orin \
-  vllm serve "embedl/Cosmos-Reason2-2B-W4A16-Edge2" \
-    --max-model-len 2048 --gpu-memory-utilization 0.70 --max-num-seqs 1
-
-# Run autonomous walking
-python jetson_runtime/autonomous_walk.py "Walk to the door"
-
-# Run manual walking (keyboard control)
-python jetson_runtime/walk_controller.py
-```
-
-### Legacy Runtime (Pi Zero)
-
-The original Pi Zero runtime is in a separate repo: https://github.com/apirrone/Open_Duck_Mini_Runtime
-
-### Training Your Own Policies
+## Training Your Own Policies
 
 Training uses Isaac Lab on a DGX Spark (or any NVIDIA GPU with Isaac Sim installed):
 
 ```bash
-# PPO via RSL-RL (primary)
-./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+# PPO via RSL-RL (primary, currently shipped)
+./isaaclab.sh -p scripts/train_ppo.py \
     --task Isaac-Velocity-Rough-OpenDuck-v0 \
     --headless --video --video_length 200 --video_interval 5000
 
-# AMP via SKRL (optional — requires separate DirectRLEnv implementation)
-./isaaclab.sh -p scripts/reinforcement_learning/skrl/train.py \
-    --task Isaac-Velocity-Rough-OpenDuck-AMP-v0 \
-    --algorithm AMP --headless --video --video_length 200 --video_interval 5000
+# Evaluate a trained checkpoint
+./isaaclab.sh -p scripts/play_policy.py \
+    --task Isaac-Velocity-Rough-OpenDuck-Play-v0 \
+    --num_envs 50 \
+    --checkpoint exported_policies/v2_bdx_imitation_ppo/model_2999.pt \
+    --headless --video --video_length 500
 ```
 
 See [docs/sim2real.md](docs/sim2real.md) for the original MuJoCo-based sim2real guide (for reference).
+
+---
+
+## Planned: Jetson Runtime (Phase 4-5)
+
+Once Phase 4 (hardware build + TensorRT deployment) and Phase 5 (Cosmos Reason2 integration) are complete, the on-robot runtime will live in `jetson_runtime/`. The planned components are:
+
+- `trt_infer.py` — TensorRT locomotion policy inference (Phase 4)
+- `walk_controller.py` — Manual walk control via keyboard/gamepad (Phase 4)
+- `cosmos_commander.py` — Cosmos Reason2 VLM interface (Phase 5)
+- `autonomous_walk.py` — Main control loop combining VLM + locomotion (Phase 5)
+- `prompts/` — Cosmos prompt library for different behaviors (Phase 5)
+
+The legacy Pi Zero runtime (for reference) lives in a separate repo: https://github.com/apirrone/Open_Duck_Mini_Runtime
+
+---
 
 ## Repository Structure
 
 ```
 Open_Duck_Mini_Jetson/
-├── mini_bdx/                         # Robot models and Python package
-│   ├── robots/open_duck_mini_v2/     # MJCF, URDF, USD, STL meshes
-│   └── mini_bdx/utils/               # MuJoCo utilities, joint mapping, action scaling
-├── isaac_lab_env/                    # Isaac Lab RL environment (Phase 2)
-│   └── open_duck_mini_v2/            # Env config, training configs, evaluation
-├── jetson_runtime/                   # Jetson deployment code (Phase 4-5)
-│   ├── trt_infer.py                  # TensorRT inference
-│   ├── cosmos_commander.py           # Cosmos Reason2 interface
-│   ├── autonomous_walk.py            # VLM + locomotion control loop
-│   └── prompts/                      # Cosmos prompt library
-├── exported_policies/                # Trained ONNX + TensorRT policies (Phase 2)
-├── experiments/                      # Legacy MuJoCo experiment scripts
-├── print/                            # 3D printable STL files
+├── mini_bdx/                              # Robot models (MJCF, URDF, USD, STL)
+│   ├── robots/open_duck_mini_v2/          # Robot definition files
+│   └── mini_bdx/utils/                    # MuJoCo utilities, joint mapping
+├── isaac_lab_env/                         # Isaac Lab RL environment ✅
+│   └── open_duck_mini_v2/
+│       ├── env_cfg.py                     # Locomotion environment config
+│       ├── robot_cfg.py                   # Articulation + actuator config
+│       ├── imitation_reward.py            # BDX-style composite reward
+│       └── agents/rsl_rl_ppo_cfg.py       # PPO hyperparameters
+├── scripts/                               # Training + utility scripts ✅
+│   ├── convert_mjcf_to_usd.py             # MJCF → USD pipeline
+│   ├── train_ppo.py                       # PPO training entry point
+│   ├── play_policy.py                     # Policy evaluation
+│   └── monitor_training.py                # TensorBoard log parser
+├── exported_policies/                     # Trained policies ✅
+│   ├── v1_imitation_ppo/                  # First reward iteration
+│   └── v2_bdx_imitation_ppo/              # BDX-aligned reward (current best)
+│       ├── model_2999.pt                  # Final checkpoint
+│       └── README.md                      # Detailed training report
+├── showcase_videos/                       # Training progression videos ✅
+├── tests/                                 # Pytest suite ✅
+├── experiments/                           # Legacy MuJoCo experiment scripts
+├── print/                                 # 3D printable STL files
 ├── docs/
-│   ├── jetson-mod/                   # Jetson modification docs
-│   │   └── task_plan.md              # Full 5-phase, 28-task plan
+│   ├── jetson-mod/
+│   │   ├── task_plan.md                   # 5-phase, 28-task plan
+│   │   └── mass_inertia_calculations.md   # Phase 1 physics math
 │   ├── assembly_guide.md
 │   ├── sim2real.md
 │   └── print_guide.md
-├── tests/                            # Automated test suite (Phase 1-5)
-├── CLAUDE.md                         # Claude Code context
-└── .cursor/rules/                    # Cursor IDE context
+└── jetson_runtime/                        # Planned (Phases 4–5, not yet implemented)
 ```
+
+---
 
 ## Community
 
-This fork builds on the amazing work of the Open Duck Mini community.
+This fork builds on the work of the Open Duck Mini community.
 
 ![duck_collage](https://github.com/user-attachments/assets/e240c06e-769f-4c87-b65f-189a442cf1e9)
 
 Join the discord: https://discord.gg/UtJZsgfQGe
 
+---
+
 ## Acknowledgments
 
-- [Antoine Pirrone](https://github.com/apirrone) and the Open Duck Mini community for the original robot design
+- [Antoine Pirrone](https://github.com/apirrone) and the Open Duck Mini community for the original robot design and the open-source foundation this fork builds on
 - [HuggingFace](https://huggingface.co/) and [Pollen Robotics](https://www.pollen-robotics.com/) for sponsoring the original project
 - [NVIDIA](https://developer.nvidia.com/isaac) for Isaac Sim, Isaac Lab, Cosmos, and the Jetson platform
-- [Rhoban](https://github.com/Rhoban) for the BAM actuator identification tool
-- [Disney Research](https://la.disneyresearch.com/) for the original BDX droid design and paper
+- [Rhoban](https://github.com/Rhoban) and [kscalelabs/sysid](https://github.com/kscalelabs/sysid) for BAM actuator identification
+- [Disney Research](https://la.disneyresearch.com/) for the BDX droid design and the BDX paper that informed the v2 reward design
+- [BDX-R Isaac Lab](https://github.com/KaydenKnapik/BDX-R-Isaaclab) for prior art in BDX-style Isaac Lab environments
