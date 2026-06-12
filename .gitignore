@@ -9,3 +9,4 @@ experiments/RL/new/ppo/
 *.zip
 *.txt
 *.onnx
+.training_runs/

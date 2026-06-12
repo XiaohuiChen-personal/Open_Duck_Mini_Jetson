@@ -3,7 +3,7 @@
 
 """BDX-style composite imitation reward for Open Duck Mini v2.
 
-v2 reward design aligned with the Disney BDX paper ("Design and Control of a
+v3 reward design aligned with the Disney BDX paper ("Design and Control of a
 Bipedal Robotic Character", Jan 2025) and Open Duck Playground.
 
 Uses polynomial gait library (240 motions, degree-15, 0.54s period) to track:
@@ -15,6 +15,21 @@ Uses polynomial gait library (240 motions, degree-15, 0.54s period) to track:
 Key difference from v1: raw quadratic `-||q - q_ref||^2 * 15.0` instead of
 exponential `exp(-2*error) * 10.0`. The raw quadratic has linear gradient
 (no saturation), demanding precise joint tracking.
+
+v3 fixes (vs the v2 run archived in exported_policies/v2_bdx_imitation_ppo):
+1. PHASE BUG FIX: the polynomials are fit over NORMALIZED phase t in [0, 1]
+   (generator fit_poly.py: `X = np.linspace(0, 1, ...)`), but v2 evaluated
+   them at phase in SECONDS in [0, 0.54) — replaying only the first 54% of
+   the gait cycle with a discontinuous reference jump at every wrap, which
+   produced an asymmetric limping reference (left stance 78% vs right 52%).
+   Now uses the upstream Playground convention: an integer control-step
+   counter with t = (i % nb_steps_in_period) / nb_steps_in_period.
+2. Reference joint positions are clamped to the robot's soft joint limits:
+   the library's knee swing peaks (1.78/1.98 rad) exceed the model's
+   +/-1.5708 rad limit, so the unclamped reference is physically unreachable.
+3. The composite reward is gated to zero for near-zero velocity commands
+   (||cmd|| <= 0.01), matching upstream — the library has no standing gait,
+   so standing envs must not be rewarded for marching in place.
 """
 
 import math
@@ -90,12 +105,16 @@ class ImitationReward(ManagerTermBase):
         velocities = []
         all_coeffs = []  # (num_motions, 40_dims, 16_poly_coeffs)
         periods = []
+        nb_steps = []
 
         for key in sorted(raw_data.keys()):
             entry = raw_data[key]
             parts = key.split("_")
             velocities.append([float(parts[0]), float(parts[1]), float(parts[2])])
             periods.append(entry["period"])
+            # Control steps per gait cycle (27 = 0.54 s at 50 Hz). The
+            # polynomial domain is normalized phase t = i / nb_steps in [0, 1).
+            nb_steps.append(int(entry["nb_steps_in_period"]))
 
             motion_coeffs = []
             for dim_idx in range(40):
@@ -111,16 +130,18 @@ class ImitationReward(ManagerTermBase):
         self._periods = torch.tensor(
             periods, dtype=torch.float32, device=env.device
         )  # (240,)
+        self._nb_steps = torch.tensor(
+            nb_steps, dtype=torch.long, device=env.device
+        )  # (240,)
 
-        # Per-env state
-        self._phase = torch.zeros(
-            env.num_envs, dtype=torch.float32, device=env.device
+        # Per-env state: integer control-step counter within the gait cycle,
+        # matching upstream Playground's `imitation_i` (joystick.py).
+        self._step_idx = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.device
         )
         self._current_motion_idx = torch.zeros(
             env.num_envs, dtype=torch.long, device=env.device
         )
-
-        self._dt = env.step_dt
 
         # Joint order mapping — built lazily
         self._pg_leg_indices: torch.Tensor | None = None
@@ -154,12 +175,20 @@ class ImitationReward(ManagerTermBase):
         foot_ids, _ = contact_sensor.find_bodies(FOOT_BODY_NAMES)
         self._foot_body_ids = foot_ids
 
+        # Soft joint limits for the leg joints (identical across envs) — the
+        # reference is clamped to these so it never demands unreachable poses.
+        leg_limits = env.scene["robot"].data.soft_joint_pos_limits[
+            0, self._il_leg_indices, :
+        ]
+        self._leg_pos_lower = leg_limits[:, 0].clone()  # (10,)
+        self._leg_pos_upper = leg_limits[:, 1].clone()  # (10,)
+
     def reset(self, env_ids=None):
         """Reset gait phase on episode termination."""
         if env_ids is None:
-            self._phase.zero_()
+            self._step_idx.zero_()
         else:
-            self._phase[env_ids] = 0.0
+            self._step_idx[env_ids] = 0
 
     def __call__(
         self,
@@ -175,11 +204,13 @@ class ImitationReward(ManagerTermBase):
         dists = torch.sum(diffs**2, dim=-1)
         self._current_motion_idx = torch.argmin(dists, dim=-1)
 
-        # 2. Evaluate ALL 40 polynomial dimensions at current phase
-        periods = self._periods[self._current_motion_idx]
+        # 2. Evaluate ALL 40 polynomial dimensions at the current NORMALIZED
+        # phase t = (i % nb_steps) / nb_steps in [0, 1) — the domain the
+        # polynomials were fit over (upstream poly_reference_motion.py).
+        nb_steps = self._nb_steps[self._current_motion_idx]  # (N,)
         coeffs = self._coefficients[self._current_motion_idx]  # (N, 40, 16)
 
-        t = self._phase
+        t = (self._step_idx % nb_steps).float() / nb_steps.float()
         result = coeffs[:, :, 15]  # (N, 40)
         for i in range(14, -1, -1):
             result = result * t.unsqueeze(-1) + coeffs[:, :, i]
@@ -195,7 +226,13 @@ class ImitationReward(ManagerTermBase):
         # Term 1: Joint position tracking (BDX weight 15.0)
         # Raw quadratic: -||q_leg - q_ref_leg||^2
         # ================================================================
+        # Clamp the reference to the robot's soft joint limits — the library's
+        # knee swing peaks exceed the model's limits and would otherwise demand
+        # physically unreachable poses (a permanent error floor).
         ref_leg_pos = ref_joint_pos[:, self._pg_leg_indices]
+        ref_leg_pos = torch.clamp(
+            ref_leg_pos, self._leg_pos_lower, self._leg_pos_upper
+        )
         actual_leg_pos = env.scene["robot"].data.joint_pos[:, self._il_leg_indices]
         joint_pos_error = torch.sum((actual_leg_pos - ref_leg_pos) ** 2, dim=-1)
         r_joint_pos = -joint_pos_error  # negative, minimized by tracking
@@ -244,11 +281,13 @@ class ImitationReward(ManagerTermBase):
             + self.W_CONTACTS * r_contacts
         )
 
-        # Advance phase
-        self._phase.add_(self._dt)
-        over = self._phase >= periods
-        if over.any():
-            self._phase[over] -= periods[over]
+        # Gate to zero for near-zero commands (upstream parity): the library
+        # has no standing gait, so standing envs get no imitation signal.
+        cmd_active = (torch.norm(vel_cmd, dim=-1) > 0.01).float()
+        reward = reward * cmd_active
+
+        # Advance the gait-cycle step counter (one increment per control step)
+        self._step_idx = (self._step_idx + 1) % nb_steps
 
         return reward
 
@@ -259,9 +298,10 @@ def gait_phase_observation(env: ManagerBasedRLEnv) -> torch.Tensor:
     if instance is None:
         return torch.zeros(env.num_envs, 2, dtype=torch.float32, device=env.device)
 
-    phase = instance._phase
-    periods = instance._periods[instance._current_motion_idx]
-    phase_norm = 2.0 * math.pi * phase / periods.clamp(min=1e-6)
+    nb_steps = instance._nb_steps[instance._current_motion_idx].float()
+    phase_norm = (
+        2.0 * math.pi * instance._step_idx.float() / nb_steps.clamp(min=1.0)
+    )
 
     return torch.stack(
         [torch.cos(phase_norm), torch.sin(phase_norm)], dim=-1

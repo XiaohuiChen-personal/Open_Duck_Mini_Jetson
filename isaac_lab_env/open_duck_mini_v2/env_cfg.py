@@ -3,23 +3,34 @@
 
 """Isaac Lab locomotion environment for the Open Duck Mini v2.
 
-Reward design v2 — BDX-aligned composite imitation reward.
+Reward design v3 — BDX-aligned composite imitation reward, corrected.
 
 Based on the Disney BDX paper ("Design and Control of a Bipedal Robotic
 Character", Jan 2025) and the Open Duck Playground reward structure.
 
-v2 changes from v1:
-- Replaced exp kernel with raw quadratic for joint position tracking
-  (BDX weight 15.0 vs v1's exp(-2*L2)*10.0)
-- Added joint velocity tracking from polynomial dims 16-31
-- Added base velocity tracking from polynomial dims 34-36
-- Added foot contact matching from polynomial dims 32-33
-- Re-added alive bonus (+10.0) — safe with strong imitation preventing crouch
-- Increased action_rate from -0.005 to -1.0 (200x, matching BDX/Playground)
-- Added action acceleration penalty for second-order smoothness
-- Increased flat_orientation to -2.0
-- Removed base_height, lin_vel_z, feet_air_time, track_lin_vel_xy
-  (all handled by comprehensive BDX-style imitation)
+v3 changes from v2 (the run archived in exported_policies/v2_bdx_imitation_ppo):
+- PHASE BUG FIX in imitation_reward.py: the polynomial reference is now
+  evaluated at normalized phase t in [0, 1) instead of seconds in [0, 0.54)
+  — v2 imitated only the first 54% of the gait cycle (an asymmetric limp).
+  See imitation_reward.py module docstring for the full story.
+- Reference joint positions clamped to soft joint limits (knee swing peaks
+  in the library exceed the model's limits).
+- Imitation reward gated to zero for near-zero commands (upstream parity).
+- Command ranges clipped to the reference-motion grid hull: the library
+  covers vx in [-0.148, 0.222], vy in [-0.111, 0.111] — commanding beyond
+  it silently saturates the nearest-motion match.
+- track_lin_vel_xy_exp is now declared EXPLICITLY: v2's docstring claimed it
+  was removed, but the silently-inherited base term remained active during
+  the v2 run (confirmed in the archived env.yaml). It is kept deliberately:
+  it tracks the commanded velocity while the imitation base-vel term tracks
+  the reference gait's instantaneous velocity profile.
+
+v2 changes from v1 (kept):
+- Raw quadratic joint tracking (BDX weight 15.0) instead of exp(-2*L2)*10.0
+- Joint velocity / base velocity / foot contact terms from polynomial
+  dims 16-31 / 34-36 / 32-33
+- Alive bonus +10.0; action_rate -1.0; flat_orientation -2.0
+- Removed base_height, lin_vel_z, feet_air_time
 """
 
 from isaaclab.envs import ViewerCfg
@@ -44,14 +55,15 @@ from isaac_lab_env.open_duck_mini_v2.robot_cfg import OPEN_DUCK_MINI_V2_CFG
 
 @configclass
 class DuckRewards(RewardsCfg):
-    """Reward function v2 — BDX-aligned composite imitation.
+    """Reward function v3 — BDX-aligned composite imitation, corrected.
 
-    12 terms: 3 positive + 9 negative (imitation sub-terms are net-negative
-    raw quadratic, offset by alive bonus). Follows the Disney BDX paper.
+    9 terms: 4 positive + 5 penalties (the imitation composite is itself
+    net-negative raw quadratic, offset by the alive bonus). Follows the
+    Disney BDX paper (Table I) and the Open Duck Playground weights.
     """
 
     # ====================================================================
-    # POSITIVE REWARDS (3 terms)
+    # POSITIVE REWARDS (4 terms)
     # ====================================================================
 
     # Alive bonus: +10.0 per step. BDX uses +20.0.
@@ -75,8 +87,19 @@ class DuckRewards(RewardsCfg):
         params={"command_name": "base_velocity", "std": 0.5},
     )
 
+    # Commanded-velocity tracking. Declared explicitly in v3: this base-class
+    # term was silently active during the v2 run (same func/weight/std as the
+    # inherited default) and is kept deliberately — it tracks the COMMAND
+    # while the imitation base-vel sub-term tracks the reference gait's
+    # instantaneous (waddling) velocity profile. Playground keeps both too.
+    track_lin_vel_xy_exp = RewTerm(
+        func=mdp.track_lin_vel_xy_exp,
+        weight=1.0,
+        params={"command_name": "base_velocity", "std": 0.5},
+    )
+
     # ====================================================================
-    # NEGATIVE REWARDS — penalties (6 terms)
+    # NEGATIVE REWARDS — penalties (5 terms)
     # ====================================================================
 
     # Termination penalty.
@@ -182,9 +205,13 @@ class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
 
-        # --- Commands: conservative for 42cm duck ---
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.15, 0.3)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.15, 0.15)
+        # --- Commands: clipped to the reference-motion grid hull ---
+        # The polynomial library covers vx in [-0.148, 0.222] and
+        # vy in [-0.111, 0.111]; commands beyond that saturate the
+        # nearest-motion match (the gait can't follow them anyway).
+        # ang_vel_z +/-0.5 is well inside the library's +/-1.222.
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.148, 0.222)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.111, 0.111)
         self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
 
         # --- Action scale: 0.25 matching Open Duck Playground ---

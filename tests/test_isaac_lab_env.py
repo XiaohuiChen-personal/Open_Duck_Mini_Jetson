@@ -117,9 +117,13 @@ class TestEnvCfgModule:
         with open(path) as f:
             content = f.read()
         assert "ImitationReward" in content, "Missing imitation reward"
-        assert "weight=10.0" in content, "Imitation reward should be weight=10.0"
-        # NO alive bonus (causes crouching — lesson from Run 2)
-        assert "is_alive" not in content, "Alive bonus must NOT be present"
+        # v3 (BDX-aligned): composite reward with sub-weights baked into the
+        # class, registered at RewTerm weight=1.0.
+        assert "weight=1.0" in content, "Imitation composite should be weight=1.0"
+        # Alive bonus IS present in v2/v3 (+10.0, BDX uses +20.0) — safe with
+        # the strong imitation signal preventing the v1-era crouching exploit.
+        assert "is_alive" in content, "Alive bonus must be present (BDX-style)"
+        assert "weight=10.0" in content, "Alive bonus should be weight=10.0"
 
     def test_env_cfg_has_core_rewards(self):
         """Environment must include core reward terms."""
@@ -128,10 +132,10 @@ class TestEnvCfgModule:
         )
         with open(path) as f:
             content = f.read()
-        # Positive rewards
-        assert "track_lin_vel_xy_yaw_frame_exp" in content
+        # Positive rewards (v3: explicit command tracking + yaw tracking;
+        # feet_air_time/base_height are handled by the imitation composite)
+        assert "track_lin_vel_xy_exp" in content
         assert "track_ang_vel_z_world_exp" in content
-        assert "feet_air_time_positive_biped" in content
         # Penalties
         assert "is_terminated" in content
         assert "flat_orientation_l2" in content
@@ -159,9 +163,17 @@ class TestEnvCfgModule:
         )
         with open(path) as f:
             content = f.read()
-        assert "foot_assembly" in content
-        assert "foot_assembly_2" in content
+        # trunk_assembly: termination contact body in env_cfg
         assert "trunk_assembly" in content
+        # Foot bodies moved to imitation_reward.py in v2 (contact matching
+        # replaced the feet_air_time term)
+        reward_path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "imitation_reward.py"
+        )
+        with open(reward_path) as f:
+            reward_content = f.read()
+        assert "foot_assembly" in reward_content
+        assert "foot_assembly_2" in reward_content
 
     def test_env_cfg_simulation_timing(self):
         """Simulation must use 200 Hz physics / 50 Hz policy."""
@@ -182,9 +194,9 @@ class TestEnvCfgModule:
             content = f.read()
         # Should NOT have the old wide ranges for linear velocity
         assert "(-0.5, 1.0)" not in content, "lin_vel_x range too wide"
-        # Should have conservative ranges
-        assert "(-0.15, 0.3)" in content, "lin_vel_x should be (-0.15, 0.3)"
-        assert "(-0.15, 0.15)" in content, "lin_vel_y should be (-0.15, 0.15)"
+        # v3: ranges clipped to the reference-motion grid hull
+        assert "(-0.148, 0.222)" in content, "lin_vel_x should be (-0.148, 0.222)"
+        assert "(-0.111, 0.111)" in content, "lin_vel_y should be (-0.111, 0.111)"
         assert "(-0.5, 0.5)" in content, "ang_vel_z should be (-0.5, 0.5)"
 
     def test_env_cfg_action_scale(self):
@@ -204,7 +216,9 @@ class TestEnvCfgModule:
         )
         with open(path) as f:
             content = f.read()
-        assert '"std": 0.25' in content, "Lin vel tracking std should be 0.25"
+        # v3: explicit track_lin_vel_xy_exp uses the base-class std of 0.5
+        # (same value the archived v2 run trained with via inheritance)
+        assert '"std": 0.5' in content, "Lin vel tracking std should be 0.5"
 
     def test_env_cfg_contact_sensor_path(self):
         """Contact sensor must use Robot/base/* path for MJCF-converted USD."""
@@ -237,6 +251,35 @@ class TestImitationRewardModule:
         assert "class ImitationReward" in content
         assert "ManagerTermBase" in content
         assert "def gait_phase_observation" in content
+
+    def test_imitation_reward_v3_phase_fix(self):
+        """v3 regression guard: the polynomial reference must be evaluated at
+        NORMALIZED phase via an integer step counter, never at seconds.
+
+        The polynomials are fit over t in [0, 1] (generator fit_poly.py uses
+        np.linspace(0, 1, ...)); evaluating at phase-in-seconds replays only
+        54% of the gait cycle (the v2 bug — produced a limping policy).
+        """
+        path = os.path.join(
+            REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "imitation_reward.py"
+        )
+        with open(path) as f:
+            content = f.read()
+        # Integer step counter + nb_steps_in_period normalization (upstream
+        # Playground convention: t = (i % nb_steps) / nb_steps)
+        assert "nb_steps_in_period" in content, \
+            "Must read nb_steps_in_period from the gait library"
+        assert "_step_idx" in content, \
+            "Must use an integer control-step counter for the gait phase"
+        # The seconds-based phase accumulator from v2 must be gone
+        assert "self._phase.add_(self._dt)" not in content, \
+            "v2 seconds-based phase advance must not return (phase bug)"
+        # v3 reference clamping to soft joint limits
+        assert "soft_joint_pos_limits" in content, \
+            "Reference must be clamped to the robot's soft joint limits"
+        # v3 zero-command gating (upstream parity)
+        assert "cmd_active" in content, \
+            "Imitation reward must be gated off for near-zero commands"
 
     def test_imitation_reward_has_joint_mapping(self):
         """Must define Playground joint order and leg joint names."""
