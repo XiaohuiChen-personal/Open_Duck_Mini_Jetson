@@ -32,8 +32,18 @@ if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
     exit 1
 fi
 
+# Dispatch: AMP/skrl runs (identified by --algorithm in the args) go through
+# train_amp.py; everything else uses the RSL-RL PPO wrapper.
+TRAIN_SCRIPT="$REPO_DIR/scripts/train_ppo.py"
+for arg in "$@"; do
+    if [[ "$arg" == "--algorithm" ]]; then
+        TRAIN_SCRIPT="$REPO_DIR/scripts/train_amp.py"
+        break
+    fi
+done
+
 cd "$ISAACLAB_DIR"
-setsid nohup ./isaaclab.sh -p "$REPO_DIR/scripts/train_ppo.py" "$@" \
+setsid nohup ./isaaclab.sh -p "$TRAIN_SCRIPT" "$@" \
     < /dev/null > "$LOG" 2>&1 &
 PID=$!
 echo "$PID" > "$PIDFILE"

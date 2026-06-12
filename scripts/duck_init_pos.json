@@ -1,0 +1,39 @@
+{
+  "description": "Default joint position offsets (radians) for the Open Duck Mini v2 action post-processing: target = init_pos + action_scale * action. Values are the standing pose from isaac_lab_env/open_duck_mini_v2/robot_cfg.py (ArticulationCfg.init_state.joint_pos). joint_order is the Isaac Lab / USD articulation joint order produced by the MJCF-to-USD conversion (breadth-first, interleaved) and is the order of the policy's 16 action outputs and of the joint_pos/joint_vel observation blocks.",
+  "joint_order": [
+    "left_hip_yaw",
+    "neck_pitch",
+    "right_hip_yaw",
+    "left_hip_roll",
+    "head_pitch",
+    "right_hip_roll",
+    "left_hip_pitch",
+    "head_yaw",
+    "right_hip_pitch",
+    "left_knee",
+    "head_roll",
+    "right_knee",
+    "left_ankle",
+    "left_antenna",
+    "right_antenna",
+    "right_ankle"
+  ],
+  "init_pos_rad": {
+    "left_hip_yaw": 0.002,
+    "neck_pitch": 0.0,
+    "right_hip_yaw": -0.003,
+    "left_hip_roll": 0.053,
+    "head_pitch": 0.0,
+    "right_hip_roll": -0.065,
+    "left_hip_pitch": -0.63,
+    "head_yaw": 0.0,
+    "right_hip_pitch": 0.635,
+    "left_knee": 1.368,
+    "head_roll": 0.0,
+    "right_knee": 1.379,
+    "left_ankle": -0.784,
+    "left_antenna": 0.0,
+    "right_antenna": 0.0,
+    "right_ankle": -0.796
+  }
+}
