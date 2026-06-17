@@ -1202,6 +1202,18 @@ def apply_condition(base_env, command_name: str, cond: tuple[float, float, float
     all envs — so every env gets exactly ``cond`` for the whole window.
     """
     if not hasattr(base_env, "command_manager"):
+        # Direct-workflow hook (DuckAmpEnv): commands live in env._commands
+        # and are resampled from cfg.command_*_range. Pin the ranges to the
+        # condition and disable resampling churn; the env's _reset_idx /
+        # _resample_commands then deal exactly `cond` to every env.
+        if hasattr(base_env, "_commands") and hasattr(base_env.cfg, "command_vx_range"):
+            base_env.cfg.command_vx_range = (cond[0], cond[0])
+            base_env.cfg.command_vy_range = (cond[1], cond[1])
+            base_env.cfg.command_wz_range = (cond[2], cond[2])
+            base_env._commands[:, 0] = cond[0]
+            base_env._commands[:, 1] = cond[1]
+            base_env._commands[:, 2] = cond[2]
+            return
         raise NotImplementedError(
             "Evaluation requires a command manager with a velocity command term "
             f"named '{command_name}' (direct-workflow envs need their own hook)."

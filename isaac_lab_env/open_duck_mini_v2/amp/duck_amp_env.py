@@ -46,6 +46,7 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.envs import DirectRLEnv
+from isaaclab.sensors import ContactSensor
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from isaaclab.utils.math import quat_apply, quat_apply_inverse, quat_inv, quat_mul, yaw_quat
 
@@ -124,11 +125,27 @@ class DuckAmpEnv(DirectRLEnv):
 
         # add articulation to scene
         self.scene.articulations["robot"] = self.robot
+        # contact sensor — inert for training; gives evaluate_policies.py the
+        # same contact-based gait metrics as the manager-based PPO envs
+        self.scene.sensors["contact_forces"] = ContactSensor(self.cfg.contact_sensor)
         # add lights
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
     def _pre_physics_step(self, actions: torch.Tensor):
+        # Bound raw actions BEFORE storing them (run-12 fix for run-11's
+        # divergence). Root cause: _apply_action clamps PD targets to soft
+        # limits, which decouples raw actions from robot motion — an unbounded
+        # GaussianMixin mean could emit ever-larger thrashing actions that all
+        # clamp to the same standing pose, with no physical feedback (no fall)
+        # to correct them, and the soft action-rate penalty alone could not
+        # contain the positive-feedback blowup (reward -> -6766). Clipping the
+        # raw action to +/-action_clip restores a bounded action space:
+        # +/-5.0 * scale 0.25 = +/-1.25 rad reach, which still covers the full
+        # reference gait ROM (knee/ankle swings ~0.6-0.7 rad) while killing the
+        # divergence channel entirely.
+        actions = torch.clamp(actions, -self.cfg.action_clip, self.cfg.action_clip)
+        self._prev_actions = self.actions.clone() if hasattr(self, "actions") else actions.clone()
         self.actions = actions.clone()
         # resample velocity commands on a fixed wall-clock schedule
         if self.cfg.include_command_obs:
@@ -138,8 +155,14 @@ class DuckAmpEnv(DirectRLEnv):
                 self._resample_commands(expired_ids)
 
     def _apply_action(self):
-        # duck/playground convention: offset by the standing pose, scale by 0.25
+        # duck/playground convention: offset by the standing pose, scale by 0.25.
+        # Targets are clamped to the soft joint limits — real servos clamp too
+        # (deployment parity), and unbounded targets enabled the run-6
+        # action-dithering exploit (|action| spikes of ~26/step that the PD
+        # loop low-pass filtered into a standing posture).
         target = self.default_joint_pos + self.cfg.action_scale * self.actions
+        limits = self.robot.data.soft_joint_pos_limits
+        target = torch.clamp(target, limits[..., 0], limits[..., 1])
         self.robot.set_joint_position_target(target)
 
     def _get_observations(self) -> dict:
@@ -178,13 +201,27 @@ class DuckAmpEnv(DirectRLEnv):
         # Command task: velocity tracking in the yaw-heading frame, mixed with
         # the style reward by the skrl agent (task/style weights live in the
         # agent yaml, not here).
+        #
+        # Kernel widths (run-7 fix): std 0.1 m/s linear / 0.25 rad/s angular.
+        # Run 6 used exp(-8*e2)/exp(-2*e2), under which STANDING STILL already
+        # earned ~0.87/1.0 for duck-scale commands (|cmd| <= 0.26 m/s) — the
+        # measured stand-and-dither exploit. With std=0.1, ignoring a 0.2 m/s
+        # command earns ~0.02: walking is now the only way to get paid.
         root_quat = self.robot.data.body_quat_w[:, self.ref_body_index]
         root_lin_vel = self.robot.data.body_lin_vel_w[:, self.ref_body_index]
         root_ang_vel = self.robot.data.body_ang_vel_w[:, self.ref_body_index]
         lin_vel_heading = quat_apply_inverse(yaw_quat(root_quat), root_lin_vel)
         lin_vel_error = torch.sum(torch.square(self._commands[:, :2] - lin_vel_heading[:, :2]), dim=-1)
         ang_vel_error = torch.square(self._commands[:, 2] - root_ang_vel[:, 2])
-        return 0.5 * torch.exp(-8.0 * lin_vel_error) + 0.5 * torch.exp(-2.0 * ang_vel_error)
+        r_track = 0.5 * torch.exp(-lin_vel_error / 0.01) + 0.5 * torch.exp(-ang_vel_error / 0.0625)
+
+        # Action-rate penalty: the AMP template has no smoothness term — the
+        # style reward is supposed to enforce naturalness, but a saturated
+        # discriminator provides no gradient, leaving dithering free (run 6:
+        # mean |da| = 26/step). Normalized per joint; weight keeps the penalty
+        # ~0.01-0.05 for smooth gaits and ruinous for dithering.
+        action_rate = torch.mean(torch.square(self.actions - self._prev_actions), dim=-1)
+        return r_track - 0.05 * action_rate
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         time_out = self.episode_length_buf >= self.max_episode_length - 1

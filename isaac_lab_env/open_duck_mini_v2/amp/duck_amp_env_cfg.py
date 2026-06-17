@@ -56,6 +56,7 @@ import os
 from isaaclab.assets import ArticulationCfg
 from isaaclab.envs import DirectRLEnvCfg
 from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim import PhysxCfg, SimulationCfg
 from isaaclab.utils import configclass
 
@@ -75,6 +76,10 @@ class DuckAmpEnvCfgBase(DirectRLEnvCfg):
     # action scaling: target = default_joint_pos + action_scale * action
     # (duck/playground convention, matching the PPO pipeline and deployment)
     action_scale = 0.25
+    # raw actions are clipped to +/-action_clip before scaling (run-12 fix):
+    # bounds the effective joint-target offset to +/-1.25 rad (covers the full
+    # reference gait ROM) and prevents the run-11 action-magnitude divergence.
+    action_clip = 5.0
 
     # spaces
     observation_space = 51
@@ -131,6 +136,15 @@ class DuckAmpEnvCfgBase(DirectRLEnvCfg):
     # actuators: kp=45.53, kd=1.346, armature=0.040, effort_limit=8.716 Nm)
     robot: ArticulationCfg = OPEN_DUCK_MINI_V2_CFG.replace(prim_path="/World/envs/env_.*/Robot")
 
+    # Contact sensor: not consumed by training (the template env has none);
+    # present so evaluate_policies.py can compute the same contact-based gait
+    # metrics (stance duty, asymmetry) for AMP policies as for PPO ones.
+    contact_sensor: ContactSensorCfg = ContactSensorCfg(
+        prim_path="/World/envs/env_.*/Robot/base/.*",
+        history_length=3,
+        track_air_time=True,
+    )
+
 
 @configclass
 class DuckAmpPureStyleEnvCfg(DuckAmpEnvCfgBase):
@@ -160,3 +174,10 @@ class DuckAmpCommandEnvCfg(DuckAmpEnvCfgBase):
     observation_space = 54  # 51 AMP dims + 3-dim velocity command (policy obs only)
     include_command_obs = True
     motion_files: list[str] = [os.path.join(MOTIONS_DIR, "*.npz")]
+    # Run-9 lever: 4-frame AMP history (80 ms window) — with 2 frames the
+    # engaged-but-fooled discriminator (run 8: loss 1.4-1.7) could not
+    # distinguish a 2-8 deg shuffle from the ~30 deg reference waddle.
+    # Run-10: 14 frames = 280 ms > half gait cycle (0.27 s) — alternation is a
+    # cycle-level statistic; shorter windows make one-legged strides
+    # style-optimal (run 9). Discriminator input 14 x 51 = 714 dims.
+    num_amp_observations = 14

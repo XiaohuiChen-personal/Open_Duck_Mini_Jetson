@@ -25,6 +25,20 @@ log greps.
 5. **Claims about data artifacts must be measured before journaling** (the
    "~8 rad/s" impossible-velocity claim was actually 25.3 rad/s max when
    measured).
+6. **Verify a run has actually exited before evaluating or journaling it**:
+   check the pidfile process group is dead AND the final checkpoint exists
+   (`agent_<final_timestep>.pt` / `model_<final_iter>.pt`). Elapsed time is
+   not completion; a fired watcher is the signal, not a guess. (A mid-training
+   G2 measurement was once run against a live training under GPU contention
+   because completion was assumed from wall-clock.)
+7. **ONE Isaac Sim / GPU job at a time.** Never launch an evaluation
+   (`evaluate_policies.py`, `measure_amp_gait.py`, `play_policy.py`) while a
+   training run is active — two Isaac Sim processes collide on GPU/kit
+   resources during startup and the second dies in its init banner (run-10
+   amp_v3 eval failed this way, exit 2, while run 11 was training). Evals run
+   in the gap AFTER a run exits and BEFORE the next launches; batch deferred
+   evals there. The queue runner enforces this for trainings — evals are
+   launched by hand, so the human/agent must sequence them.
 
 ## Entry structure
 
