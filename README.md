@@ -19,7 +19,7 @@ A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork migrates th
 | Phase | Description | Status |
 |---|---|---|
 | Phase 1 | Simulation model update (Jetson mass/inertia in trunk) | ✅ Complete |
-| Phase 2 | Isaac Lab environment + PPO locomotion training on DGX Spark | ✅ Complete (PPO baseline shipped; ONNX export and domain randomization remaining) |
+| Phase 2 | Isaac Lab environment + locomotion training on DGX Spark | ✅ Complete (PPO baseline and AMP comparison shipped; ONNX export and domain randomization remaining) |
 | Phase 3 | CAD redesign of trunk / body / battery for Jetson cavity | 🟡 Planned |
 | Phase 4 | Hardware build, TensorRT deployment, real-robot walking | 🟡 Planned |
 | Phase 5 | Cosmos Reason2 VLM for vision-language-action control | 🟡 Planned |
@@ -30,7 +30,7 @@ Full task breakdown (5 phases, 28 tasks): **[docs/jetson-mod/task_plan.md](docs/
 
 ## What's Working Today
 
-A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. Two reward function iterations (v1 and v2) shipped with documented before/after evaluation.
+A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. PPO reward iterations v1/v2/v3 shipped with documented before/after evaluation. The latest Phase 2 work also includes a full PPO-vs-AMP comparison campaign using SKRL AMP.
 
 **Training setup:**
 - NVIDIA Isaac Lab + RSL-RL PPO on DGX Spark (Grace Blackwell)
@@ -65,7 +65,10 @@ A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imita
 | Action std | 0.48 | **0.07** | 7× more precise |
 | Convergence | ~500 iter to plateau | ~200 iter to plateau | 2.5× faster |
 
-**Full training report:** [`exported_policies/v2_bdx_imitation_ppo/README.md`](exported_policies/v2_bdx_imitation_ppo/README.md)
+**Training and evaluation reports:**
+- PPO v2 report: [`exported_policies/v2_bdx_imitation_ppo/README.md`](exported_policies/v2_bdx_imitation_ppo/README.md)
+- PPO/AMP comparison: [`docs/jetson-mod/algorithm_comparison.md`](docs/jetson-mod/algorithm_comparison.md)
+- Experiment journal: [`docs/jetson-mod/experiment_journal.md`](docs/jetson-mod/experiment_journal.md)
 
 **Showcase videos** (training progression, untrained → iter 2999): [`showcase_videos/`](showcase_videos/)
 
@@ -135,7 +138,7 @@ Sim2real videos for the Jetson edition will be added after Phase 4 (hardware bui
 | [Isaac Sim](https://docs.isaacsim.omniverse.nvidia.com) | Physics simulation (PhysX 5, GPU-accelerated) | ✅ In use |
 | [Isaac Lab](https://isaac-sim.github.io/IsaacLab) | RL training framework | ✅ In use |
 | [RSL-RL](https://github.com/leggedrobotics/rsl_rl) | PPO training + built-in ONNX export | ✅ In use (PPO) |
-| [SKRL](https://github.com/Toni-SM/skrl) | AMP (Adversarial Motion Priors) | 🟡 Planned (optional stretch goal) |
+| [SKRL](https://github.com/Toni-SM/skrl) | AMP (Adversarial Motion Priors) | ✅ In use for PPO-vs-AMP comparison |
 | [TensorRT](https://developer.nvidia.com/tensorrt) | On-device policy inference | 🟡 Planned (Phase 4) |
 | [Cosmos Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) | Physical AI reasoning VLM | 🟡 Planned (Phase 5) |
 | [DGX Spark](https://www.nvidia.com/en-us/products/workstations/dgx-spark/) | Training hardware (Grace Blackwell) | ✅ In use |
@@ -144,18 +147,18 @@ Sim2real videos for the Jetson edition will be added after Phase 4 (hardware bui
 
 ## RL Algorithms
 
-PPO is the primary algorithm and is currently shipped. AMP is an optional stretch goal that requires a separate `DirectRLEnv` implementation and is not planned for the initial release.
+PPO remains the primary shipped baseline and the most balanced policy in the latest comparison. AMP has now been implemented as a separate SKRL `DirectRLEnv` path and evaluated as an imitation-learning comparison. The AMP campaign produced useful policies, but did not strictly dominate the PPO v3 baseline at equal tuning budget.
 
 | Algorithm | Framework | Type | Status | Why |
 |---|---|---|---|---|
-| **PPO** | RSL-RL | On-policy | ✅ Shipped | Proven baseline for locomotion. All Isaac Lab locomotion examples use it. Built-in ONNX export for Jetson. |
-| **AMP** | SKRL | On-policy + imitation | 🟡 Optional future work | Adversarial Motion Priors for natural-looking gaits. Requires separate DirectRLEnv + reference motion data. |
+| **PPO** | RSL-RL | On-policy | ✅ Shipped | Proven baseline for locomotion. PPO v3 is the most balanced policy in the current comparison. Built-in ONNX export for Jetson. |
+| **AMP** | SKRL | On-policy + imitation | ✅ Evaluated | Adversarial Motion Priors for natural-looking gaits. Run 8 tracks commands well but shuffles; run 12 produces the best striding AMP gait but is energy-heavy. |
 
 > **Note:** The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP`. Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts with no existing locomotion examples in the Isaac Lab ecosystem.
 
 ### Reference Motion Generation
 
-For AMP (if pursued in the future), reference walking motions are generated using [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator).
+For AMP, reference walking motions are generated using [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator).
 
 ### Actuator Identification
 
@@ -220,7 +223,7 @@ The Jetson-specific build guide will be added after Phase 4 (hardware assembly).
 Training uses Isaac Lab on a DGX Spark (or any NVIDIA GPU with Isaac Sim installed):
 
 ```bash
-# PPO via RSL-RL (primary, currently shipped)
+# PPO via RSL-RL (primary baseline)
 ./isaaclab.sh -p scripts/train_ppo.py \
     --task Isaac-Velocity-Rough-OpenDuck-v0 \
     --headless --video --video_length 200 --video_interval 5000
@@ -232,6 +235,10 @@ Training uses Isaac Lab on a DGX Spark (or any NVIDIA GPU with Isaac Sim install
     --checkpoint exported_policies/v2_bdx_imitation_ppo/model_2999.pt \
     --headless --video --video_length 500
 ```
+
+For the AMP comparison campaign and archived AMP checkpoints, see
+[`docs/jetson-mod/experiment_journal.md`](docs/jetson-mod/experiment_journal.md)
+and [`docs/jetson-mod/algorithm_comparison.md`](docs/jetson-mod/algorithm_comparison.md).
 
 See [docs/sim2real.md](docs/sim2real.md) for the original MuJoCo-based sim2real guide (for reference).
 
@@ -263,17 +270,23 @@ Open_Duck_Mini_Jetson/
 │       ├── env_cfg.py                     # Locomotion environment config
 │       ├── robot_cfg.py                   # Articulation + actuator config
 │       ├── imitation_reward.py            # BDX-style composite reward
-│       └── agents/rsl_rl_ppo_cfg.py       # PPO hyperparameters
+│       ├── agents/rsl_rl_ppo_cfg.py       # PPO hyperparameters
+│       └── amp/                           # SKRL AMP DirectRLEnv + motions
 ├── scripts/                               # Training + utility scripts ✅
 │   ├── convert_mjcf_to_usd.py             # MJCF → USD pipeline
 │   ├── train_ppo.py                       # PPO training entry point
+│   ├── train_amp.py                       # AMP training entry point
+│   ├── evaluate_policies.py               # Standardized PPO/AMP evaluation
 │   ├── play_policy.py                     # Policy evaluation
 │   └── monitor_training.py                # TensorBoard log parser
 ├── exported_policies/                     # Trained policies ✅
 │   ├── v1_imitation_ppo/                  # First reward iteration
-│   └── v2_bdx_imitation_ppo/              # BDX-aligned reward (current best)
+│   ├── v2_bdx_imitation_ppo/              # BDX-aligned reward
 │       ├── model_2999.pt                  # Final checkpoint
 │       └── README.md                      # Detailed training report
+│   ├── v3_bdx_imitation_ppo/              # Corrected PPO baseline
+│   ├── amp_v1_run8_command/               # Precise command-tracking AMP policy
+│   └── amp_v4_run12_command/              # Best striding AMP policy
 ├── showcase_videos/                       # Training progression videos ✅
 ├── tests/                                 # Pytest suite ✅
 ├── experiments/                           # Legacy MuJoCo experiment scripts
@@ -281,7 +294,9 @@ Open_Duck_Mini_Jetson/
 ├── docs/
 │   ├── jetson-mod/
 │   │   ├── task_plan.md                   # 5-phase, 28-task plan
-│   │   └── mass_inertia_calculations.md   # Phase 1 physics math
+│   │   ├── mass_inertia_calculations.md   # Phase 1 physics math
+│   │   ├── algorithm_comparison.md        # PPO/AMP comparison table
+│   │   └── experiment_journal.md          # Training run provenance
 │   ├── assembly_guide.md
 │   ├── sim2real.md
 │   └── print_guide.md
