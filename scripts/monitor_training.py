@@ -55,8 +55,9 @@ def find_latest_run(base_dir):
 
 
 def main():
-    base_dir = "/home/xiaohui_chen/IsaacLab/logs/rsl_rl/open_duck_ppo"
-    output_file = "/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/experiments/v2/ppo_training/training_log.jsonl"
+    base_dir = os.path.expanduser("~/IsaacLab/logs/rsl_rl/open_duck_ppo")
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    output_file = os.path.join(repo_root, "experiments", "v2", "ppo_training", "training_log.jsonl")
 
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 

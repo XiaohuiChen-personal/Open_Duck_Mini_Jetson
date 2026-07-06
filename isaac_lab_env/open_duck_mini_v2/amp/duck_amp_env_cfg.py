@@ -44,7 +44,8 @@ Two concrete tasks are derived from the base config:
   task_reward_weight=0.0), single forward-walk clip, no velocity commands.
   Sanity-check task: "can AMP make the duck walk like the reference at all?"
 - :class:`DuckAmpCommandEnvCfg` — velocity-command tracking task reward mixed
-  50/50 with style reward, full clip library, 3-dim command appended to the
+  with style reward (weights live in skrl_amp_command_cfg.yaml, currently
+  0.6/0.4), full clip library, 3-dim command appended to the
   POLICY observation only (never to the AMP observation — the discriminator
   must judge style, not intent).
 """
@@ -167,8 +168,10 @@ class DuckAmpCommandEnvCfg(DuckAmpEnvCfgBase):
     """Command-conditioned AMP: velocity tracking task + style from full library.
 
     The policy observes 51 AMP dims + 3 command dims = 54. The skrl AMP agent
-    runs with task_reward_weight=0.5 / style_reward_weight=0.5, mixing the
-    env's velocity-tracking reward with the discriminator's style reward.
+    mixes the env's velocity-tracking reward with the discriminator's style
+    reward; the task/style weights are set in skrl_amp_command_cfg.yaml
+    (currently 0.6/0.4, changed from 0.5/0.5 at run 12 — see
+    experiment_journal.md).
     """
 
     observation_space = 54  # 51 AMP dims + 3-dim velocity command (policy obs only)

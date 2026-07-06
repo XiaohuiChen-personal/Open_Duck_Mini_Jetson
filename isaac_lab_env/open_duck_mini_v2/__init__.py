@@ -7,7 +7,9 @@ Follows the Isaac Lab registration pattern (see H1 config at
 isaaclab_tasks/manager_based/locomotion/velocity/config/h1/__init__.py).
 
 Environments:
-    Isaac-Velocity-Rough-OpenDuck-v0 : Training environment (4096 envs, domain randomization)
+    Isaac-Velocity-Rough-OpenDuck-v0 : Training environment (4096 envs; observation
+        noise only — dynamics randomization is currently disabled: push_robot /
+        add_base_mass / base_com are set to None in env_cfg.py __post_init__)
     Isaac-Velocity-Rough-OpenDuck-Play-v0 : Evaluation/playback (50 envs, no randomization)
 """
 

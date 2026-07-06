@@ -24,13 +24,13 @@ A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork migrates th
 | Phase 4 | Hardware build, TensorRT deployment, real-robot walking | 🟡 Planned |
 | Phase 5 | Cosmos Reason2 VLM for vision-language-action control | 🟡 Planned |
 
-Full task breakdown (5 phases, 28 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
+Full task breakdown (5 phases, 31 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
 
 ---
 
 ## What's Working Today
 
-A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. Two reward function iterations (v1 and v2) shipped with documented before/after evaluation.
+A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. Three reward iterations shipped (v1, v2, and the current v3, which fixed the v2 gait-phase bug and passes the G1 gait gate), plus a 12-run PPO-vs-AMP comparison campaign (`docs/jetson-mod/experiment_journal.md`, `algorithm_comparison.md`); PPO v3 remains the selected policy.
 
 **Training setup:**
 - NVIDIA Isaac Lab + RSL-RL PPO on DGX Spark (Grace Blackwell)
@@ -280,7 +280,7 @@ Open_Duck_Mini_Jetson/
 ├── print/                                 # 3D printable STL files
 ├── docs/
 │   ├── jetson-mod/
-│   │   ├── task_plan.md                   # 5-phase, 28-task plan
+│   │   ├── task_plan.md                   # 5-phase, 31-task plan
 │   │   └── mass_inertia_calculations.md   # Phase 1 physics math
 │   ├── assembly_guide.md
 │   ├── sim2real.md

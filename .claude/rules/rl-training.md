@@ -10,6 +10,8 @@ Standard Isaac Lab locomotion observations plus gait phase:
 
 | Component | Dimensions | Description |
 |---|---|---|
+| Base linear velocity | 3 | Inherited from `LocomotionVelocityRoughEnvCfg` — NOT directly measurable by the BNO055 on hardware (deployment gap; needs an estimator or a retrain without it) |
+| Base angular velocity | 3 | Gyro (measurable on hardware) |
 | Projected gravity | 3 | Gravity direction in robot frame (from IMU) |
 | Joint positions | 16 | Current angle of each joint (rad) |
 | Joint velocities | 16 | Current speed of each joint (rad/s) |
@@ -17,21 +19,33 @@ Standard Isaac Lab locomotion observations plus gait phase:
 | Velocity command | 3 | Desired (vx, vy, yaw_rate) from user or VLM |
 | Gait phase | 2 | [cos(phase), sin(phase)] of gait cycle |
 
+**Total: 62 dims** (verified against `exported_policies/v3_bdx_imitation_ppo/env.yaml`
+and `scripts/export_skrl_policy_onnx.py` OBS_LAYOUT_62).
+
 ## Action Space (16 dimensions)
 
 Joint position targets for all 16 actuators. Scaled by `action_scale` (0.25, matching Open Duck Playground) and offset by `init_pos`.
 
 ## Joint Orders
 
-**MuJoCo convention** (used in MJCF model):
+**MuJoCo / MJCF order** (joint declaration AND actuator order in
+`robot.xml` and `robot_motors.xml` — verified; identical to the Playground
+polynomial order below):
 ```
-0: right_hip_yaw     5: left_hip_yaw     10: neck_pitch
-1: right_hip_roll    6: left_hip_roll     11: head_pitch
-2: right_hip_pitch   7: left_hip_pitch    12: head_yaw
-3: right_knee        8: left_knee         13: head_roll
-4: right_ankle       9: left_ankle        14: left_antenna
-                                          15: right_antenna
+0: left_hip_yaw      8: head_roll
+1: left_hip_roll     9: left_antenna
+2: left_hip_pitch   10: right_antenna
+3: left_knee        11: right_hip_yaw
+4: left_ankle       12: right_hip_roll
+5: neck_pitch       13: right_hip_pitch
+6: head_pitch       14: right_knee
+7: head_yaw         15: right_ankle
 ```
+WARNING: an earlier version of this table listed a right-leg-first order —
+that was the legacy 15-joint BDX layout from `rl_utils.py`, NOT this model.
+Never hardcode a joint order from documentation; derive mappings from joint
+names (as `imitation_reward.py` does) or assert against the model file (as
+`scripts/convert_gait_library_to_amp.py` does).
 
 **Isaac Lab / USD order** (from MJCF→USD conversion, interleaved):
 ```
@@ -57,7 +71,7 @@ Joint position targets for all 16 actuators. Scaled by `action_scale` (0.25, mat
 7: head_yaw         15: right_ankle
 ```
 
-See `mini_bdx/mini_bdx/utils/rl_utils.py` for MuJoCo↔IsaacGym conversion. The Isaac Lab imitation reward (`imitation_reward.py`) builds the Playground↔Isaac Lab mapping dynamically from joint names.
+`mini_bdx/mini_bdx/utils/rl_utils.py` contains MuJoCo↔IsaacGym conversion tables for the LEGACY 15-joint BDX robot (no head_roll) — do not reuse them for this 16-joint model. The Isaac Lab imitation reward (`imitation_reward.py`) builds the Playground↔Isaac Lab mapping dynamically from joint names.
 
 ## RL Algorithm
 

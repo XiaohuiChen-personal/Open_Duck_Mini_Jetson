@@ -27,7 +27,7 @@ Feetech STS3250 Servos (14x)        — physical motors
 1. **Jetson Dev Kit over module + mini carrier board** — Dev Kit has CSI camera ports and 40-pin GPIO header needed for peripherals
 2. **Full NVIDIA stack migration** — Isaac Sim/Lab replaces MuJoCo for simulation and training
 3. **Cosmos Reason2-2B for VLM** — Confirmed running on Orin Nano Super at ~5.8 GB RAM, ~16 tok/s
-4. **Multi-algorithm RL experiment** — PPO, RPO, AMP, SAC, TRPO compared; best policy deployed
+4. **Multi-algorithm RL experiment** — PPO vs AMP compared in a 12-run campaign (experiment_journal.md); PPO v3 selected. SAC/RPO/TRPO were not run — skrl's Isaac Lab integration only has locomotion-ready PPO/AMP paths (see README note)
 5. **Sim-first approach** — All changes validated in simulation before hardware purchases
 
 ## Current Phase

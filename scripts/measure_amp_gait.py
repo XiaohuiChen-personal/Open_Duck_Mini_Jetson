@@ -22,8 +22,9 @@ args = parser.parse_args()
 args.headless = True
 app = AppLauncher(args).app
 
+import os
 import sys
-sys.path.insert(0, "/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import gymnasium as gym
 import numpy as np
 import torch

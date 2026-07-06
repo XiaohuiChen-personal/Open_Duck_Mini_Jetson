@@ -155,9 +155,10 @@ M_trunk_sts3250 = 1.024526 + 3×0.0195 + 0.095
                 = 1.178026 kg
 ```
 
-Inertia scaled by mass ratio (1.178026 / 1.024526 = 1.1498):
+Inertia scaled by mass ratio (1.178026 / 1.024526 = 1.149823…; the model
+files use the exact ratio, which this doc previously rounded to 1.1498):
 ```
-I_trunk_sts3250 = (0.00425322, 0.00437742, 0.00311345) kg·m²
+I_trunk_sts3250 = (0.00425392, 0.00437811, 0.00311354) kg·m²
 ```
 
 ### Head Assembly (STS3250 update)
@@ -167,9 +168,10 @@ M_head_sts3250 = 0.342583 + 0.0195
                = 0.362083 kg
 ```
 
-Inertia scaled by mass ratio (0.362083 / 0.342583 = 1.0569):
+Inertia scaled by mass ratio (0.362083 / 0.342583 = 1.056918…; exact ratio,
+as in the model files):
 ```
-I_head_sts3250 = (0.00215945, 0.00150937, 0.00092542) kg·m²
+I_head_sts3250 = (0.0021596, 0.00150944, 0.000925471) kg·m²
 ```
 
 ### Other Body Mass Updates
@@ -183,7 +185,7 @@ Each non-trunk, non-head servo body gets +19.5g with inertia scaled proportional
 <inertial
     pos="-0.0535209 0.0003704 0.0380119"
     mass="1.178026"
-    diaginertia="0.00425322 0.00437742 0.00311345"
+    diaginertia="0.00425392 0.00437811 0.00311354"
 />
 ```
 
@@ -192,7 +194,7 @@ Each non-trunk, non-head servo body gets +19.5g with inertia scaled proportional
 <inertial
     pos="0.0069046 -0.0012149 0.0247919"
     mass="0.362083"
-    diaginertia="0.00215945 0.00150937 0.00092542"
+    diaginertia="0.0021596 0.00150944 0.000925471"
 />
 ```
 

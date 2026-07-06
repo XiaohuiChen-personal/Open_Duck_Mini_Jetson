@@ -41,9 +41,9 @@ Total:                         ~7.7 GB  (fits)
 
 | Body | Original (g) | Modified (g) | Change |
 |---|---|---|---|
-| trunk_assembly | 698.5 | ~1,178 | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +90 (batteries) +5 (BMS) +15 (DC-DC) +37 (thermal partition+mica) +8 (wiring) |
-| head_assembly | 352.6 | ~342.6 | -10 (Pi removed) |
-| All 14 servos | 770 (14x55g) | 1,043 (14x74.5g) | +273 g total (+19.5g each x14, 11 allocated to limbs) |
+| trunk_assembly | 698.5 | ~1,178 | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +180 (batteries: 4 extra 18650 cells, 2→6 total) +5 (BMS) +15 (DC-DC) +37 (thermal partition+mica) +8 (wiring) |
+| head_assembly | 352.6 | ~362.1 | -10 (Pi removed) +19.5 (head_roll servo upgrade) |
+| All 14 servos | 770 (14x55g) | 1,043 (14x74.5g) | +273 g total (+19.5g each x14: 3 in trunk, 1 in head, 10 in limb/neck bodies) |
 | Total robot | 2,062 | ~2,746 | +684 g (+33.2%) |
 
 ## Raspberry Pi Zero 2W (being removed)

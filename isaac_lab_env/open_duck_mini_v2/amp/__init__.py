@@ -12,7 +12,8 @@ Environments:
     Isaac-OpenDuck-AMP-PureStyle-v0 : Pure style imitation (single forward
         clip, no commands, style reward only) — AMP sanity-check task.
     Isaac-OpenDuck-AMP-v0 : Command-conditioned locomotion (full clip
-        library, 50/50 task/style reward mix) — deployable policy.
+        library; task/style reward mix set in skrl_amp_command_cfg.yaml,
+        currently 0.6/0.4) — deployable policy.
 """
 
 import gymnasium as gym
