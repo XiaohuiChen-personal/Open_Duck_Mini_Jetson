@@ -1,6 +1,10 @@
 __pycache__/
 gym/logs/*
 *.pkl
+# Exception: the polynomial gait library is a frozen training/eval dataset —
+# ImitationReward, gate evaluation, and AMP clip generation all depend on this
+# exact artifact (see isaac_lab_env/open_duck_mini_v2/data/README.md)
+!isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl
 mini_bdx/mini_bdx.egg-info/*
 experiments/RL/data/*
 experiments/RL/new/logs/
