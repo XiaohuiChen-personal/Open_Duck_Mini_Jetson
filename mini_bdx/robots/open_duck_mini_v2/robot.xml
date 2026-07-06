@@ -73,7 +73,7 @@
     <body name="base" pos="0 0 0.4">
       <!-- <freejoint /> -->
       <body name="trunk_assembly">
-        <inertial pos="-0.0535209 0.0003704 0.0380119" mass="1.178026" diaginertia="0.00425392 0.00437811 0.00311354"/>
+        <inertial pos="-0.0579714 0.0001468 0.0332356" mass="1.178026" diaginertia="0.00403131 0.00473388 0.00337805"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front"/>
         <geom pos="-0.1263 -0.0257 0.0576079" quat="0.5 0.5 -0.5 0.5" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="usb_c_charger"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_back"/>
@@ -82,17 +82,17 @@
         <geom pos="-0.0752028 -0.0249 0.0294899" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="bms"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="battery_pack_lid"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_middle_top"/>
-        <geom pos="-0.08711 0 0.0417909" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="bno055"/>
+        <geom pos="-0.100 0 0.0417909" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="bno055"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.6 0.6 0.6 1" mesh="roll_bearing"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.180392 0.180392 0.180392 1" mesh="trunk_bottom"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.180392 0.180392 0.180392 1" mesh="trunk_top"/>
         <!-- Jetson Orin Nano Dev Kit (103x90.5x34.77mm) in compute zone -->
-        <geom pos="-0.03 0 0.04" type="mesh" rgba="0.1 0.6 0.1 1" mesh="jetson_orin_nano" contype="0" conaffinity="0"/>
+        <geom pos="-0.03 0 0.006" type="mesh" rgba="0.1 0.6 0.1 1" mesh="jetson_orin_nano" contype="0" conaffinity="0"/>
         <!-- Thermal partition wall between battery and compute zones -->
-        <geom pos="-0.08 0 0.04" type="mesh" rgba="0.8 0.2 0.2 0.5" mesh="thermal_partition" contype="0" conaffinity="0"/>
+        <geom pos="-0.086 0 0.0104" type="mesh" rgba="0.8 0.2 0.2 0.5" mesh="thermal_partition" contype="0" conaffinity="0"/>
         <!-- DC-DC boost converter in compute zone -->
-        <geom pos="-0.05 0.03 0.035" type="mesh" rgba="0.9 0.8 0.1 1" mesh="dcdc_converter" contype="0" conaffinity="0"/>
-        <geom pos="-0.06349 0.0165 0.0603909" quat="0 0 0 -1" type="mesh" rgba="0 0.501961 0 1" mesh="board"/>
+        <geom pos="-0.06 0.025 0.0355" type="mesh" rgba="0.9 0.8 0.1 1" mesh="dcdc_converter" contype="0" conaffinity="0"/>
+        <geom pos="-0.01599 0.0165 0.0603909" quat="0 0 0 -1" type="mesh" rgba="0 0.501961 0 1" mesh="board"/>
         <geom pos="-0.019 -0.07 0.0648909" type="mesh" rgba="0.6 0.6 0.6 1" mesh="roll_bearing"/>
         <geom pos="-0.129625 -0.0105 0.0650134" quat="0 -0.457466 -0.889227 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
         <geom pos="-0.139625 -0.0635245 0.031455" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="holder"/>

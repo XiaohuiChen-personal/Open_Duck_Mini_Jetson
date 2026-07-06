@@ -124,7 +124,7 @@
             </geometry>
         </collision>
         <visual>
-            <origin xyz="-0.087109999999999535025 1.3010426069826053208e-16 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
+            <origin xyz="-0.100 0 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
             <geometry>
                 <mesh filename="package:///bno055.stl"/>
             </geometry>
@@ -133,7 +133,7 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.087109999999999535025 1.3010426069826053208e-16 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
+            <origin xyz="-0.100 0 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
             <geometry>
                 <mesh filename="package:///bno055.stl"/>
             </geometry>
@@ -184,7 +184,7 @@
             </geometry>
         </collision>
         <visual>
-            <origin xyz="-0.063490012619999952603 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
+            <origin xyz="-0.015990012619999953 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
                 <mesh filename="package:///board.stl"/>
             </geometry>
@@ -193,7 +193,7 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.063490012619999952603 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
+            <origin xyz="-0.015990012619999953 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
                 <mesh filename="package:///board.stl"/>
             </geometry>
@@ -485,7 +485,7 @@
         </collision>
         <!-- Jetson Orin Nano Dev Kit (103x90.5x34.77mm) in compute zone -->
         <visual>
-            <origin xyz="-0.03 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.03 0 0.006" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///jetson_orin_nano.stl"/>
             </geometry>
@@ -494,14 +494,14 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.03 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.03 0 0.006" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///jetson_orin_nano.stl"/>
             </geometry>
         </collision>
         <!-- Thermal partition wall between battery and compute zones -->
         <visual>
-            <origin xyz="-0.08 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.086 0 0.0104" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///thermal_partition.stl"/>
             </geometry>
@@ -510,14 +510,14 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.08 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.086 0 0.0104" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///thermal_partition.stl"/>
             </geometry>
         </collision>
         <!-- DC-DC boost converter in compute zone -->
         <visual>
-            <origin xyz="-0.05 0.03 0.035" rpy="0 0 0" />
+            <origin xyz="-0.06 0.025 0.0355" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///dcdc_converter.stl"/>
             </geometry>
@@ -526,15 +526,15 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.05 0.03 0.035" rpy="0 0 0" />
+            <origin xyz="-0.06 0.025 0.0355" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///dcdc_converter.stl"/>
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="-0.0535209 0.0003704 0.0380119" rpy="0 0 0"/>
+            <origin xyz="-0.0579714 0.0001468 0.0332356" rpy="0 0 0"/>
             <mass value="1.178026" />
-            <inertia ixx="0.0042539169822142136" ixy="0"  ixz="0" iyy="0.004378109621795835" iyz="0" izz="0.0031135431641949544" />
+            <inertia ixx="0.00403131" ixy="0"  ixz="0" iyy="0.00473388" iyz="0" izz="0.00337805" />
         </inertial>
     </link>
     <link name="trunk">

@@ -1,5 +1,21 @@
 # Mass and Inertia Calculations — Jetson Orin Nano Modification
 
+> **REVISION NOTICE (2026-07-06, layout v2).** The component *positions* in
+> this document describe the first-pass layout, which the pre-Phase-3 audit
+> measured to be physically unbuildable (DC-DC inside the Jetson envelope,
+> partition clipping the Jetson and both side walls, Jetson intersecting the
+> trunk chassis and hip-yaw servo cases). The authoritative layout is now
+> `docs/jetson-mod/component_layout_v2.md`, and the trunk inertial is
+> computed reproducibly by `scripts/compute_trunk_inertial.py` with every
+> component (including the STS3250 servo deltas and all four extra cells) at
+> its actual v2 position — replacing the rounded mass-ratio scaling used in
+> the "STS3250 Servo Migration" section below. Current model values:
+> mass 1.178026 kg, CoM (-0.0579714, 0.0001468, 0.0332356),
+> diaginertia (0.00403131, 0.00473388, 0.00337805). Total robot mass is
+> unchanged (2.745549 kg). The methodology below (parallel-axis composition,
+> triangle-inequality checks) still applies; the head_assembly section is
+> unaffected.
+
 ## Input Parameters
 
 ### Existing Bodies
