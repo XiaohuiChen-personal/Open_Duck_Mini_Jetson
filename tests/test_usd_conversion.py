@@ -73,3 +73,39 @@ class TestUSDConversion:
             "USD is STALE: robot_motors.xml changed since the last conversion. "
             "Re-run: cd ~/IsaacLab && ./isaaclab.sh -p scripts/convert_mjcf_to_usd.py"
         )
+
+    def test_usd_meshes_not_stale(self):
+        """Every STL referenced by robot_motors.xml must match the manifest
+        written at conversion time.
+
+        Isaac Lab's .asset_hash covers only the MJCF bytes — a mesh
+        re-exported under the same filename (the most likely Phase-3+ drift)
+        would otherwise leave the USD silently stale (review finding on
+        commit 8f09c31).
+        """
+        import hashlib
+        import json
+        import xml.etree.ElementTree as ET
+
+        usd_dir = os.path.dirname(USD_PATH)
+        manifest_path = os.path.join(usd_dir, ".mesh_manifest.json")
+        assert os.path.exists(manifest_path), (
+            "mesh manifest missing — re-run scripts/convert_mjcf_to_usd.py"
+        )
+        manifest = json.load(open(manifest_path))
+        mjcf_path = os.path.join(
+            REPO_ROOT, "mini_bdx", "robots", "open_duck_mini_v2", "robot_motors.xml"
+        )
+        mjcf_dir = os.path.dirname(mjcf_path)
+        stale = []
+        for mesh in ET.parse(mjcf_path).getroot().iter("mesh"):
+            fname = mesh.get("file")
+            if not fname:
+                continue
+            md5 = hashlib.md5(open(os.path.join(mjcf_dir, fname), "rb").read())
+            if manifest.get(fname) != md5.hexdigest():
+                stale.append(fname)
+        assert not stale, (
+            f"USD is STALE for meshes {stale}: STLs changed since the last "
+            "conversion. Re-run scripts/convert_mjcf_to_usd.py"
+        )

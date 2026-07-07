@@ -83,6 +83,40 @@ def main():
         print("  ERROR: USD file was not created.")
         sys.exit(1)
 
+    write_mesh_manifest()
+
+
+def write_mesh_manifest():
+    """Record md5s of every STL referenced by the MJCF at conversion time.
+
+    Isaac Lab's .asset_hash covers only the MJCF file itself — a mesh
+    re-exported under the same filename would leave the USD silently stale.
+    tests/test_usd_conversion.py::test_usd_meshes_not_stale compares the
+    current STL bytes against this manifest.
+    """
+    import hashlib
+    import json
+    import xml.etree.ElementTree as ET
+
+    mjcf_dir = os.path.dirname(MJCF_PATH)
+    manifest = {}
+    for mesh in ET.parse(MJCF_PATH).getroot().iter("mesh"):
+        fname = mesh.get("file")
+        if not fname:
+            continue
+        md5 = hashlib.md5()
+        with open(os.path.join(mjcf_dir, fname), "rb") as f:
+            while True:
+                chunk = f.read(65536)
+                if not chunk:
+                    break
+                md5.update(chunk)
+        manifest[fname] = md5.hexdigest()
+    manifest_path = os.path.join(USD_DIR, ".mesh_manifest.json")
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=1, sort_keys=True)
+    print(f"  Wrote mesh manifest: {manifest_path} ({len(manifest)} meshes)")
+
     simulation_app.close()
 
 
