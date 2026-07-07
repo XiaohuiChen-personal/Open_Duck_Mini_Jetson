@@ -34,6 +34,7 @@ v2 changes from v1 (kept):
 """
 
 from isaaclab.envs import ViewerCfg
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
@@ -43,6 +44,7 @@ from isaaclab.utils import configclass
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
+    ObservationsCfg,
     RewardsCfg,
 )
 
@@ -248,6 +250,138 @@ class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
         # --- Disable terrain curriculum (we use flat ground) ---
         self.curriculum.terrain_levels = None
+
+
+@configclass
+class DuckRobustObservationsCfg(ObservationsCfg):
+    """Asymmetric observations for the v4-robust track.
+
+    The actor group drops ``base_lin_vel`` (the BNO055 cannot measure base
+    linear velocity on hardware — the 62-dim v3 policy has an unfixable
+    deployment gap); the critic keeps the full privileged set. Groups are
+    mapped to the algorithm via ``obs_groups`` in
+    :class:`agents.rsl_rl_ppo_cfg.OpenDuckRobustPPORunnerCfg`.
+    """
+
+    @configclass
+    class CriticCfg(ObservationsCfg.PolicyCfg):
+        """Privileged critic observations: full set, no corruption."""
+
+        def __post_init__(self):
+            super().__post_init__()
+            self.enable_corruption = False
+
+    critic: CriticCfg = CriticCfg()
+
+
+@configclass
+class OpenDuckRobustEnvCfg(OpenDuckRoughEnvCfg):
+    """v4-robust training config (Run B): v3 + dynamics DR + asymmetric obs.
+
+    One consolidated robustness bundle on top of the v3 recipe (which Run A
+    re-trains unchanged on the corrected model):
+
+    - dynamics domain randomization (v3 trained at a single dynamics point:
+      push/mass/CoM events were disabled and friction was fixed 0.8/0.6)
+    - asymmetric actor/critic observations (actor loses base_lin_vel)
+    - BAM-measured joint velocity limit (8.94 rad/s, params_sts3250_id008)
+
+    DR ranges are duck-scaled (2.66 kg robot): literature ranges for
+    human-scale robots (e.g. the parent cfg's +/-5 kg base mass) would be
+    absurd here.
+    """
+
+    observations: DuckRobustObservationsCfg = DuckRobustObservationsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        # --- Asymmetric observations ---
+        # Actor: drop base_lin_vel (unmeasurable on hardware); keep the rest.
+        self.observations.policy.base_lin_vel = None
+        # Critic mirrors the policy group setup (height_scan off, gait phase on).
+        self.observations.critic.height_scan = None
+        self.observations.critic.gait_phase = ObsTerm(func=gait_phase_observation)
+
+        # --- Dynamics domain randomization ---
+        # NOTE: the conversion's root body ("base") is massless — all
+        # body-targeted DR must point at trunk_assembly.
+        self.events.push_robot = EventTerm(
+            func=mdp.push_by_setting_velocity,
+            mode="interval",
+            interval_range_s=(8.0, 14.0),
+            params={"velocity_range": {"x": (-0.3, 0.3), "y": (-0.3, 0.3)}},
+        )
+        self.events.add_base_mass = EventTerm(
+            func=mdp.randomize_rigid_body_mass,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names="trunk_assembly"),
+                "mass_distribution_params": (-0.10, 0.15),
+                "operation": "add",
+            },
+        )
+        self.events.base_com = EventTerm(
+            func=mdp.randomize_rigid_body_com,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names="trunk_assembly"),
+                "com_range": {
+                    "x": (-0.01, 0.01),
+                    "y": (-0.01, 0.01),
+                    "z": (-0.005, 0.005),
+                },
+            },
+        )
+        self.events.physics_material.params["static_friction_range"] = (0.4, 1.0)
+        self.events.physics_material.params["dynamic_friction_range"] = (0.3, 0.8)
+        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
+
+        # --- Actuator realism: BAM-measured max servo speed ---
+        for actuator in self.scene.robot.actuators.values():
+            actuator.velocity_limit_sim = 8.94
+
+
+@configclass
+class OpenDuckRobustEnvCfg_PLAY(OpenDuckRobustEnvCfg):
+    """Playback/evaluation configuration for the robust track (no DR)."""
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.scene.num_envs = 50
+        self.episode_length_s = 40.0
+        self.commands.base_velocity.ranges.lin_vel_x = (0.2, 0.2)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+        self.observations.policy.enable_corruption = False
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
+        self.events.add_base_mass = None
+        self.events.base_com = None
+        self.events.physics_material.params["static_friction_range"] = (0.8, 0.8)
+        self.events.physics_material.params["dynamic_friction_range"] = (0.6, 0.6)
+        self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
+
+
+@configclass
+class OpenDuckPushEvalEnvCfg(OpenDuckRobustEnvCfg_PLAY):
+    """Push-recovery evaluation (the Task 2.7 gate that was never run).
+
+    Playback determinism EXCEPT interval pushes stay enabled — measures
+    whether the policy survives lateral/longitudinal shoves while tracking
+    a forward command. Results feed docs/jetson-mod/validation_results.md.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.events.push_robot = EventTerm(
+            func=mdp.push_by_setting_velocity,
+            mode="interval",
+            interval_range_s=(4.0, 7.0),
+            params={"velocity_range": {"x": (-0.3, 0.3), "y": (-0.3, 0.3)}},
+        )
 
 
 @configclass

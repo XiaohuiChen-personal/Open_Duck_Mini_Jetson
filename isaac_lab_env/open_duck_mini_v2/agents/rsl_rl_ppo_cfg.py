@@ -54,3 +54,17 @@ class OpenDuckPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
     )
+
+
+@configclass
+class OpenDuckRobustPPORunnerCfg(OpenDuckPPORunnerCfg):
+    """PPO runner for the v4-robust track (asymmetric actor/critic obs).
+
+    Identical hyperparameters to the v3 runner; the only additions are the
+    experiment name and the observation-group mapping: the actor consumes
+    the env's "policy" group (59 dims — no base_lin_vel) while the critic
+    consumes the privileged "critic" group (62 dims, uncorrupted).
+    """
+
+    experiment_name = "open_duck_ppo_robust"
+    obs_groups = {"actor": ["policy"], "critic": ["critic"]}

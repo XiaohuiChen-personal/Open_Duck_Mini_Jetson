@@ -117,6 +117,24 @@ Velocity command ranges (clipped to the reference-motion grid hull):
 
 Action scale: 0.25 (matching Open Duck Playground)
 
+## v4 Tracks (post-CAD retrain)
+
+- **Run A ("v4-inertials")**: task `Isaac-Velocity-Rough-OpenDuck-v0`
+  unchanged — retrains the v3 recipe on the layout-v2.1 model (new masses,
+  frame-correct fullinertia, cut meshes). Isolates the model-change effect.
+- **Run B ("v4-robust")**: task `Isaac-Velocity-Rough-OpenDuck-Robust-v0`
+  (`OpenDuckRobustEnvCfg` + `OpenDuckRobustPPORunnerCfg`):
+  - dynamics DR: pushes (±0.3 m/s, 8-14 s), trunk mass ±(-0.10,+0.15) kg,
+    trunk CoM ±10/±5 mm, friction 0.4-1.0/0.3-0.8, joint-reset scale 0.9-1.1
+  - asymmetric obs: actor = 59 dims (NO base_lin_vel — the BNO055 cannot
+    measure it), critic = 62 dims privileged, uncorrupted
+    (`obs_groups={"actor": ["policy"], "critic": ["critic"]}`)
+  - actuator velocity_limit_sim = 8.94 rad/s (BAM sts3250 id008)
+- **Push-recovery gate**: task `Isaac-OpenDuck...PushEval-v0`
+  (`OpenDuckPushEvalEnvCfg`) — play determinism with interval pushes ON;
+  feeds docs/jetson-mod/validation_results.md (Task 2.7).
+- Deployed ONNX for Run B consumes the 59-dim actor layout (v3's was 62).
+
 ## AMP Track (skrl)
 
 Tasks `Isaac-OpenDuck-AMP-PureStyle-v0` / `Isaac-OpenDuck-AMP-v0` in
