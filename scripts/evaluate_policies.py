@@ -827,6 +827,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--seed", type=int, default=42, help="Environment seed.",
     )
     parser.add_argument(
+        "--keep-pushes", action="store_true", dest="keep_pushes",
+        help=(
+            "Do NOT strip the push_robot / base_external_force_torque events "
+            "from the task cfg. The protocol default disables external pushes "
+            "so quality metrics reflect steady-state gait; set this ONLY for a "
+            "push-recovery evaluation (e.g. the PushEval task), where the "
+            "fall rate under active interval pushes is the deliverable. "
+            "Fall rate remains directly comparable to the same policy's "
+            "no-push run (Task 2.7)."
+        ),
+    )
+    parser.add_argument(
         "--self-test", action="store_true", dest="self_test",
         help="Run the pure-numpy metric unit tests and exit (no Isaac Sim).",
     )
@@ -1322,11 +1334,19 @@ def build_eval_env_cfg(task_id: str):
         env_cfg.observations.policy.enable_corruption = False
     except AttributeError:
         pass
-    # Protocol: no external pushes during evaluation.
-    if hasattr(env_cfg, "events"):
+    # Protocol: no external pushes during evaluation — UNLESS this is an
+    # explicit push-recovery run (--keep-pushes), where the pushes are the
+    # experiment (Task 2.7 gate).
+    if hasattr(env_cfg, "events") and not getattr(args_cli, "keep_pushes", False):
         for event_name in ("push_robot", "base_external_force_torque"):
             if hasattr(env_cfg.events, event_name):
                 setattr(env_cfg.events, event_name, None)
+    if getattr(args_cli, "keep_pushes", False):
+        pr = getattr(getattr(env_cfg, "events", None), "push_robot", None)
+        print(
+            f"[eval] --keep-pushes: external pushes ACTIVE for {task_id} "
+            f"(push_robot={'set' if pr is not None else 'None'})"
+        )
     return env_cfg
 
 

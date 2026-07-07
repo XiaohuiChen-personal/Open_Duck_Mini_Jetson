@@ -414,3 +414,25 @@ class OpenDuckRoughEnvCfg_PLAY(OpenDuckRoughEnvCfg):
         self.observations.policy.enable_corruption = False
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+
+
+@configclass
+class OpenDuckPlainPushEvalEnvCfg(OpenDuckRoughEnvCfg_PLAY):
+    """Push-recovery eval for the PLAIN (62-dim, no-DR) policy track.
+
+    Identical push schedule to :class:`OpenDuckPushEvalEnvCfg` but on the
+    plain v3-recipe task, so a policy trained WITHOUT domain randomization
+    (Run A / v4_inertials) can be measured under the same pushes as the DR
+    policy (Run B / v4_robust) — isolating the robustness contribution of
+    the DR (Task 2.7 comparison). Requires evaluate_policies.py --keep-pushes.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.events.push_robot = EventTerm(
+            func=mdp.push_by_setting_velocity,
+            mode="interval",
+            interval_range_s=(4.0, 7.0),
+            params={"velocity_range": {"x": (-0.3, 0.3), "y": (-0.3, 0.3)}},
+        )

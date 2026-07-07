@@ -44,7 +44,7 @@ Aggregate values below are means over the five conditions.
 <!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
 ## Results
 
-_Last regenerated: 2026-07-07T00:12:14_
+_Last regenerated: 2026-07-07T02:50:04_
 
 ### Aggregate over all conditions
 
@@ -54,6 +54,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | ppo_v3 | rsl_rl | 5/5 | 0.0 | 30.0 | 4.59 | 0.0687 | 0.234 | 68.9 | 64.6 | 4.3 | 1.02 | 0.155 | 0.078 | 21.61 |
 | v4_inertials | rsl_rl | 5/5 | 0.0 | 30.0 | 4.60 | 0.0704 | 0.238 | 70.0 | 64.9 | 5.1 | 0.99 | 0.155 | 0.073 | 21.42 |
+| v4_robust | rsl_rl | 5/5 | 0.0 | 30.0 | 4.49 | 0.0753 | 0.233 | 68.6 | 63.8 | 4.9 | 0.99 | 0.153 | 0.067 | 21.78 |
 
 ### Fall rate (%) per condition
 
@@ -61,6 +62,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 |---|---|---|---|---|---|
 | ppo_v3 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | v4_inertials | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| v4_robust | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 
 ### Gait validity per condition (duty L/R, ok = both in [40, 90]%)
 
@@ -68,4 +70,5 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 |---|---|---|---|---|---|
 | ppo_v3 | ok (70/63) | ok (69/65) | ok (70/63) | ok (67/67) | ok (68/64) |
 | v4_inertials | ok (70/63) | ok (70/66) | ok (70/66) | ok (69/63) | ok (70/67) |
+| v4_robust | ok (68/63) | ok (68/66) | ok (69/64) | ok (69/63) | ok (69/63) |
 <!-- END AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
