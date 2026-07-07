@@ -34,6 +34,18 @@ Metrics (computed in pure numpy from per-step CPU recordings):
     7. Velocity tracking   — mean ||v_xy_base - cmd_xy|| and |wz - cmd_wz|.
     8. Energy proxy        — mean sum_j |tau_j * qdot_j| from the applied
                              joint torques (W).
+    9. Gait-validity gate  — contact-pattern check applied BEFORE ranking:
+                             a condition is gait-valid only if BOTH feet's
+                             stance duty lies in GAIT_DUTY_BAND_PCT
+                             ([40, 90]%). Below the band the policy is not
+                             load-bearing on its feet (the amp_v4 crawl
+                             measured 0.7%/0.4% while passing every other
+                             aggregate metric); above it a foot is dragging
+                             (amp_v1 measured 98-99% on one foot in 3/5
+                             conditions). Quality metrics of gate-failing
+                             conditions describe something other than
+                             walking and must not be ranked. Added
+                             2026-07-06 after the amp_v4 video audit.
 
 Policy adapters own BOTH the checkpoint format and WHICH gym task to build:
 RSL-RL policies (62-dim manager-env observations) and skrl AMP policies
@@ -139,6 +151,13 @@ FRAMEWORK_ALIASES = {
     "skrl": "skrl_amp",
     "amp": "skrl_amp",
 }
+
+# Gait-validity gate: both feet's stance duty must lie in this band (%).
+# Human/robot walking sits around 55-80%; below = not load-bearing on the
+# feet (crawl), above = dragging. See module docstring, metric 9. This
+# constant is the single source of truth for the band — the report header
+# and tables interpolate it.
+GAIT_DUTY_BAND_PCT = (40.0, 90.0)
 
 # Scalar metric keys averaged across conditions for the aggregate row.
 SCALAR_METRIC_KEYS = [
@@ -381,6 +400,39 @@ def stance_duty_metrics(foot_forces: np.ndarray, mask: np.ndarray,
     }
 
 
+def gait_validity(duty_left_pct: float, duty_right_pct: float,
+                  band: tuple[float, float] = GAIT_DUTY_BAND_PCT) -> bool:
+    """Metric 9: contact-pattern gait-validity gate.
+
+    True only if BOTH feet's stance duty lies inside ``band``. This gate is
+    applied before any quality ranking: outside the band the policy is not
+    walking (crawling below, foot-dragging above), so its style/efficiency
+    metrics describe a different behavior and are not comparable.
+    """
+    lo, hi = band
+    if math.isnan(duty_left_pct) or math.isnan(duty_right_pct):
+        return False
+    return lo <= duty_left_pct <= hi and lo <= duty_right_pct <= hi
+
+
+def condition_gait_valid(metrics: dict) -> bool | None:
+    """Gate verdict for one condition dict, or None if it has no duty data.
+
+    Recomputes from the recorded duty whenever it is present — so a band
+    change followed by ``--report-only`` re-gates every JSON, old or new —
+    and falls back to a stored ``gait_valid`` flag only when the duty
+    columns are absent. Returns None (unknown) when neither exists, so the
+    report can distinguish "no contact data" from "measured and failing".
+    """
+    left = metrics.get("stance_duty_left_pct")
+    right = metrics.get("stance_duty_right_pct")
+    if left is not None and right is not None:
+        return gait_validity(float(left), float(right))
+    if "gait_valid" in metrics:
+        return bool(metrics["gait_valid"])
+    return None
+
+
 def rom_symmetry_metrics(leg_pos: np.ndarray, mask: np.ndarray,
                          min_steps: int = 50) -> tuple[dict, float]:
     """Metric 6: per joint-pair p5-p95 ROM ratio, left / right.
@@ -470,6 +522,9 @@ def compute_condition_metrics(rec: dict, ref_leg_pos: np.ndarray, cmd: np.ndarra
     )
     metrics.update(action_smoothness_metrics(rec["actions"], mask))
     metrics.update(stance_duty_metrics(rec["foot_force"], mask, contact_threshold))
+    metrics["gait_valid"] = gait_validity(
+        metrics["stance_duty_left_pct"], metrics["stance_duty_right_pct"]
+    )
     per_pair, rom_mean = rom_symmetry_metrics(rec["leg_pos"], mask)
     metrics["rom_ratio_per_pair"] = per_pair
     metrics["rom_ratio_mean"] = rom_mean
@@ -493,6 +548,10 @@ def aggregate_metrics(per_condition: dict) -> dict:
         sum(m.get("episodes", 0) for m in per_condition.values())
     )
     aggregate["falls"] = int(sum(m.get("falls", 0) for m in per_condition.values()))
+    aggregate["gait_valid_conditions"] = int(
+        sum(condition_gait_valid(m) is True for m in per_condition.values())
+    )
+    aggregate["conditions"] = len(per_condition)
     return aggregate
 
 
@@ -503,7 +562,7 @@ def aggregate_metrics(per_condition: dict) -> dict:
 AUTO_BEGIN = "<!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->"
 AUTO_END = "<!-- END AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->"
 
-PROTOCOL_HEADER = """# Algorithm Comparison — Open Duck Mini v2 (Task 2.5)
+PROTOCOL_HEADER = f"""# Algorithm Comparison — Open Duck Mini v2 (Task 2.5)
 
 Standardized evaluation protocol applied uniformly to all trained policies
 (PPO v2, PPO v3, AMP variants). Produced by `scripts/evaluate_policies.py`;
@@ -536,6 +595,13 @@ per-policy raw numbers live in `docs/jetson-mod/eval_results/<name>.json`
 | v_xy err (m/s) | mean L2 error between achieved base-frame planar velocity and command |
 | wz err (rad/s) | mean abs error between world-frame yaw rate and command |
 | Energy (W) | mean of sum_j abs(tau_j * qdot_j) over applied joint torques |
+| Gait valid | contact-pattern validity gate: both feet's stance duty within [{GAIT_DUTY_BAND_PCT[0]:.0f}, {GAIT_DUTY_BAND_PCT[1]:.0f}]% for the condition. Below the band the policy is not load-bearing on its feet (crawl), above it a foot is dragging. Applied BEFORE any quality ranking |
+
+**Metric hierarchy (added 2026-07-06 after the amp_v4 crawl audit):** the
+gait-validity gate comes first; only gate-passing conditions are ranked on
+the quality metrics. The gate is necessary, not sufficient — a policy can
+pass it and still fail on falls or on the qualitative video audit, which
+remains a mandatory protocol step.
 
 Aggregate values below are means over the five conditions.
 
@@ -554,6 +620,20 @@ def _fmt(value, spec: str = "{:.2f}") -> str:
         return str(value)
 
 
+def _gate_summary(entry: dict) -> str:
+    """'valid/total' gait-gate summary for one policy's JSON entry.
+
+    Derived from the per-condition duty columns (see condition_gait_valid),
+    so JSONs written before the gate existed — and JSONs written under an
+    older band — report correctly without re-running the evaluation.
+    """
+    per_condition = entry.get("per_condition", {})
+    verdicts = [condition_gait_valid(m) for m in per_condition.values()]
+    if not verdicts or all(v is None for v in verdicts):
+        return "n/a"
+    return f"{sum(v is True for v in verdicts)}/{len(verdicts)}"
+
+
 def render_results_section(entries: list[dict]) -> str:
     """Render the comparison tables (pure function of the JSON entries)."""
     lines = [
@@ -563,16 +643,20 @@ def render_results_section(entries: list[dict]) -> str:
         "",
         "### Aggregate over all conditions",
         "",
-        "| Policy | Framework | Fall rate (%) | Ep len (s) | Ref RMS (deg) | Jerk | "
+        "Rank policies on the quality columns only after they pass the gait"
+        " gate (see Metric definitions); gate-failing entries are not walking.",
+        "",
+        "| Policy | Framework | Gait valid | Fall rate (%) | Ep len (s) | Ref RMS (deg) | Jerk | "
         "Action std | Duty L (%) | Duty R (%) | Duty asym (pp) | ROM ratio L/R | "
         "v_xy err (m/s) | wz err (rad/s) | Energy (W) |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for e in entries:
         a = e.get("aggregate", {})
         lines.append(
             f"| {e.get('name', '?')} "
             f"| {e.get('framework', '?')} "
+            f"| {_gate_summary(e)} "
             f"| {_fmt(a.get('fall_rate_pct'), '{:.1f}')} "
             f"| {_fmt(a.get('mean_episode_length_s'), '{:.1f}')} "
             f"| {_fmt(a.get('reference_tracking_rms_deg'), '{:.2f}')} "
@@ -607,6 +691,30 @@ def render_results_section(entries: list[dict]) -> str:
                 _fmt(pc.get(k, {}).get("fall_rate_pct"), "{:.1f}") for k in cond_keys
             ]
             lines.append(f"| {e.get('name', '?')} | " + " | ".join(cells) + " |")
+
+        lines += [
+            "",
+            "### Gait validity per condition (duty L/R, ok = both in "
+            f"[{GAIT_DUTY_BAND_PCT[0]:.0f}, {GAIT_DUTY_BAND_PCT[1]:.0f}]%)",
+            "",
+            "| Policy | " + " | ".join(cond_keys) + " |",
+            "|---|" + "---|" * len(cond_keys),
+        ]
+        for e in entries:
+            pc = e.get("per_condition", {})
+            cells = []
+            for k in cond_keys:
+                m = pc.get(k)
+                verdict = condition_gait_valid(m) if m else None
+                if verdict is None:
+                    cells.append("n/a")  # no contact data ≠ gate failure
+                    continue
+                duty = (
+                    f"{_fmt(m.get('stance_duty_left_pct'), '{:.0f}')}/"
+                    f"{_fmt(m.get('stance_duty_right_pct'), '{:.0f}')}"
+                )
+                cells.append(f"{'ok' if verdict else 'FAIL'} ({duty})")
+            lines.append(f"| {e.get('name', '?')} | " + " | ".join(cells) + " |")
     lines.append("")
     return "\n".join(lines)
 
@@ -634,7 +742,7 @@ def write_comparison_markdown(md_path: str, results_dir: str) -> str:
                 with open(os.path.join(results_dir, fname)) as f:
                     entries.append(json.load(f))
 
-    section = f"{AUTO_BEGIN}\n{render_results_section(entries)}{AUTO_END}\n"
+    section = f"{AUTO_BEGIN}\n{render_results_section(entries)}{AUTO_END}"
 
     if os.path.isfile(md_path):
         with open(md_path) as f:
@@ -647,6 +755,8 @@ def write_comparison_markdown(md_path: str, results_dir: str) -> str:
             content = content.rstrip("\n") + "\n\n" + section
     else:
         content = PROTOCOL_HEADER + section
+    # Normalize the file ending so repeated regeneration is idempotent.
+    content = content.rstrip("\n") + "\n"
 
     os.makedirs(os.path.dirname(md_path), exist_ok=True)
     with open(md_path, "w") as f:
@@ -662,7 +772,8 @@ def write_comparison_markdown(md_path: str, results_dir: str) -> str:
 def build_arg_parser() -> argparse.ArgumentParser:
     """Protocol arguments (AppLauncher args are appended later)."""
     parser = argparse.ArgumentParser(
-        description="Task 2.5 standardized evaluation protocol for trained policies."
+        description="Task 2.5 standardized evaluation protocol for trained policies.",
+        allow_abbrev=False,  # '--report' must not silently parse as --report-only
     )
     parser.add_argument(
         "--policies",
@@ -718,6 +829,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--self-test", action="store_true", dest="self_test",
         help="Run the pure-numpy metric unit tests and exit (no Isaac Sim).",
+    )
+    parser.add_argument(
+        "--report-only", action="store_true", dest="report_only",
+        help=(
+            "Regenerate the comparison markdown from the JSONs already in "
+            "--output_dir and exit (no Isaac Sim). Use after changing "
+            "report/gate code to refresh algorithm_comparison.md. "
+            "Ignored if --self-test is also given."
+        ),
     )
     return parser
 
@@ -892,7 +1012,7 @@ def run_self_test() -> int:
     rec["mask"][30:, 1] = False  # env 1 fell at step 30
     m = compute_condition_metrics(rec, ref, np.array([0.2, 0.0, 0.0]), 0.02, 1.0)
     expected_keys = set(SCALAR_METRIC_KEYS) | {
-        "episodes", "falls", "rom_ratio_per_pair", "command",
+        "episodes", "falls", "rom_ratio_per_pair", "command", "gait_valid",
     }
     check("compute_condition_metrics returns all protocol metrics",
           expected_keys.issubset(m.keys()))
@@ -906,6 +1026,30 @@ def run_self_test() -> int:
           np.isclose(agg["fall_rate_pct"], m["fall_rate_pct"])
           and agg["episodes"] == 2 * m["episodes"])
 
+    # --- Gait-validity gate (metric 9) ------------------------------------
+    check("gait gate: walking duty passes", gait_validity(70.4, 66.7) is True)
+    check("gait gate: band endpoints are inclusive",
+          gait_validity(40.0, 90.0) is True)
+    check("gait gate: just outside the band fails",
+          gait_validity(39.9, 60.0) is False and gait_validity(60.0, 90.1) is False)
+    check("gait gate: crawl fails (amp_v4 case)", gait_validity(0.7, 0.4) is False)
+    check("gait gate: one-foot drag fails (amp_v1 case)",
+          gait_validity(98.7, 52.0) is False)
+    check("gait gate: nan fails closed", gait_validity(float("nan"), 60.0) is False)
+    check("gait gate: recorded duty wins over a stale stored flag",
+          condition_gait_valid({"gait_valid": True,
+                                "stance_duty_left_pct": 0.7,
+                                "stance_duty_right_pct": 0.4}) is False)
+    check("gait gate: stored flag used only without duty data",
+          condition_gait_valid({"gait_valid": True}) is True
+          and condition_gait_valid({"gait_valid": False}) is False)
+    check("gait gate: no data at all is unknown, not a failure",
+          condition_gait_valid({}) is None)
+    check("synthetic record passes the gate (duty in band)",
+          m["gait_valid"] is True)
+    check("aggregate counts gate-passing conditions",
+          agg.get("gait_valid_conditions") == 2 and agg.get("conditions") == 2)
+
     # --- Markdown rendering ---------------------------------------------
     entries = [
         {"name": "ppo_v3", "framework": "rsl_rl", "aggregate": agg,
@@ -918,6 +1062,13 @@ def run_self_test() -> int:
           "| ppo_v3 " in md and "| amp_v1 " in md
           and "vx+0.20_vy+0.00_wz+0.00" in md)
     check("markdown maps missing metrics to n/a", "n/a" in md)
+    check("markdown renders the gate column and per-condition gate table",
+          "| Gait valid |" in md
+          and "### Gait validity per condition" in md
+          and "| ppo_v3 | rsl_rl | 1/1 " in md
+          and "ok (" in md)
+    check("markdown gate summary is n/a without per-condition data",
+          "| amp_v1 | skrl_amp | n/a " in md)
 
     # --- Real gait library (skipped gracefully if the pkl is absent) -----
     if os.path.isfile(DEFAULT_REFERENCE_PKL):
@@ -950,6 +1101,16 @@ def run_self_test() -> int:
 
 if __name__ == "__main__" and "--self-test" in sys.argv:
     sys.exit(run_self_test())
+
+
+if __name__ == "__main__" and "--report-only" in sys.argv:
+    # Tolerate AppLauncher-style flags (--headless etc.) like the main path.
+    _args, _unknown = build_arg_parser().parse_known_args()
+    if _unknown:
+        print(f"[WARN] Ignoring unrecognized arguments: {_unknown}")
+    _path = write_comparison_markdown(_args.comparison_md, _args.output_dir)
+    print(f"[report-only] regenerated {_path}")
+    sys.exit(0)
 
 
 # ======================================================================
