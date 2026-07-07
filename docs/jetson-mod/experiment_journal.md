@@ -34,7 +34,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 9 | `amp_command4` | AMP | 2026-06-12 | num_amp_observations 2 -> 4 (discriminator temporal context) | **partial** — real strides appear, but one-legged |
 | 10 | `amp_command5` | AMP | 2026-06-12 | num_amp_observations 4 -> 14 (window > half gait cycle) | **partial** — bilateral reference-amplitude gait, but task drowned (0.18 err, 14% falls) |
 | 11 | `amp_command6` | AMP | 2026-06-12 | 14-frame window + task/style 0.7/0.3 (recover translation) | **DIVERGED** — action blowup, reward -> -6766 |
-| 12 | `amp_command7` | AMP | 2026-06-15 | run-11 fix (raw actions clipped +/-5.0) + 14-frame + task/style 0.6/0.4 | **best striding AMP** — converged, 0-1% falls, real ROM; but energy-hungry + tracking measurement-dependent |
+| 12 | `amp_command7` | AMP | 2026-06-15 | run-11 fix (raw actions clipped +/-5.0) + 14-frame + task/style 0.6/0.4 | ~~best striding AMP~~ REVISED 2026-07-06: **crawl** (see run-12 addendum) — converged, 0-1% falls, but locomotes on its body |
 
 ---
 
@@ -50,7 +50,8 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 v1_imitation_ppo, v2_bdx_imitation_ppo, v3_bdx_imitation_ppo (PPO only).
 Two key AMP checkpoints are now also archived here (2026-06-15):
 `amp_v1_run8_command/` (the precise command-following shuffler) and
-`amp_v4_run12_command/` (the best striding command-follower), each with its
+`amp_v4_run12_command/` (converged command-follower; video audit 2026-07-06:
+locomotes in a crawl — see the run-12 addendum), each with its
 `params/{env,agent}.yaml`. Other AMP runs remain only in the IsaacLab logs.
 
 **Full-protocol evaluation** (5 conditions x 10 windows x 64 envs, in
@@ -397,6 +398,26 @@ not mistaken for study runs):
   reward at equal quality. AMP's style fidelity is real but bought with
   substantial tuning, training instability, and energy cost — a nuanced
   result stronger than a simple "AMP wins/loses."
+- **ADDENDUM 2026-07-06 (video audit — verdict revised).** A deterministic
+  rollout video at fixed cmd vx=0.2 (agent_72000.pt, robot-tracking camera,
+  rendered for the en665.645 midpoint deliverable) shows run 12 locomotes in
+  a low forward **crawl**: trunk riding just above the 0.1 m termination
+  height, feet rarely loaded past 1 N. This resolves the "stance duty
+  0.7%/0.4% anomaly" flagged in the full eval (eval_results/amp_v4.json) as
+  real behavior, and coherently explains the 170.5 W energy and 27.2° ref
+  RMS. The same posture appears in the final training filmstrip
+  (videos/train/rl-video-step-70000.mp4), so this is converged behavior,
+  not a render artifact. The "best striding command-follower" verdict is
+  therefore revised: the forensic's large joint ROMs are crawl motion, not
+  strides; run 8 (amp_v1) remains the only walking AMP policy. Videos
+  archived in the en665.645 midpoint Google Drive folder
+  (EN665.645-midpoint-gait-videos). Protocol consequence: a gait-validity
+  gate (both feet's stance duty in [40, 90]%) was added to
+  `evaluate_policies.py` as metric 9 and to `algorithm_comparison.md`
+  (regenerable via `--report-only`); on the archived JSONs it scores
+  ppo_v2 5/5, ppo_v3 5/5, amp_v1 2/5, amp_v2 4/5, amp_v3 5/5, amp_v4 0/5.
+  The gate is necessary, not sufficient — the qualitative video audit
+  remains a mandatory protocol step (see algorithm_comparison.md).
 
 ## Planned lever ladder (one per run, in order, each ~2 h)
 
