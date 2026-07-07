@@ -480,15 +480,51 @@ divergence, one 2x-budget resume, and zero acceptable gaits.
 4. **Exploration ceiling.** Policy log-std fixed at 0.055 for every run;
    this lever was never pulled.
 
-**Next candidates (if the AMP line is continued):**
-1. amp_v5 — K=14 window, intermediate task/style weight, plus an
-   upright-posture term or termination height raised to ~0.13 m to excise
-   the crawl equilibrium (~2.8 h).
-2. Regenerate reference clips from PPO v3 rollouts (physically consistent
-   by construction) — promoted from "fallback of last resort" to the
-   decisive test of root-cause #1; reframes the study as two-stage
-   distillation either way it comes out.
-3. Unfix log-std (~0.15) as a cheap ablation on top of either.
+### Forward plan (adopted 2026-07-06)
+
+Principle: no open-ended gait-chasing. Every further run must test a named
+root-cause hypothesis and be informative in BOTH outcomes; the paper's
+negative-result story is already complete without them.
+
+**Phase 1 — evidence work, no new training (~1-2 days, fills the midpoint
+paper's committed placeholders):**
+1. Extend `evaluate_policies.py` with a per-episode dump and posture
+   metrics (mean base height, trunk orientation) as a second,
+   contact-independent validity axis; re-run the protocol on the six
+   existing checkpoints (minutes each on GPU). Unlocks bootstrap CIs and
+   significance tests for H1/H3.
+2. Convergence analysis (H3) from the existing TensorBoard logs — no GPU.
+3. Filmstrip figures from the four existing rollout videos.
+
+**Phase 2 — two hypothesis-driven AMP runs (one overnight each, ~2.8 h
+train + ~40 min eval; ONE Isaac job at a time):**
+4. **amp_v5 / run 13 — tests root-cause #2 (termination geometry).**
+   Run-12 config, ONE lever: termination height 0.10 -> ~0.13 m (or an
+   upright-posture term) to excise the crawl equilibrium. Walker emerges =
+   crawl was a reachability artifact; reverts to in-place/shuffle = the
+   problem sits deeper.
+5. **amp_v6 / run 14 — tests root-cause #1 (reference-data physics); the
+   decisive experiment.** Author a rollout-recorder that emits
+   MotionLoader `.npz` clips from deterministic PPO v3 rollouts across the
+   command grid (~1 day), then retrain the same AMP config on the
+   physically-consistent clips. Good gait = failure pinned on the
+   synthetic polynomial data; still fails = adversarial imitation shown
+   hard on this platform even with clean demonstrations.
+6. Optional run 15: unfix log-std (0.055 -> ~0.15) ONLY if v5 or v6 shows
+   a partial improvement worth amplifying.
+
+**Acceptance bar for any new AMP policy** (all three, else it is another
+data point, not a candidate): gait gate >= 4/5 conditions, fall rate < 1%
+over the full protocol, and an upright walking gait on the video audit.
+
+**Phase 3 — final paper:** integrate Phase-1 statistics and the v5/v6
+outcomes, settle H1/H2/H3 verdicts, add filmstrips next to the video
+links.
+
+Expectation on record: matching ppo_v3's overall quality is unlikely in
+this timeline; the prize is evidence, not a deployable AMP policy. PPO v3
+stays the deployment selection — ONNX export and Isaac Sim validation
+(Tasks 2.6/2.7) proceed independently of all of the above.
 
 ## Planned lever ladder (one per run, in order, each ~2 h)
 
