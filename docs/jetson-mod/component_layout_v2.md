@@ -57,20 +57,22 @@ the combined effect.
 | Servo-driver board | **unchanged** (-0.06349, 0.0165, 0.0604) | [58.8, 60.4] | First-pass move REVERTED: the shortened partition (top 44.35) no longer reaches the board's z-band, and the board's original trunk_top tray pocket is the only verified-clear mount (the moved position was inside solid trunk_top) |
 | Battery pack 6× 18650 (3S2P) + BMS | hump + **declared rear extension** | — | 2 original cells at the modeled positions; **4 extra cells as a 2×2 vertical grid at (-0.145, 0, 0.0325)** inside the Part-2 hump extension (current hump interior is only ~18 mm deep behind the lid and tapers — it cannot take more than the 2 existing cells) |
 
-Whole-robot mass unchanged (2.745549 kg). Frame-correct inertials
-(from `compute_trunk_inertial.py`; MJCF `fullinertia`, URDF full matrix):
+Whole-robot mass after the Part-2 shell mods: **2.656149 kg** (the CAD cuts
+removed ~89 g of PLA; see "Part-2 status" below). Frame-correct inertials
+(from `compute_trunk_inertial.py`, including the Part-2 shell mass deltas;
+MJCF `fullinertia`, URDF full matrix):
 
 ```
-trunk: pos (-0.0607663, 0.0001468, 0.0332545)  mass 1.178026
-       ixx 0.00225708  iyy 0.00567564  izz 0.00504925
-       ixy -2.134e-05  ixz -5.747e-05  iyz -4.549e-06
-       principal (0.0056758, 0.0050504, 0.0022558)
+trunk: pos (-0.0635908, 0.0000940, 0.0343123)  mass 1.088626
+       ixx 0.00220751  iyy 0.00536410  izz 0.00477170
+       ixy -2.458e-05  ixz -9.915e-05  iyz -4.978e-06
+       principal (0.0053643, 0.0047755, 0.0022035)
 head:  pos (0.0072060, -0.0011494, 0.0223904)  mass 0.362083
        ixx 0.00207359  iyy 0.00146894  izz 0.00088770
        ixy 1.051e-05   ixz 9.104e-05   iyz -1.093e-05
 ```
 
-Whole-robot standing CoM at the trained stance now sits **~6 mm behind the
+Whole-robot standing CoM at the trained stance sits **6.3 mm behind the
 foot-frame origins** (was ~2-4 mm ahead pre-layout): the honest battery
 placement moved mass rearward. This is well inside the ~93 mm foot support
 polygon; Run A's gait gate measures the consequence.
@@ -124,7 +126,27 @@ polygon; Run A's gait gate measures the consequence.
   1 mm mica at the new size is ~26 g; the remainder budgets retention
   rails, gasket, adhesive). The slab inertia model uses the envelope.
 
-## Part-2 mesh cut list (implements this layout in the printed parts)
+## Part-2 status: IMPLEMENTED (scripts/generate_cad_mods.py)
+
+All cuts below were applied by `scripts/generate_cad_mods.py` (trimesh +
+manifold3d booleans) to the sim meshes AND mm-scale print/ copies; every
+modified part remains a single watertight component. Measured volume deltas
+(printed-PLA effective density 1.116 g/cm³, a documented 0.9×solid
+assumption): spine cut −60.3 cm³ (−67.3 g), body_middle_bottom net −2.6 cm³,
+body_front slots −7.2 cm³, hump extension net −10.1 cm³ (thin new shell minus
+bored thick wall). **Trunk is now 1.088626 kg; total robot 2.656149 kg
+(−89.4 g vs the pre-Part-2 model).** Standing CoM: −6.3 mm aft of the foot
+origins. As-built details: +y port opening x[−80,−54] z[−15,+24] (the only
+walled section of the I/O edge — the leg cutout already opens x[−50,+18]);
+−y louvers 3× 8 mm slots z[−8,+20] at x −78/−67/−56; 6 inlet slots 20×6 in
+body_front at z rows [27,33]/[37,43]; 4× Ø8 floor bosses at (−75,±38),
+(+15,±38) topping at z=−11.5 (0.1 mm under the Jetson base plate — flat
+seats + pilot-drill bases, since no vendor hole pattern exists);
+hump extension outer to x=−170, bore y±20.5 to spare the USB-C charger
+mount; print/thermal_partition.stl = 2 mm PLA wall with 45° bottom-corner
+chamfers + 8×5 cable notch (mica sheet is a purchased part).
+
+## Part-2 cut list (as designed)
 
 1. **trunk_bottom**: remove the central spine within
    x[-0.044, 0.021], y[-0.016, 0.017], z[-0.0136, 0.051] (the declared

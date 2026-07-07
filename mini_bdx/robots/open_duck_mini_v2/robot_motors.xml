@@ -69,7 +69,7 @@
         <body name="base" pos="0 0 0.17">
             <freejoint />
             <body name="trunk_assembly">
-                <inertial pos="-0.0607663 0.0001468 0.0332545" mass="1.178026" fullinertia="0.00225708 0.00567564 0.00504925 -2.13352192e-05 -5.74699993e-05 -4.54878379e-06" />
+                <inertial pos="-0.0635908 0.0000940 0.0343123" mass="1.088626" fullinertia="0.00220751 0.00536410 0.00477170 -2.45791976e-05 -9.91474102e-05 -4.97849194e-06" />
                 <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front" />
                 <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front" contype="0" conaffinity="0" />
                 <geom pos="-0.1263 -0.0257 0.0576079" quat="0.5 0.5 -0.5 0.5" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="usb_c_charger" />

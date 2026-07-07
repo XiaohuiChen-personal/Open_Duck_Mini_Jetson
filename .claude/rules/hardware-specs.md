@@ -5,7 +5,7 @@
 | Parameter | Value |
 |---|---|
 | Total height | ~420 mm (legs extended) |
-| Total mass (after mod) | ~2,746 g |
+| Total mass (after mod) | ~2,656 g (Part-2 CAD mods removed ~89 g of shell/chassis PLA) |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
 | Servos | 14x Feetech STS3250 (12V, 50 kg.cm stall, 74.5g each) |
 | Ear servos | 2x SG90 micro servos (in head) |
@@ -41,10 +41,10 @@ Total:                         ~7.7 GB  (fits)
 
 | Body | Original (g) | Modified (g) | Change |
 |---|---|---|---|
-| trunk_assembly | 698.5 | ~1,178 | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +180 (batteries: 4 extra 18650 cells, 2→6 total) +5 (BMS) +15 (DC-DC) +37 (thermal partition+mica) +8 (wiring) |
+| trunk_assembly | 698.5 | ~1,089 | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +180 (batteries: 4 extra 18650 cells, 2→6 total) +5 (BMS) +15 (DC-DC) +37 (thermal partition assembly) +8 (wiring) −89.4 (Part-2 CAD: spine cut −67.3, vents/port −10.9, hump extension net −11.2; printed-PLA 1.116 g/cm³ assumption) |
 | head_assembly | 352.6 | ~362.1 | -10 (Pi removed) +19.5 (head_roll servo upgrade) |
 | All 14 servos | 770 (14x55g) | 1,043 (14x74.5g) | +273 g total (+19.5g each x14: 3 in trunk, 1 in head, 10 in limb/neck bodies) |
-| Total robot | 2,062 | ~2,746 | +684 g (+33.2%) |
+| Total robot | 2,062 | ~2,656 | +594 g (+28.8%) |
 
 ## Raspberry Pi Zero 2W (being removed)
 

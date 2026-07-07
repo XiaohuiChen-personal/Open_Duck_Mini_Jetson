@@ -115,6 +115,21 @@ TRUNK_COMPONENTS = [
     ("imu_move_in", 0.003, [-0.100, 0.0, 0.0433], POINT),
     # NOTE: the servo-driver board is NOT moved (first-pass move reverted —
     # the shortened partition no longer reaches the board's z-band).
+    # ------------------------------------------------------------------
+    # Part-2 shell/chassis mesh deltas (scripts/generate_cad_mods.py output;
+    # printed-PLA effective density 1.116 g/cm^3 = 0.9 x solid, documented
+    # assumption for perimeter-dominated thin walls). Masses/centroids are
+    # the measured boolean-op volume deltas.
+    # ------------------------------------------------------------------
+    # trunk_bottom central spine removal (-60.32 cm^3): box tensor over the
+    # cut region bbox as the removed-material approximation.
+    ("spine_cut", -0.0673, [-0.0178, 0.0, 0.0177], box_tensor(-0.0673, 0.065, 0.033, 0.0646)),
+    # body_middle_bottom: +y port opening + -y louvers - 4 mount bosses (net)
+    ("shell_port_louvers_bosses", -0.0029, [-0.1029, 0.0242, 0.0256], POINT),
+    # body_front inlet slots
+    ("shell_inlet_slots", -0.0080, [0.0410, 0.0, 0.0350], POINT),
+    # body_back hump extension (net: thin new shell minus bored thick wall)
+    ("hump_extension_net", -0.0112, [-0.1082, 0.0, 0.0254], POINT),
 ]
 TRUNK_WIRING = 0.008  # lumped at the composite CoM
 

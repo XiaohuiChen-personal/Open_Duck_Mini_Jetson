@@ -249,16 +249,15 @@ class TestChassisMeshCompatibility:
             "the low mount must not require any trunk_top cut"
         )
 
-    def test_trunk_bottom_intrusion_within_declared_spine_cut(self, boxes):
+    def test_trunk_bottom_clear_of_jetson(self, boxes):
+        """The Part-2 spine cut landed: the Jetson envelope must now have ZERO
+        intersection with trunk_bottom (SPINE_CUT_BOX documents the cut that
+        made this true; scripts/generate_cad_mods.py applied it)."""
         pts = self._jetson_grid(boxes)
         inside = _mesh_points_inside("trunk_bottom", pts)
-        lo, hi = SPINE_CUT_BOX
-        outside_cut = [
-            p for p in inside if not (np.all(p >= lo) and np.all(p <= hi))
-        ]
-        assert not outside_cut, (
-            f"Jetson intersects trunk_bottom OUTSIDE the declared spine-cut box: "
-            f"{np.array(outside_cut)}"
+        assert len(inside) == 0, (
+            f"{len(inside)} Jetson grid points inside trunk_bottom after the "
+            f"spine cut: {inside[:5]}"
         )
 
 

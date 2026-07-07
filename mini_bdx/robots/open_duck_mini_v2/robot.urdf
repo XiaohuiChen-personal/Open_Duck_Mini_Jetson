@@ -532,9 +532,9 @@
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="-0.0607663 0.0001468 0.0332545" rpy="0 0 0"/>
-            <mass value="1.178026" />
-            <inertia ixx="0.00225708" ixy="-2.13352192e-05"  ixz="-5.74699993e-05" iyy="0.00567564" iyz="-4.54878379e-06" izz="0.00504925" />
+            <origin xyz="-0.0635908 0.0000940 0.0343123" rpy="0 0 0"/>
+            <mass value="1.088626" />
+            <inertia ixx="0.00220751" ixy="-2.45791976e-05"  ixz="-9.91474102e-05" iyy="0.00536410" iyz="-4.97849194e-06" izz="0.00477170" />
         </inertial>
     </link>
     <link name="trunk">
