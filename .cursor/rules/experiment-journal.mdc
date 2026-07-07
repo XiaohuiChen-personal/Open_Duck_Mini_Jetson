@@ -54,6 +54,7 @@ ONNX, videos, log dir). Update the run-index table at the top of the journal.
 ## Log dirs
 
 - PPO (RSL-RL): `~/IsaacLab/logs/rsl_rl/open_duck_ppo/<timestamp>/`
+- PPO robust track (Run B+): `~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/<timestamp>/`
 - AMP (skrl): `~/IsaacLab/logs/skrl/<experiment.directory>/<timestamp>_amp_torch/`
 - Detached run console logs + PIDs: `.training_runs/<run_name>.{log,pid}`
 

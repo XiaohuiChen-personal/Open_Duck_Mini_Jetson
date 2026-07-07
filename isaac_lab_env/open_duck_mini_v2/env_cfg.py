@@ -335,6 +335,9 @@ class OpenDuckRobustEnvCfg(OpenDuckRoughEnvCfg):
         )
         self.events.physics_material.params["static_friction_range"] = (0.4, 1.0)
         self.events.physics_material.params["dynamic_friction_range"] = (0.3, 0.8)
+        # enforce dynamic <= static per bucket (independent sampling would
+        # otherwise produce non-physical dynamic > static combinations)
+        self.events.physics_material.params["make_consistent"] = True
         self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
 
         # --- Actuator realism: BAM-measured max servo speed ---

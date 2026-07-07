@@ -134,6 +134,9 @@ Action scale: 0.25 (matching Open Duck Playground)
   (`OpenDuckPushEvalEnvCfg`) — play determinism with interval pushes ON;
   feeds docs/jetson-mod/validation_results.md (Task 2.7).
 - Deployed ONNX for Run B consumes the 59-dim actor layout (v3's was 62).
+  Surviving term order (the Jetson obs builder must emit exactly this):
+  base_ang_vel(3), projected_gravity(3), velocity_commands(3),
+  joint_pos(16), joint_vel(16), actions(16), gait_phase(2).
 
 ## AMP Track (skrl)
 
