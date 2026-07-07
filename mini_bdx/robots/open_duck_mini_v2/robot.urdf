@@ -184,7 +184,7 @@
             </geometry>
         </collision>
         <visual>
-            <origin xyz="-0.015990012619999953 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
+            <origin xyz="-0.063490012619999952603 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
                 <mesh filename="package:///board.stl"/>
             </geometry>
@@ -193,7 +193,7 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.015990012619999953 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
+            <origin xyz="-0.063490012619999952603 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
                 <mesh filename="package:///board.stl"/>
             </geometry>
@@ -501,7 +501,7 @@
         </collision>
         <!-- Thermal partition wall between battery and compute zones -->
         <visual>
-            <origin xyz="-0.086 0 0.0104" rpy="0 0 0" />
+            <origin xyz="-0.086 0 0.011" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///thermal_partition.stl"/>
             </geometry>
@@ -510,7 +510,7 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.086 0 0.0104" rpy="0 0 0" />
+            <origin xyz="-0.086 0 0.011" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///thermal_partition.stl"/>
             </geometry>
@@ -532,9 +532,9 @@
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="-0.0579714 0.0001468 0.0332356" rpy="0 0 0"/>
+            <origin xyz="-0.0607663 0.0001468 0.0332545" rpy="0 0 0"/>
             <mass value="1.178026" />
-            <inertia ixx="0.00403131" ixy="0"  ixz="0" iyy="0.00473388" iyz="0" izz="0.00337805" />
+            <inertia ixx="0.00225708" ixy="-2.13352192e-05"  ixz="-5.74699993e-05" iyy="0.00567564" iyz="-4.54878379e-06" izz="0.00504925" />
         </inertial>
     </link>
     <link name="trunk">
@@ -2160,9 +2160,9 @@
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="0.0069046 -0.0012149 0.0247919" rpy="0 0 0"/>
+            <origin xyz="0.0072060 -0.0011494 0.0223904" rpy="0 0 0"/>
             <mass value="0.362083" />
-            <inertia ixx="0.00215959511438104" ixy="0"  ixz="0" iyy="0.0015094410302028995" iyz="0" izz="0.0009254713085296116" />
+            <inertia ixx="0.00207359" ixy="1.05140407e-05"  ixz="9.10371814e-05" iyy="0.00146894" iyz="-1.09250765e-05" izz="0.00088770" />
         </inertial>
     </link>
     <link name="head">

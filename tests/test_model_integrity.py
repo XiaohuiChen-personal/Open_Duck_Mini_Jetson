@@ -53,17 +53,17 @@ class TestJetsonMesh:
         assert os.path.exists(os.path.join(ROBOT_DIR, "thermal_partition.stl"))
 
     def test_thermal_partition_stl_dimensions(self):
-        """Thermal partition bounding box must match layout v2: 3 x 103.5 x 68 mm.
+        """Thermal partition bounding box must match layout v2.1: 3 x 103.5 x 66.7 mm.
 
         Resized from the original 3x110x90 spec — that plate was wider than
-        the measured 104 mm shell interior and taller than the floor-to-plate
-        span; see docs/jetson-mod/component_layout_v2.md.
+        the measured 104 mm shell interior and taller than the local
+        floor-to-plate span; see docs/jetson-mod/component_layout_v2.md.
         """
         vertices = load_stl_vertices(os.path.join(ROBOT_DIR, "thermal_partition.stl"))
         dims = vertices.max(axis=0) - vertices.min(axis=0)
         assert abs(dims[0] - 0.003) < 0.0005, f"X dimension wrong: {dims[0]}"
         assert abs(dims[1] - 0.1035) < 0.0005, f"Y dimension wrong: {dims[1]}"
-        assert abs(dims[2] - 0.068) < 0.0005, f"Z dimension wrong: {dims[2]}"
+        assert abs(dims[2] - 0.0667) < 0.0005, f"Z dimension wrong: {dims[2]}"
 
     def test_dcdc_stl_exists(self):
         """DC-DC converter STL mesh file must exist."""

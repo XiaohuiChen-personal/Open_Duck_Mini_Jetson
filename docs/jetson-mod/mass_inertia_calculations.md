@@ -1,20 +1,32 @@
 # Mass and Inertia Calculations — Jetson Orin Nano Modification
 
-> **REVISION NOTICE (2026-07-06, layout v2).** The component *positions* in
-> this document describe the first-pass layout, which the pre-Phase-3 audit
-> measured to be physically unbuildable (DC-DC inside the Jetson envelope,
-> partition clipping the Jetson and both side walls, Jetson intersecting the
-> trunk chassis and hip-yaw servo cases). The authoritative layout is now
-> `docs/jetson-mod/component_layout_v2.md`, and the trunk inertial is
-> computed reproducibly by `scripts/compute_trunk_inertial.py` with every
-> component (including the STS3250 servo deltas and all four extra cells) at
-> its actual v2 position — replacing the rounded mass-ratio scaling used in
-> the "STS3250 Servo Migration" section below. Current model values:
-> mass 1.178026 kg, CoM (-0.0579714, 0.0001468, 0.0332356),
-> diaginertia (0.00403131, 0.00473388, 0.00337805). Total robot mass is
-> unchanged (2.745549 kg). The methodology below (parallel-axis composition,
-> triangle-inequality checks) still applies; the head_assembly section is
-> unaffected.
+> **REVISION NOTICE (2026-07-06, layout v2.1).** Two classes of error in
+> this document are superseded — do NOT copy values from the sections below
+> into model files:
+>
+> 1. **Frame error**: the "Existing Bodies" inertia columns are PRINCIPAL
+>    moments (the upstream MJCF inertials carry a `quat`), but every
+>    computation below treats them as body-frame (Ixx, Iyy, Izz). For the
+>    trunk the quat is a near-axis-permutation, making the derived
+>    diaginertia wrong by +78%/−10%/−27% per axis; the head's ~4.5°
+>    principal rotation was dropped too. Every policy trained before this
+>    correction (v1-v3 PPO, all AMP runs) saw the frame-permuted trunk
+>    inertia.
+> 2. **Layout error**: the component positions describe the first-pass
+>    layout, which the pre-Phase-3 audit measured to be physically
+>    unbuildable.
+>
+> The authoritative layout is `docs/jetson-mod/component_layout_v2.md`; the
+> trunk AND head inertials are computed by `scripts/compute_trunk_inertial.py`
+> (full 3×3 tensors from the upstream URDF body-frame matrices, frame
+> self-check at import, every component at its v2.1 position). Current model
+> values (MJCF `fullinertia`): trunk mass 1.178026 kg,
+> CoM (-0.0607663, 0.0001468, 0.0332545), ixx/iyy/izz
+> 0.00225708/0.00567564/0.00504925; head mass 0.362083 kg,
+> CoM (0.0072060, -0.0011494, 0.0223904), ixx/iyy/izz
+> 0.00207359/0.00146894/0.00088770. Total robot mass unchanged (2.745549 kg).
+> The parallel-axis methodology below remains a valid illustration; the
+> numbers do not.
 
 ## Input Parameters
 
@@ -194,7 +206,7 @@ I_head_sts3250 = (0.0021596, 0.00150944, 0.000925471) kg·m²
 
 Each non-trunk, non-head servo body gets +19.5g with inertia scaled proportionally. See robot_motors.xml for exact values.
 
-## Final Values for robot_motors.xml
+## Final Values for robot_motors.xml (SUPERSEDED — see revision notice; model files now use frame-correct fullinertia)
 
 ### trunk_assembly
 ```xml

@@ -204,7 +204,11 @@ class TestComponentLayout:
         assert lo[0] >= -0.114 + 0.002, "partition must clear the battery lid"
         assert hi[1] - lo[1] <= 0.104, "partition wider than shell interior (104 mm)"
         assert hi[2] <= 0.0448, "partition must stop at the trunk_top plate underside"
-        assert lo[2] <= -0.0230, "partition must reach the cavity floor (seal)"
+        # Local floor top at the partition plane (x=-0.086) is z=-0.02238
+        # (mesh-measured; 1.5 mm higher than the Jetson-zone floor). Seal by
+        # near-contact without penetrating the slab.
+        assert lo[2] <= -0.0222, "partition must reach the local cavity floor (seal)"
+        assert lo[2] >= -0.0226, "partition must not penetrate the floor slab"
 
     def test_partition_clear_of_relocated_components(self, boxes):
         part = boxes["thermal_partition"]
@@ -258,6 +262,54 @@ class TestChassisMeshCompatibility:
         )
 
 
+# Partition bottom corners may clip the body_middle_bottom wall fillets until
+# the Part-2 printable part chamfers them (declared allowance, body frame):
+# the shell side walls curve inward below z ~ +3 mm.
+PARTITION_CHAMFER_BOXES = [
+    (np.array([-0.0880, -0.0525, -0.0230]), np.array([-0.0840, -0.0410, 0.0040])),
+    (np.array([-0.0880, 0.0410, -0.0230]), np.array([-0.0840, 0.0525, 0.0040])),
+]
+
+
+@pytest.mark.phase3
+class TestRelocatedComponentsMeshLevel:
+    """Every relocated/added component must be mesh-level clear of the chassis
+    and shells (the reviewer found the first-pass board move embedded in solid
+    trunk_top — this class prevents that failure mode for all of them)."""
+
+    GRID_STEP = 0.004
+    CHASSIS = ["trunk_top", "trunk_bottom", "body_middle_bottom", "body_middle_top"]
+
+    def _box_grid(self, boxes, name):
+        lo, hi = boxes[name]
+        axes = [np.arange(lo[i] + 5e-4, hi[i], self.GRID_STEP) for i in range(3)]
+        axes = [a if len(a) else np.array([(lo[i] + hi[i]) / 2]) for i, a in enumerate(axes)]
+        return np.array([[x, y, z] for x in axes[0] for y in axes[1] for z in axes[2]])
+
+    @pytest.mark.parametrize("component", ["board", "dcdc_converter", "bno055"])
+    def test_component_clear_of_chassis(self, boxes, component):
+        pts = self._box_grid(boxes, component)
+        for mesh in self.CHASSIS:
+            inside = _mesh_points_inside(mesh, pts)
+            assert len(inside) == 0, (
+                f"{component} has {len(inside)} grid points inside {mesh}: "
+                f"{inside[:5]}"
+            )
+
+    def test_partition_clear_of_chassis_except_chamfer_corners(self, boxes):
+        pts = self._box_grid(boxes, "thermal_partition")
+        for mesh in self.CHASSIS:
+            inside = _mesh_points_inside(mesh, pts)
+            outside_allowance = [
+                p for p in inside
+                if not any(np.all(p >= lo) and np.all(p <= hi) for lo, hi in PARTITION_CHAMFER_BOXES)
+            ]
+            assert not outside_allowance, (
+                f"partition has {len(outside_allowance)} points inside {mesh} outside "
+                f"the declared chamfer corners: {np.array(outside_allowance)[:5]}"
+            )
+
+
 @pytest.mark.phase3
 class TestModelFileConsistency:
     """The five relocated components must agree across all three model files."""
@@ -297,8 +349,8 @@ class TestModelFileConsistency:
             assert np.allclose(a[comp], b[comp], atol=1e-6), f"{comp}: robot.xml != robot_motors.xml"
             assert np.allclose(a[comp], c[comp], atol=1e-6), f"{comp}: robot.xml != robot.urdf"
 
-    def test_trunk_inertial_matches_generator(self):
-        """robot.xml trunk inertial must equal scripts/compute_trunk_inertial.py output."""
+    @staticmethod
+    def _load_generator():
         import importlib.util
 
         spec = importlib.util.spec_from_file_location(
@@ -306,22 +358,61 @@ class TestModelFileConsistency:
         )
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        masses = [mod.BASE["mass"]] + [m for _, m, _, _ in mod.COMPONENTS]
-        positions = [mod.BASE["com"]] + [np.asarray(p) for _, _, p, _ in mod.COMPONENTS]
-        total = sum(masses) + mod.WIRING_MASS
-        com = sum(m * np.asarray(p) for m, p in zip(masses, positions)) / sum(masses)
-        inertias = [mod.BASE["inertia"]] + [np.asarray(i) for _, _, _, i in mod.COMPONENTS]
-        I = np.zeros(3)
-        for m, p, Ic in zip(masses, positions, inertias):
-            d = np.asarray(p) - com
-            I += Ic + m * np.array(
-                [d[1] ** 2 + d[2] ** 2, d[0] ** 2 + d[2] ** 2, d[0] ** 2 + d[1] ** 2]
-            )
+        return mod
+
+    @staticmethod
+    def _xml_inertial(body_name):
         tree = ET.parse(os.path.join(ROBOT_DIR, "robot.xml"))
-        trunk = tree.getroot().find(".//body[@name='trunk_assembly']")
-        inertial = trunk.find("inertial")
-        assert abs(float(inertial.get("mass")) - total) < 1e-6
-        xml_com = np.array([float(v) for v in inertial.get("pos").split()])
-        xml_I = np.array([float(v) for v in inertial.get("diaginertia").split()])
-        assert np.allclose(xml_com, com, atol=1e-6), f"CoM drift: {xml_com} vs {com}"
-        assert np.allclose(xml_I, I, atol=1e-7), f"inertia drift: {xml_I} vs {I}"
+        body = tree.getroot().find(f".//body[@name='{body_name}']")
+        inertial = body.find("inertial")
+        com = np.array([float(v) for v in inertial.get("pos").split()])
+        fi = [float(v) for v in inertial.get("fullinertia").split()]
+        tensor = np.array(
+            [[fi[0], fi[3], fi[4]], [fi[3], fi[1], fi[5]], [fi[4], fi[5], fi[2]]]
+        )
+        return float(inertial.get("mass")), com, tensor
+
+    @pytest.mark.parametrize(
+        "body,base,components,wiring",
+        [
+            ("trunk_assembly", "BASE_TRUNK", "TRUNK_COMPONENTS", "TRUNK_WIRING"),
+            ("head_assembly", "BASE_HEAD", "HEAD_COMPONENTS", "HEAD_WIRING"),
+        ],
+    )
+    def test_inertial_matches_generator(self, body, base, components, wiring):
+        """robot.xml inertials must equal the full-tensor generator output.
+
+        The generator's upstream base tensors are themselves frame-proofed at
+        import time (URDF full matrix == MJCF quat*diag*quatT self-check), so
+        this guards both value drift and the frame-permutation bug class.
+        """
+        mod = self._load_generator()
+        mod.check_base(getattr(mod, base), body)
+        total, com, I = mod.compose(
+            getattr(mod, base), getattr(mod, components), getattr(mod, wiring)
+        )
+        xml_mass, xml_com, xml_I = self._xml_inertial(body)
+        assert abs(xml_mass - total) < 1e-6
+        assert np.allclose(xml_com, com, atol=1e-6), f"{body} CoM drift: {xml_com} vs {com}"
+        assert np.allclose(xml_I, I, atol=1e-7), f"{body} tensor drift:\n{xml_I}\nvs\n{I}"
+
+    def test_inertial_principal_moments_match_fixture(self):
+        """Independent cross-check: eigenvalues of the XML full tensors must
+        equal the fixture's principal moments (which were derived during the
+        adversarial review from the upstream URDF, independently of the
+        generator script)."""
+        import json
+
+        fixture = json.load(
+            open(os.path.join(REPO_ROOT, "tests", "fixtures", "expected_values.json"))
+        )
+        for body, key in [
+            ("trunk_assembly", "trunk_assembly_diaginertia"),
+            ("head_assembly", "head_assembly_diaginertia"),
+        ]:
+            _, _, tensor = self._xml_inertial(body)
+            eig = np.sort(np.linalg.eigvalsh(tensor))
+            expected = np.sort(fixture[key])
+            assert np.allclose(eig, expected, atol=1e-7), (
+                f"{body} principal moments {eig} != fixture {expected}"
+            )

@@ -73,7 +73,7 @@
     <body name="base" pos="0 0 0.4">
       <!-- <freejoint /> -->
       <body name="trunk_assembly">
-        <inertial pos="-0.0579714 0.0001468 0.0332356" mass="1.178026" diaginertia="0.00403131 0.00473388 0.00337805"/>
+        <inertial pos="-0.0607663 0.0001468 0.0332545" mass="1.178026" fullinertia="0.00225708 0.00567564 0.00504925 -2.13352192e-05 -5.74699993e-05 -4.54878379e-06"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front"/>
         <geom pos="-0.1263 -0.0257 0.0576079" quat="0.5 0.5 -0.5 0.5" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="usb_c_charger"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_back"/>
@@ -89,10 +89,10 @@
         <!-- Jetson Orin Nano Dev Kit (103x90.5x34.77mm) in compute zone -->
         <geom pos="-0.03 0 0.006" type="mesh" rgba="0.1 0.6 0.1 1" mesh="jetson_orin_nano" contype="0" conaffinity="0"/>
         <!-- Thermal partition wall between battery and compute zones -->
-        <geom pos="-0.086 0 0.0104" type="mesh" rgba="0.8 0.2 0.2 0.5" mesh="thermal_partition" contype="0" conaffinity="0"/>
+        <geom pos="-0.086 0 0.011" type="mesh" rgba="0.8 0.2 0.2 0.5" mesh="thermal_partition" contype="0" conaffinity="0"/>
         <!-- DC-DC boost converter in compute zone -->
         <geom pos="-0.06 0.025 0.0355" type="mesh" rgba="0.9 0.8 0.1 1" mesh="dcdc_converter" contype="0" conaffinity="0"/>
-        <geom pos="-0.01599 0.0165 0.0603909" quat="0 0 0 -1" type="mesh" rgba="0 0.501961 0 1" mesh="board"/>
+        <geom pos="-0.06349 0.0165 0.0603909" quat="0 0 0 -1" type="mesh" rgba="0 0.501961 0 1" mesh="board"/>
         <geom pos="-0.019 -0.07 0.0648909" type="mesh" rgba="0.6 0.6 0.6 1" mesh="roll_bearing"/>
         <geom pos="-0.129625 -0.0105 0.0650134" quat="0 -0.457466 -0.889227 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
         <geom pos="-0.139625 -0.0635245 0.031455" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="holder"/>
@@ -196,7 +196,7 @@
               <geom pos="0.0255 0 -0.00945" quat="0.707107 0.707107 0 0" type="mesh" rgba="0.247059 0.243137 0.243137 1" mesh="wj-wk00-0122topcabinetcase_95"/>
               <geom pos="0.0255 0 -0.00655" quat="0.707107 0.707107 0 0" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier"/>
               <body name="head_assembly" pos="0.04095 0 -0.01915" quat="0.707107 0 -0.707107 0">
-                <inertial pos="0.0069046 -0.0012149 0.0247919" mass="0.362083" diaginertia="0.0021596 0.00150944 0.000925471"/>
+                <inertial pos="0.0072060 -0.0011494 0.0223904" mass="0.362083" fullinertia="0.00207359 0.00146894 0.00088770 1.05140407e-05 9.10371814e-05 -1.09250765e-05"/>
                 <joint name="head_roll" pos="0 0 0" axis="0 0 1" range="-0.523599 0.523599" />
                 <geom pos="-0.12906 0 0.06095" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.411765 0.411765 0.411765 1" mesh="head_bot_sheet"/>
                 <geom pos="-0.12906 0 0.06095" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="head"/>
