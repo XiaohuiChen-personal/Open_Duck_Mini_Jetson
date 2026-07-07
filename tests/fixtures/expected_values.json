@@ -1,14 +1,14 @@
 {
-  "trunk_assembly_mass_kg": 1.088626,
+  "trunk_assembly_mass_kg": 1.089544,
   "trunk_assembly_com": [
-    -0.0635908,
-    9.4e-05,
-    0.0343123
+    -0.063585,
+    8.75e-05,
+    0.0339683
   ],
   "trunk_assembly_diaginertia": [
-    0.00536432,
-    0.0047755,
-    0.00220349
+    0.00542635,
+    0.00482308,
+    0.00220918
   ],
   "head_assembly_mass_kg": 0.362083,
   "head_assembly_com": [
@@ -21,5 +21,5 @@
     0.00146902,
     0.00088052
   ],
-  "total_mass_kg": 2.656149
+  "total_mass_kg": 2.657067
 }

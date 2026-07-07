@@ -20,6 +20,8 @@ Component positions follow docs/jetson-mod/component_layout_v2.md.
 
 Run:  python3 scripts/compute_trunk_inertial.py
 """
+import os
+
 import numpy as np
 
 # ---------------------------------------------------------------------------
@@ -87,7 +89,9 @@ POINT = np.zeros((3, 3))
 # ---------------------------------------------------------------------------
 # TRUNK components: (name, mass_delta_kg, position_m, tensor_about_own_com).
 # Ledger: 0.698526 + 0.0585 + 0.176 + 0.180 + 0.005 + 0.015 + 0.037 + 0.008
-#       = 1.178026 kg (matches the audited mass ledger; wiring handled below).
+#       = 1.178026 kg pre-Part-2; the Part-2 shell deltas appended from
+#       cad_mod_deltas.json bring the trunk to its current total (printed
+#       below when run).
 # ---------------------------------------------------------------------------
 TRUNK_COMPONENTS = [
     # 3x STS3215->STS3250 upgrades, at the servo-case AABB centers (mesh-measured).
@@ -98,9 +102,9 @@ TRUNK_COMPONENTS = [
     # CoM approximated at the envelope center (module/heatsink bias not modeled).
     ("jetson_dev_kit", 0.176, [-0.03, 0.0, 0.006], box_tensor(0.176, 0.103, 0.0905, 0.03477)),
     # 4 extra 18650 cells (pack goes 2 -> 6 = 2S1P -> 3S2P): 2x2 vertical grid
-    # in the DECLARED rear hump extension (Part-2 body_back change; the current
-    # hump interior is only ~18 mm deep and cannot take them — see layout doc).
-    ("cells_extra_4x45g", 0.180, [-0.145, 0.0, 0.0325], box_tensor(0.180, 0.038, 0.038, 0.065)),
+    # in the rear hump extension (Part-2 body_back change), seated on the
+    # bore floor at z=-2 mm (a Phase-3/4 cradle/shim retains them).
+    ("cells_extra_4x45g", 0.180, [-0.145, 0.0, 0.0306], box_tensor(0.180, 0.038, 0.038, 0.065)),
     # BMS upgrade delta, at the modeled BMS location in the hump.
     ("bms_delta", 0.005, [-0.1263, -0.0267, 0.0189], POINT),
     # DC-DC boost converter, under-plate mount beside the fan plenum.
@@ -115,22 +119,33 @@ TRUNK_COMPONENTS = [
     ("imu_move_in", 0.003, [-0.100, 0.0, 0.0433], POINT),
     # NOTE: the servo-driver board is NOT moved (first-pass move reverted —
     # the shortened partition no longer reaches the board's z-band).
-    # ------------------------------------------------------------------
-    # Part-2 shell/chassis mesh deltas (scripts/generate_cad_mods.py output;
-    # printed-PLA effective density 1.116 g/cm^3 = 0.9 x solid, documented
-    # assumption for perimeter-dominated thin walls). Masses/centroids are
-    # the measured boolean-op volume deltas.
-    # ------------------------------------------------------------------
-    # trunk_bottom central spine removal (-60.32 cm^3): box tensor over the
-    # cut region bbox as the removed-material approximation.
-    ("spine_cut", -0.0673, [-0.0178, 0.0, 0.0177], box_tensor(-0.0673, 0.065, 0.033, 0.0646)),
-    # body_middle_bottom: +y port opening + -y louvers - 4 mount bosses (net)
-    ("shell_port_louvers_bosses", -0.0029, [-0.1029, 0.0242, 0.0256], POINT),
-    # body_front inlet slots
-    ("shell_inlet_slots", -0.0080, [0.0410, 0.0, 0.0350], POINT),
-    # body_back hump extension (net: thin new shell minus bored thick wall)
-    ("hump_extension_net", -0.0112, [-0.1082, 0.0, 0.0254], POINT),
 ]
+
+# Part-2 shell/chassis mesh deltas: loaded from scripts/cad_mod_deltas.json
+# (written by scripts/generate_cad_mods.py), one signed term per
+# removed/added diff solid with its EXACT tensor about its own centroid.
+# Density assumption + uncertainty band documented in generate_cad_mods.py.
+_DELTAS_JSON = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "cad_mod_deltas.json"
+)
+
+
+def _load_shell_deltas():
+    import json
+
+    with open(_DELTAS_JSON) as f:
+        data = json.load(f)
+    terms = []
+    for t in data["terms"]:
+        tensor = np.array(t["tensor"])
+        # removed-material terms carry negative mass; their tensors subtract
+        if t["mass"] < 0:
+            tensor = -tensor
+        terms.append((t["name"], t["mass"], t["pos"], tensor))
+    return terms
+
+
+TRUNK_COMPONENTS = TRUNK_COMPONENTS + _load_shell_deltas()
 TRUNK_WIRING = 0.008  # lumped at the composite CoM
 
 # ---------------------------------------------------------------------------

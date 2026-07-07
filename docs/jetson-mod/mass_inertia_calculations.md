@@ -20,11 +20,11 @@
 > trunk AND head inertials are computed by `scripts/compute_trunk_inertial.py`
 > (full 3×3 tensors from the upstream URDF body-frame matrices, frame
 > self-check at import, every component at its v2.1 position). Current model
-> values (MJCF `fullinertia`): trunk mass 1.178026 kg,
-> CoM (-0.0607663, 0.0001468, 0.0332545), ixx/iyy/izz
-> 0.00225708/0.00567564/0.00504925; head mass 0.362083 kg,
+> values (MJCF `fullinertia`): trunk mass 1.089544 kg (after the Part-2
+> CAD shell deltas), CoM (-0.0635850, 0.0000875, 0.0339683), ixx/iyy/izz
+> 0.00221458/0.00542614/0.00481788; head mass 0.362083 kg,
 > CoM (0.0072060, -0.0011494, 0.0223904), ixx/iyy/izz
-> 0.00207359/0.00146894/0.00088770. Total robot mass unchanged (2.745549 kg).
+> 0.00207359/0.00146894/0.00088770. Total robot mass 2.657067 kg.
 > The parallel-axis methodology below remains a valid illustration; the
 > numbers do not.
 
