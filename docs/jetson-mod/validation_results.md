@@ -36,13 +36,26 @@ hardware-realizable observation vector.
 |---|---|---|---|
 | Gait-validity gate | **5 / 5 conditions** | ≥ 4/5 | PASS |
 | Fall rate (no push) | **0.00%** (0/3200) | < 1% | PASS |
-| Reference tracking RMS | **4.49°** | ≤ v3's 4.59° | PASS |
+| Reference tracking RMS | **4.49°** | ≈ v3 (not worse) | PASS |
 | Stance duty L / R | 68.6 / 63.8% | both in [40,90] | PASS |
 | Duty asymmetry | 4.85 pp | — | (v3: 4.32) |
 | ROM ratio L/R | 0.99 | ≈ 1.0 | PASS |
 | Velocity tracking err | 0.153 m/s | — | (v3: 0.155) |
 | Yaw-rate err | 0.067 rad/s | — | (v3: 0.078) |
 | Energy proxy | 21.8 W | — | (v3: 21.6) |
+| Mean squared jerk | 0.0753 | — | (v3: 0.0687 — v4_robust is the least smooth of the three, though still gate-valid; worth watching on hardware) |
+
+The gate criteria are the binary gait-gate + the < 1% fall rate. The
+tracking-RMS / duty / ROM / velocity / energy columns are reported for
+comparison, NOT thresholded: v4_robust, Run A (4.60°), and v3 (4.59°) sit
+within ~0.1° / ~2% of each other on RMS — **statistically equivalent, not a
+ranking**. The `ppo_v3` column is that policy's ORIGINAL 2026-06-12
+evaluation on the pre-correction model (checkpoint
+`open_duck_ppo/2026-06-12_00-44-12`), copied into `eval_results_v4/` and
+re-scored by the gate at report time from its stored duty — it was NOT
+re-run on the corrected model. Cross-run numbers are code-comparable: the
+metric functions (RMS, duty, energy) are unchanged since that eval; only
+the gate and `--keep-pushes` were added.
 
 **Video audit** (`eval_results_v4/v4_robust_play.mp4`, deterministic vx=0.2
 rollout): upright bipedal walking — high trunk, clear single-support swing
@@ -65,13 +78,30 @@ recipe except no domain randomization):
 
 | Policy | Falls, no push | Falls, under push | Gate under push |
 |---|---|---|---|
-| **v4_robust (DR)** | 0.00% | **6.84%** (219/3200) | 5/5 |
-| v4_inertials (no DR) | 0.00% | 46.28% (1481/3200) | 5/5 |
+| **v4_robust (robust bundle)** | 0.00% | **6.84%** (219/3200) | 5/5 |
+| v4_inertials (v3 recipe) | 0.00% | 46.28% (1481/3200) | 5/5 |
 
-**Domain randomization reduced the push-induced fall rate by 85% relative
+The "gate under push" column is 5/5 for BOTH policies and is **not** the
+discriminator here — the gate/duty are computed only over pre-fall steps
+(post-termination data is masked out, `evaluate_policies.py`), so a policy
+that walks normally until it is shoved over still shows valid duty on the
+steps before the fall. **Fall rate is the push-recovery discriminator**;
+the no-DR policy falls in nearly half its push episodes despite the 5/5
+gate.
+
+**The v4-robust config reduced the push-induced fall rate by 85% relative
 (46.3% → 6.8%).** Both policies are identical (0% falls) without pushes, so
-the difference is entirely attributable to the DR added in the v4-robust
-config. Per-condition (DR / no-DR): forward 13.9/41.1, backward 5.8/60.2,
+the difference comes entirely from the v4-robust config delta. That delta
+is three changes, not one: dynamics domain randomization (the expected
+dominant contributor — it is the only one that exposed the policy to
+disturbances in training), plus the asymmetric 59-dim actor observation and
+the 8.94 rad/s joint velocity limit. This measurement isolates the *bundle*
+vs no-bundle; it does not separate DR from the velocity limit (which could
+also aid recovery by bounding fast joint motion — and note the 8.94 rad/s
+limit is present at EVAL time on the robust push task but not the plain one,
+so it is a plant difference during the test, not only a training
+difference). A per-lever ablation was not run. Per-condition (DR-bundle / no-bundle): forward 13.9/41.1, backward
+5.8/60.2,
 lateral 3.3/44.2, turn 2.0/45.9, combined 9.2/40.0% — DR helps in every
 condition, most in the lateral/turn/backward cases the no-DR policy never
 saw perturbed.

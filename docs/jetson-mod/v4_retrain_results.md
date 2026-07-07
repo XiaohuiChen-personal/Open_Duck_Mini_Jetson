@@ -33,8 +33,13 @@ checkpoint `model_2999.pt`; console log
 - Reference: v3's last-100 mean reward was 253.0 — statistically identical.
 
 **Gated evaluation** (full 5-condition protocol, 3200 episodes,
-`eval_results_v4/v4_inertials.json`; v3 baseline re-gated in the same
-table, `eval_results_v4/ppo_v3.json`; report `v4_comparison.md`):
+`eval_results_v4/v4_inertials.json`; report `v4_comparison.md`). The
+`ppo_v3` column is that policy's ORIGINAL 2026-06-12 evaluation on the
+pre-correction model (`open_duck_ppo/2026-06-12_00-44-12`), copied in and
+re-scored by the gate from its stored duty — NOT re-run on the corrected
+model. That is intentional: each policy is measured on the model it was
+trained for, which is exactly the model-correction isolation. Numbers are
+code-comparable (RMS/duty/energy fns unchanged since that eval):
 
 | Metric | v4_inertials (Run A) | ppo_v3 (baseline) |
 |---|---|---|
@@ -91,7 +96,7 @@ launched 2026-07-07 00:15, wall-clock 1.91 h (TB timestamps 00:19→02:14).
 |---|---|---|---|
 | Gait-validity gate | **5/5** | 5/5 | 5/5 (re-gated) |
 | Fall rate | 0.00% | 0.00% | 0.00% |
-| Ref tracking RMS | **4.49°** (best) | 4.60° | 4.59° |
+| Ref tracking RMS | 4.49° | 4.60° | 4.59° |
 | Stance duty L/R | 68.6 / 63.8% | 70.0 / 64.9% | 68.9 / 64.6% |
 | Duty asymmetry | 4.85 pp | 5.09 pp | 4.32 pp |
 | ROM ratio L/R | 0.99 | 0.99 | 1.02 |
@@ -108,13 +113,15 @@ stance duty.
 
 **Push-recovery evaluation** (Task 2.7 gate, first ever): under active
 interval pushes (±0.3 m/s, 4-7 s), v4_robust falls in **6.84%** of episodes
-vs **46.28%** for the no-DR Run A policy under the identical schedule — an
-85% relative reduction, entirely attributable to the DR (both are 0% falls
-unpushed). Full results and verdict in
+vs **46.28%** for the Run A (v3-recipe) policy under the identical schedule
+— an 85% relative reduction from the robust bundle (DR + asym obs +
+velocity limit; both are 0% falls unpushed). Full results, the fairness
+caveat (bundle vs per-lever), and verdict in
 `docs/jetson-mod/validation_results.md`.
 
 **Verdict: GATE PASS.** Run B walks with gait quality statistically
-equivalent to Run A and v3 (best ref-RMS of the three) while adding two
+equivalent to Run A and v3 (all three within ~0.1°/2% on ref-RMS — a
+tie, not a ranking) while adding two
 deployment-critical properties v3 never had: robustness to dynamics
 randomization (the policy was trained under pushes/mass/CoM/friction
 variation) and a hardware-realizable 59-dim observation (no dependence on
