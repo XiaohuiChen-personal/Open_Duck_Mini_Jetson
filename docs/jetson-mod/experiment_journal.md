@@ -30,7 +30,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 5 | `amp_purestyle2` | AMP | 2026-06-12 | reference velocity-consistency fix | **G2 FAIL** — moves+falls, no stride |
 | 6 | `amp_command` | AMP | 2026-06-12 | Phase B: +task reward 0.5, 22-clip set | **G3 FAIL** — stand-and-dither exploit |
 | 7 | `amp_command2` | AMP | 2026-06-12 | sharp tracking kernel + action-rate penalty + clamped targets | **partial** — legs move, in-place march, UNCONVERGED |
-| 8 | `amp_command3` | AMP | 2026-06-12 | resume run 7 + 72k more timesteps (zero config changes) | **G3 PASS (tracking)** — walks, 0.023 m/s err, 0 falls; style = shuffle, not waddle |
+| 8 | `amp_command3` | AMP | 2026-06-12 | resume run 7 + 72k more timesteps (zero config changes) | **G3 PASS (tracking)** — walks, 0.023 m/s err, 0 falls; style = shuffle, not waddle; gate 2026-07-06: 2/5 (one-foot drag off-forward) |
 | 9 | `amp_command4` | AMP | 2026-06-12 | num_amp_observations 2 -> 4 (discriminator temporal context) | **partial** — real strides appear, but one-legged |
 | 10 | `amp_command5` | AMP | 2026-06-12 | num_amp_observations 4 -> 14 (window > half gait cycle) | **partial** — bilateral reference-amplitude gait, but task drowned (0.18 err, 14% falls) |
 | 11 | `amp_command6` | AMP | 2026-06-12 | 14-frame window + task/style 0.7/0.3 (recover translation) | **DIVERGED** — action blowup, reward -> -6766 |
@@ -269,6 +269,15 @@ not mistaken for study runs):
   29.1 pp (worst), mean squared jerk **14.5 vs PPO's 0.05-0.07 (200x)**.
   Clean style-vs-tracking trade-off: AMP's policy obeys the command better
   than the designed-reward policies and looks far less like a duck doing it.
+- **ADDENDUM 2026-07-06 (gait-validity gate).** The retrofitted gate (both
+  feet's stance duty in [40, 90]%; see run-12 addendum) scores this policy
+  **2/5 conditions valid** (eval_results/amp_v1.json): forward (50.1/50.1)
+  and mixed (50.0/51.1) pass, but in the backward (98.7/52.0), lateral
+  (50.0/99.7), and turn (99.1/51.1) conditions **one foot drags at 98-100%
+  duty** — the aggregate 29.1 pp asymmetry is the mean of near-zero and
+  ~47-50 pp conditions, not a uniform limp. Status revised accordingly:
+  run 8 is the only AMP policy that walks at all, and its micro-shuffle
+  degrades to one-foot dragging outside the forward/mixed conditions.
 
 ## Run 9 — `amp_command4` (`2026-06-12_16-40-01_amp_torch`)
 
@@ -409,9 +418,11 @@ not mistaken for study runs):
   (videos/train/rl-video-step-70000.mp4), so this is converged behavior,
   not a render artifact. The "best striding command-follower" verdict is
   therefore revised: the forensic's large joint ROMs are crawl motion, not
-  strides; run 8 (amp_v1) remains the only walking AMP policy. Videos
-  archived in the en665.645 midpoint Google Drive folder
-  (EN665.645-midpoint-gait-videos). Protocol consequence: a gait-validity
+  strides; run 8 (amp_v1) remains the only walking AMP policy. Videos: all
+  four policies at fixed forward cmd 0.2 m/s, hosted on Google Drive as
+  individually shared files (per-file links in the en665.645 midpoint paper
+  Sec. 5.5 / notebook Sec. 5; local copies in ~/gait_videos_midpoint/ on
+  the Spark). Protocol consequence: a gait-validity
   gate (both feet's stance duty in [40, 90]%) was added to
   `evaluate_policies.py` as metric 9 and to `algorithm_comparison.md`
   (regenerable via `--report-only`); on the archived JSONs it scores
@@ -419,7 +430,71 @@ not mistaken for study runs):
   The gate is necessary, not sufficient — the qualitative video audit
   remains a mandatory protocol step (see algorithm_comparison.md).
 
+## Campaign status — 2026-07-06 (post-audit synthesis)
+
+Consolidated picture after the video audit and the gait-validity gate; this
+section supersedes the per-run verdicts above where they conflict and the
+lever ladder below. Sources: eval_results/*.json (full protocol),
+algorithm_comparison.md (gate columns), the four rollout videos, and the
+en665.645 midpoint paper.
+
+**Bottom line: the AMP campaign underperformed expectations — no AMP run
+produced an acceptable walking gait.** Per policy (gate = gait-valid
+conditions out of 5; falls over 3,200 episodes):
+
+| Policy | Gate | Falls | Defining defect |
+|---|---|---|---|
+| amp_v1 (r8) | 2/5 | 0.19% | only AMP policy that walks; micro-shuffle (ROM ~2-8° vs ref 27-43°), jerk 14.5 (~210x ppo_v3), one-foot dragging in backward/lateral/turn conditions, 2x compute budget |
+| amp_v2 (r9) | 4/5 | 2.4% | one-legged stride (ROM ratio 3.67) |
+| amp_v3 (r10) | 5/5 | 5.8% | bilateral amplitude but style-dominated; walks in place (vel err 0.120) |
+| amp_v4 (r12) | 0/5 | 1.3% | **crawls** (video audit); passed every aggregate quality metric while doing so |
+
+PPO v3 (gate 5/5, 0 falls, ref RMS 4.59°, energy 21.6 W) remains the only
+deployment-quality policy and the Task 2.5/2.6 selection.
+
+**Hypothesis status (for the paper):** H1 (AMP smoother at comparable
+stability) — not supported: the only stability-comparable AMP policy
+(amp_v1, fall-rate CI overlapping PPO's) has the highest jerk. H2 (less
+reward engineering) — nuanced: the imitation term disappeared but
+engineering reappeared as the data-consistency fix (run 5), task-kernel
+hardening (run 7), and action bounding (run 12), and the end state can
+still fail silently (run 12's crawl). H3 (PPO more stable/faster) —
+supported: 2/2 PPO runs converged first try; 9 AMP runs yielded 1
+divergence, one 2x-budget resume, and zero acceptable gaits.
+
+**Root-cause hypotheses, ranked by evidence:**
+1. **Reference-data physics.** The synthetic polynomial gaits are
+   kinematically plausible but dynamically imperfect (finite-difference
+   velocities, limit-clamped joints, corrupt angular-velocity dims, 27
+   samples/cycle). A discriminator can separate real-vs-fake on those
+   inconsistencies, so "match the style" stops implying "walk naturally".
+   Run 4's collapse was the loud version of this failure; the shuffle/crawl
+   optima may be its quiet versions.
+2. **Task/termination geometry.** Termination at base z < 0.10 m vs a
+   0.17 m nominal height leaves a reachable crawl equilibrium (run 12
+   lives in that gap); the task reward has no upright/posture term.
+3. **Receptive-field/weight coupling.** Runs 8/9/10 show gait structure
+   requires a >=half-cycle window, but at any fixed task/style weight the
+   long window either drowns the task (run 10) or, rebalanced, finds the
+   crawl (run 12).
+4. **Exploration ceiling.** Policy log-std fixed at 0.055 for every run;
+   this lever was never pulled.
+
+**Next candidates (if the AMP line is continued):**
+1. amp_v5 — K=14 window, intermediate task/style weight, plus an
+   upright-posture term or termination height raised to ~0.13 m to excise
+   the crawl equilibrium (~2.8 h).
+2. Regenerate reference clips from PPO v3 rollouts (physically consistent
+   by construction) — promoted from "fallback of last resort" to the
+   decisive test of root-cause #1; reframes the study as two-stage
+   distillation either way it comes out.
+3. Unfix log-std (~0.15) as a cheap ablation on top of either.
+
 ## Planned lever ladder (one per run, in order, each ~2 h)
+
+> **STATUS 2026-07-06:** historical. Levers 1-2 were consumed by runs 5-12;
+> the ladder is superseded by the campaign-status section above (its item 5
+> "fallback of last resort" is now promoted to next-candidate #2).
 
 1. ~~Reference data consistency~~ (run 5 — changed the failure mode from
    freezing to attempting motion, but did not produce striding)
