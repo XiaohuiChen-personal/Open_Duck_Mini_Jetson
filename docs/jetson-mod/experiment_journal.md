@@ -38,6 +38,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 13 | `amp_v5` | AMP | 2026-07-10 | termination height 0.10 -> 0.13 m (run-12 config, hydra override) | **FAIL (gate 0/5)** — crawl excised, posture upright, but stand-and-pivot: no stepping; root-cause #1 (data physics) now primary |
 | 14 | `amp_v6` | AMP | 2026-07-11 | motion library -> 22 physically-consistent clips recorded from ppo_v3 rollouts (0 dead AMP dims) | **FAIL (gate 0/5)** — stands upright; but discriminator ENGAGED all run (no tells): data fix healed the adversarial game without producing locomotion; exploration ceiling promoted |
 | 15 | `amp_v7` | AMP | 2026-07-11 | exploration: initial_log_std -2.9 -> -1.9 (sigma 0.055 -> 0.15), on the recorded clips | **PASS — first acceptable AMP gait of the study.** Gate 4/5, falls 0.34%, vel tracking 0.0219 m/s (best of ALL policies incl. PPO), upright walking on video |
+| 16 | `amp_v8_seed` | AMP | 2026-07-11 | none — run-15 config verbatim, --seed 123 (reproducibility) | **Walks again (mechanism reproduces), bar marginally missed:** gate 3/5 (two conditions over the duty band by 1.4-2.7 pp), falls 0.06%, vel err 0.0207; upright walking on video |
 
 ---
 
@@ -66,7 +67,7 @@ numbers in their entries) but did NOT get a full eval — they failed their gate
 and a full sweep was not warranted. Cite their forensic numbers as diagnostic,
 not as protocol-comparable. Run 12 = `amp_v4` (full eval done 2026-06-15).
 Full-eval set is now: ppo_v2, ppo_v3, amp_v1 (r8), amp_v2 (r9), amp_v3 (r10),
-amp_v4 (r12), amp_v5 (r13), amp_v6 (r14), amp_v7 (r15).
+amp_v4 (r12), amp_v5 (r13), amp_v6 (r14), amp_v7 (r15), amp_v8 (r16).
 
 **Pre-study / non-study runs on disk** (documented here so stray log dirs are
 not mistaken for study runs):
@@ -655,10 +656,21 @@ gate condition). Archived: `exported_policies/amp_v7_run15_command/`.
 **Compute accounting:** 12 AMP training runs x ~2.6 h ~= 31 GPU-hours vs
 PPO's 2 x ~1.8 h; plus 9 full 3,200-episode evals and 8 video audits.
 
-**Seed-confirmation (run 16, `amp_v8_seed`, --seed 123, identical config)
-is in flight** to test reproducibility of the pass; its result will be
-appended as an addendum and adjusts H3's interpretation (reproducible
-pass vs seed-lottery) but not the campaign's causal conclusions.
+**Seed-confirmation ADDENDUM (run 16, `amp_v8_seed`,
+`2026-07-11_09-59-47_amp_torch`, --seed 123, config verbatim):** the
+**mechanism reproduces** — the second seed also walks (upright dynamic
+striding on video; falls 0.06%; vel err 0.0207 m/s, again best-in-study
+level; forward condition textbook at 59/59% duty) — while the full
+acceptance bar is **seed-sensitive at the margins**: gate 3/5 vs seed
+42's 4/5, with the lateral (78.7/92.7) and turn (91.4/87.2) conditions
+exceeding the 90% duty band by only 1.4-2.7 pp (jerk 1.63, energy
+40.5 W — both worse than seed 42). Score: recorded-clips + sigma-0.15
+recipe walks in 2/2 seeds, meets the full bar in 1/2; every one of the
+12 earlier synthetic-data or low-sigma configs walked in 0 attempts.
+H3's final wording therefore stands strengthened in its variance clause:
+PPO converged to gate 5/5 in 2/2 runs; AMP's working recipe produces
+walking reliably but deployment-bar quality stochastically. Eval:
+`eval_results/amp_v8.json`; videos in the run dir `videos/play/`.
 
 ## Campaign status — 2026-07-06 (post-audit synthesis)
 

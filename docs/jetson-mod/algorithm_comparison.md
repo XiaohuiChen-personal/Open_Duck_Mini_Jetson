@@ -47,7 +47,7 @@ Aggregate values below are means over the five conditions.
 <!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
 ## Results
 
-_Last regenerated: 2026-07-11T09:54:12_
+_Last regenerated: 2026-07-11T13:00:00_
 
 ### Aggregate over all conditions
 
@@ -62,6 +62,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 | amp_v5 | skrl_amp | 0/5 | 0.8 | 29.8 | 12.13 | 1.2574 | 0.308 | 99.2 | 90.9 | 8.3 | 1.12 | 0.118 | 0.059 | 3.62 |
 | amp_v6 | skrl_amp | 0/5 | 4.2 | 28.8 | 10.15 | 0.0880 | 0.157 | 99.0 | 96.7 | 2.5 | 1.04 | 0.115 | 0.058 | 3.56 |
 | amp_v7 | skrl_amp | 4/5 | 0.3 | 29.9 | 10.56 | 1.2154 | 0.269 | 74.3 | 79.8 | 5.4 | 1.23 | 0.022 | 0.114 | 29.23 |
+| amp_v8 | skrl_amp | 3/5 | 0.1 | 30.0 | 10.66 | 1.6320 | 0.311 | 72.0 | 78.1 | 8.0 | 1.09 | 0.021 | 0.118 | 40.45 |
 | ppo_v2 | rsl_rl | 5/5 | 0.0 | 30.0 | 10.27 | 0.0513 | 0.247 | 75.6 | 61.0 | 14.6 | 0.82 | 0.134 | 0.086 | 14.41 |
 | ppo_v3 | rsl_rl | 5/5 | 0.0 | 30.0 | 4.59 | 0.0687 | 0.234 | 68.9 | 64.6 | 4.3 | 1.02 | 0.155 | 0.078 | 21.61 |
 
@@ -76,6 +77,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 | amp_v5 | 1.4 | 0.5 | 0.2 | 1.1 | 0.6 |
 | amp_v6 | 5.5 | 2.2 | 3.0 | 4.7 | 5.6 |
 | amp_v7 | 0.0 | 0.2 | 1.1 | 0.2 | 0.3 |
+| amp_v8 | 0.0 | 0.3 | 0.0 | 0.0 | 0.0 |
 | ppo_v2 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | ppo_v3 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 
@@ -90,6 +92,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 | amp_v5 | FAIL (99/98) | FAIL (100/100) | FAIL (100/100) | FAIL (99/64) | FAIL (98/94) |
 | amp_v6 | FAIL (99/100) | FAIL (99/99) | FAIL (100/100) | FAIL (98/92) | FAIL (99/93) |
 | amp_v7 | ok (64/67) | ok (71/76) | FAIL (79/98) | ok (88/88) | ok (70/71) |
+| amp_v8 | ok (59/59) | ok (72/89) | FAIL (79/93) | FAIL (91/87) | ok (59/63) |
 | ppo_v2 | ok (74/63) | ok (75/59) | ok (76/61) | ok (77/59) | ok (76/63) |
 | ppo_v3 | ok (70/63) | ok (69/65) | ok (70/63) | ok (67/67) | ok (68/64) |
 <!-- END AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
