@@ -54,7 +54,7 @@ from __future__ import annotations
 import os
 
 from isaaclab.assets import ArticulationCfg
-from isaaclab.envs import DirectRLEnvCfg
+from isaaclab.envs import DirectRLEnvCfg, ViewerCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim import PhysxCfg, SimulationCfg
@@ -181,3 +181,30 @@ class DuckAmpCommandEnvCfg(DuckAmpEnvCfgBase):
     # cycle-level statistic; shorter windows make one-legged strides
     # style-optimal (run 9). Discriminator input 14 x 51 = 714 dims.
     num_amp_observations = 14
+
+
+@configclass
+class DuckAmpVideoEnvCfg(DuckAmpCommandEnvCfg):
+    """Video-audit variant of the command env (evaluation protocol step 2).
+
+    Adds the PPO play tracking camera and PINS the velocity command via
+    degenerate ranges (resampling then always redeals the same command).
+    Used by scripts/play_amp.py through ``Isaac-OpenDuck-AMP-Video-v0``.
+    Defaults render the forward condition (vx=0.2); override per condition,
+    e.g. the turn condition:
+    ``'env.command_vx_range=[0.0,0.0]' 'env.command_wz_range=[0.3,0.3]'``.
+    num_amp_observations must match the checkpoint (2 for runs 4-8 era).
+    """
+
+    # Same robot-tracking camera as the PPO play tasks (env_cfg.py).
+    viewer: ViewerCfg = ViewerCfg(
+        eye=(1.0, 1.0, 0.5),
+        lookat=(0.0, 0.0, 0.15),
+        origin_type="asset_root",
+        env_index=0,
+        asset_name="robot",
+    )
+
+    command_vx_range: tuple = (0.2, 0.2)
+    command_vy_range: tuple = (0.0, 0.0)
+    command_wz_range: tuple = (0.0, 0.0)
