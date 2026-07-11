@@ -35,6 +35,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 10 | `amp_command5` | AMP | 2026-06-12 | num_amp_observations 4 -> 14 (window > half gait cycle) | **partial** — bilateral reference-amplitude gait, but task drowned (0.18 err, 14% falls) |
 | 11 | `amp_command6` | AMP | 2026-06-12 | 14-frame window + task/style 0.7/0.3 (recover translation) | **DIVERGED** — action blowup, reward -> -6766 |
 | 12 | `amp_command7` | AMP | 2026-06-15 | run-11 fix (raw actions clipped +/-5.0) + 14-frame + task/style 0.6/0.4 | ~~best striding AMP~~ REVISED 2026-07-06: **crawl** (see run-12 addendum) — converged, 0-1% falls, but locomotes on its body |
+| 13 | `amp_v5` | AMP | 2026-07-10 | termination height 0.10 -> 0.13 m (run-12 config, hydra override) | **FAIL (gate 0/5)** — crawl excised, posture upright, but stand-and-pivot: no stepping; root-cause #1 (data physics) now primary |
 
 ---
 
@@ -63,7 +64,7 @@ numbers in their entries) but did NOT get a full eval — they failed their gate
 and a full sweep was not warranted. Cite their forensic numbers as diagnostic,
 not as protocol-comparable. Run 12 = `amp_v4` (full eval done 2026-06-15).
 Full-eval set is now: ppo_v2, ppo_v3, amp_v1 (r8), amp_v2 (r9), amp_v3 (r10),
-amp_v4 (r12).
+amp_v4 (r12), amp_v5 (r13).
 
 **Pre-study / non-study runs on disk** (documented here so stray log dirs are
 not mistaken for study runs):
@@ -446,6 +447,54 @@ not mistaken for study runs):
   The gate is necessary, not sufficient — the qualitative video audit
   remains a mandatory protocol step (see algorithm_comparison.md).
 
+## Run 13 — `amp_v5` (`2026-07-10_23-47-45_amp_torch`)
+
+- **Lever (single, pre-registered in the forward plan):** termination height
+  0.10 -> 0.13 m, applied as a hydra CLI override
+  (`env.termination_height=0.13`) on the unchanged run-12 config (14-frame
+  window, task/style 0.6/0.4, action clip +/-5.0, 22 synthetic clips, 72k
+  timesteps). Tests root-cause #2: is the crawl a termination-geometry
+  reachability artifact? Startup verified from the run's dumped
+  `params/env.yaml` (termination_height: 0.13).
+- **Training (TB, last-100 means):** instantaneous reward 0.34 -> 0.4985
+  (run 12 reached 0.81 — the crawl's reward is no longer earnable);
+  episode length -> 929.9/1000 (the policy survives the raised floor);
+  discriminator loss 1.09 -> 0.99 last-100 (min 0.217 mid-run, 1.33 at
+  budget end — engaged throughout, policy fooling it at the end); policy
+  std fixed 0.055; 2.61 h.
+- **Full-protocol eval (3,200 episodes, `eval_results/amp_v5.json`):**
+  falls 0.75% | gait gate **0/5** — stance duty L 99.2 / R 90.9% (feet
+  essentially never swing; the opposite sign of amp_v4's 0.7/0.4%) |
+  ref RMS 12.13 deg | jerk 1.26 | action std 0.31 | lin vel err 0.118
+  aggregate but **0.210 in the forward condition** (~ the full 0.2 m/s
+  command: no forward translation; backward/lateral likewise untracked) |
+  ang vel err 0.059 (turn condition 0.026 — the only tracked command) |
+  energy 3.62 W (lowest of any policy — near-static).
+- **Video audit (mandatory; deterministic forward vx=0.2 + turn wz=0.3,
+  `videos/play/play_forward_vx0.2.mp4` / `play_turn_wz0.3.mp4`):** posture
+  is upright at proper height — **the crawl is gone** — but under the
+  forward command the duck stands in place for the full 20 s (no steps, no
+  swing, feet planted); under the turn command it pivots in place.
+  Checklist: upright PASS; alternating swing FAIL; gait stance FAIL (feet
+  loaded ~99%); heading PASS; no-dither PASS. Verdict: upright
+  stand-and-pivot, not walking.
+- **Verdict: FAIL vs the acceptance bar (gate 0/5), and the hypothesis
+  test is decisive in the informative sense pre-registered:** the crawl
+  was indeed reachability-dependent (excised by the floor), yet no walker
+  emerges — the policy reverts to the next-safest non-walking optimum.
+  Root-cause #2 (termination geometry) is real but **not sufficient**;
+  root-cause #1 (reference-data physics -> no usable style gradient) is
+  now the primary suspect, consistent with the 2026-07-10 data forensics
+  (20 exploitable constant dims measured in the synthetic clips' AMP
+  features, cross-clip; plus per-clip-constant root z and wz).
+- **Paper relevance (H2/H3):** fourth distinct degenerate optimum from
+  the same learned-reward setup (stand -> in-place march -> shuffle ->
+  crawl -> stand again as geometry changes): adjusting task/termination
+  geometry relocates the exploit rather than eliminating it — the binding
+  constraint is the data. Run 14 (`amp_v6`, reference clips recorded from
+  deterministic PPO v3 rollouts, physically consistent by construction)
+  is the decisive test.
+
 ## Campaign status — 2026-07-06 (post-audit synthesis)
 
 Consolidated picture after the video audit and the gait-validity gate; this
@@ -497,6 +546,14 @@ divergence, one 2x-budget resume, and zero acceptable gaits.
    this lever was never pulled.
 
 ### Forward plan (adopted 2026-07-06)
+
+> **STATUS 2026-07-11:** Phase-2 item 4 (amp_v5 / run 13) is COMPLETE —
+> crawl excised but reverts to stand-and-pivot, gate 0/5 (see Run 13);
+> root-cause #2 tested and insufficient alone. Item 5 (amp_v6 / run 14)
+> in progress: the rollout-recorder (`scripts/record_ppo_rollouts_to_amp.py`)
+> is authored, its Isaac-free validator verified against the synthetic
+> clips (correctly fails them with 20 exploitable dead AMP dims), and clip
+> recording is next on the GPU. Phase-1 statistics items remain open.
 
 Principle: no open-ended gait-chasing. Every further run must test a named
 root-cause hypothesis and be informative in BOTH outcomes; the paper's

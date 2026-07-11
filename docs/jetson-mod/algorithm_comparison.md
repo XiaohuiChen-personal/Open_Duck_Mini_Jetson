@@ -47,7 +47,7 @@ Aggregate values below are means over the five conditions.
 <!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
 ## Results
 
-_Last regenerated: 2026-07-06T20:34:42_
+_Last regenerated: 2026-07-11T03:03:36_
 
 ### Aggregate over all conditions
 
@@ -59,6 +59,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 | amp_v2 | skrl_amp | 4/5 | 2.4 | 29.3 | 13.50 | 12.8383 | 0.327 | 59.8 | 72.6 | 13.0 | 3.67 | 0.035 | 0.129 | 17.65 |
 | amp_v3 | skrl_amp | 5/5 | 5.8 | 28.3 | 18.07 | 0.6328 | 0.175 | 79.1 | 78.8 | 0.3 | 0.85 | 0.120 | 0.113 | 11.72 |
 | amp_v4 | skrl_amp | 0/5 | 1.3 | 29.6 | 27.20 | 2.2803 | 0.677 | 0.7 | 0.4 | 0.3 | 12.92 | 0.135 | 0.078 | 170.55 |
+| amp_v5 | skrl_amp | 0/5 | 0.8 | 29.8 | 12.13 | 1.2574 | 0.308 | 99.2 | 90.9 | 8.3 | 1.12 | 0.118 | 0.059 | 3.62 |
 | ppo_v2 | rsl_rl | 5/5 | 0.0 | 30.0 | 10.27 | 0.0513 | 0.247 | 75.6 | 61.0 | 14.6 | 0.82 | 0.134 | 0.086 | 14.41 |
 | ppo_v3 | rsl_rl | 5/5 | 0.0 | 30.0 | 4.59 | 0.0687 | 0.234 | 68.9 | 64.6 | 4.3 | 1.02 | 0.155 | 0.078 | 21.61 |
 
@@ -70,6 +71,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 | amp_v2 | 3.0 | 2.3 | 2.5 | 1.6 | 2.5 |
 | amp_v3 | 8.9 | 5.3 | 3.1 | 5.0 | 6.7 |
 | amp_v4 | 1.9 | 1.6 | 1.2 | 0.9 | 0.9 |
+| amp_v5 | 1.4 | 0.5 | 0.2 | 1.1 | 0.6 |
 | ppo_v2 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | ppo_v3 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 
@@ -81,6 +83,7 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 | amp_v2 | ok (53/52) | ok (49/82) | ok (49/81) | FAIL (98/98) | ok (50/50) |
 | amp_v3 | ok (83/82) | ok (81/81) | ok (81/81) | ok (76/76) | ok (75/75) |
 | amp_v4 | FAIL (1/0) | FAIL (1/0) | FAIL (1/0) | FAIL (1/0) | FAIL (1/0) |
+| amp_v5 | FAIL (99/98) | FAIL (100/100) | FAIL (100/100) | FAIL (99/64) | FAIL (98/94) |
 | ppo_v2 | ok (74/63) | ok (75/59) | ok (76/61) | ok (77/59) | ok (76/63) |
 | ppo_v3 | ok (70/63) | ok (69/65) | ok (70/63) | ok (67/67) | ok (68/64) |
 <!-- END AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
