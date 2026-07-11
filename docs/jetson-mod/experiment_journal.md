@@ -36,6 +36,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 11 | `amp_command6` | AMP | 2026-06-12 | 14-frame window + task/style 0.7/0.3 (recover translation) | **DIVERGED** — action blowup, reward -> -6766 |
 | 12 | `amp_command7` | AMP | 2026-06-15 | run-11 fix (raw actions clipped +/-5.0) + 14-frame + task/style 0.6/0.4 | ~~best striding AMP~~ REVISED 2026-07-06: **crawl** (see run-12 addendum) — converged, 0-1% falls, but locomotes on its body |
 | 13 | `amp_v5` | AMP | 2026-07-10 | termination height 0.10 -> 0.13 m (run-12 config, hydra override) | **FAIL (gate 0/5)** — crawl excised, posture upright, but stand-and-pivot: no stepping; root-cause #1 (data physics) now primary |
+| 14 | `amp_v6` | AMP | 2026-07-11 | motion library -> 22 physically-consistent clips recorded from ppo_v3 rollouts (0 dead AMP dims) | **FAIL (gate 0/5)** — stands upright; but discriminator ENGAGED all run (no tells): data fix healed the adversarial game without producing locomotion; exploration ceiling promoted |
 
 ---
 
@@ -64,7 +65,7 @@ numbers in their entries) but did NOT get a full eval — they failed their gate
 and a full sweep was not warranted. Cite their forensic numbers as diagnostic,
 not as protocol-comparable. Run 12 = `amp_v4` (full eval done 2026-06-15).
 Full-eval set is now: ppo_v2, ppo_v3, amp_v1 (r8), amp_v2 (r9), amp_v3 (r10),
-amp_v4 (r12), amp_v5 (r13).
+amp_v4 (r12), amp_v5 (r13), amp_v6 (r14).
 
 **Pre-study / non-study runs on disk** (documented here so stray log dirs are
 not mistaken for study runs):
@@ -494,6 +495,65 @@ not mistaken for study runs):
   constraint is the data. Run 14 (`amp_v6`, reference clips recorded from
   deterministic PPO v3 rollouts, physically consistent by construction)
   is the decisive test.
+
+## Run 14 — `amp_v6` (`2026-07-11_03-16-59_amp_torch`) — the data-physics test
+
+- **Lever (single, the decisive test of root-cause #1):** motion library
+  swapped to 22 physically-consistent clips recorded from deterministic
+  ppo_v3 rollouts (`scripts/record_ppo_rollouts_to_amp.py`;
+  `amp/motions_ppo/VALIDATION.md` = PASS, **0 data-dead AMP dims vs the
+  synthetic set's 20**, root z live 0.164-0.177 m). Termination back at the
+  0.10 default so the data is the only lever. Overrides
+  (`env.motion_files=[.../motions_ppo/*.npz]`) verified in the run's
+  dumped `params/env.yaml`.
+- **Training (TB, last-100 means):** instantaneous reward 0.34 -> 0.478;
+  episode length -> 894.6/1000; **discriminator loss 1.08 -> 1.09 last-100
+  (min 0.315 mid-run, 1.36 at budget end) — engaged for the entire run and
+  never saturated. With honest reference data the adversarial game is
+  finally played on style rather than on physics tells** — the first AMP
+  run of the campaign with a healthy discriminator start-to-finish. Policy
+  std fixed 0.055; 2.57 h.
+- **Full-protocol eval (3,200 episodes, `eval_results/amp_v6.json`):**
+  falls 4.19% | gait gate **0/5** — stance duty L 99.0 / R 96.7% | ref RMS
+  10.15 deg | jerk 0.088 (PPO-grade smoothness — 165x below amp_v1) |
+  action std 0.157 | lin vel err 0.115 aggregate, **0.201 in the forward
+  condition (~ the full command: no translation)** | ang vel err 0.058
+  (turn 0.032) | energy 3.56 W (near-static).
+- **Video audit (forward vx=0.2 + turn wz=0.3,
+  `videos/play/play_forward_vx0.2.mp4` / `play_turn_wz0.3.mp4`):** upright
+  at proper height, stands in place for the full 20 s under the forward
+  command; pivots in place under the turn command. Checklist: upright
+  PASS; alternating swing FAIL; gait stance FAIL; heading PASS; no-dither
+  PASS. Same behavioral endpoint as run 13, now on honest data.
+- **Post-eval diagnosis (pre-registered branch D: diagnose before
+  retraining):** (a) the data-composition hypothesis — "the nine vx=0
+  clips contain standing, legitimizing it" — is **REFUTED** by direct
+  measurement: every clip including all vx=0 ones contains genuine
+  stepping (leg-velocity RMS 1.5-2.5 rad/s, foot clearance 2.3-3.5 cm,
+  base speed 0.15-0.29 m/s). The reference contains no standing to
+  imitate. (b) Discriminator ENGAGED, not saturated -> the indicated
+  constraint is the **exploration ceiling**: policy log-std has been
+  pinned at sigma=0.055 for all eleven AMP runs, while the PPO baseline
+  trains with initial noise std 0.5 (adaptive) — a 9x exploration
+  asymmetry between the study's two arms that was never equalized.
+  Discovering coordinated stepping from damped standing under fall risk +
+  action-rate penalty with 0.055-sigma noise is the remaining untested
+  bottleneck.
+- **Verdict: FAIL vs the acceptance bar (gate 0/5), and root-cause #1
+  resolves as necessary-but-not-sufficient:** honest data healed the
+  adversarial game (engaged discriminator, zero exploitable tells, no
+  crawl, no collapse) but did not by itself produce locomotion. The
+  campaign's last untested lever — exploration (#4) — is promoted.
+- **Run 15 lever (pre-registered):** `agent.models.policy.initial_log_std`
+  -2.9 -> -1.9 (sigma 0.055 -> 0.15), everything else identical to this
+  run (recorded clips, termination 0.10, task/style 0.6/0.4, 14-frame
+  window, action clip +/-5).
+- **Paper relevance (H2/H3):** with a healthy discriminator the learned
+  reward still provides no curriculum from standing toward stepping at
+  low exploration, whereas PPO's dense per-joint tracking reward does —
+  and the two arms' exploration budgets were silently unequal (0.5 vs
+  0.055) via framework defaults, itself a finding about hidden
+  configuration asymmetries in method comparisons.
 
 ## Campaign status — 2026-07-06 (post-audit synthesis)
 
