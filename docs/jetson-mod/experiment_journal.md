@@ -603,6 +603,63 @@ not mistaken for study runs):
   config, `--seed 123`, to test reproducibility of the positive result
   (H3 evidence either way).
 
+## CAMPAIGN 2 CONCLUSION — 2026-07-11 (runs 13-16; supersedes the 2026-07-06 status below where they conflict)
+
+**Bottom line: the campaign is concluded with a PASS. `amp_v7` (run 15) is
+the study's first AMP policy to meet the full acceptance bar** (gait gate
+4/5, falls 0.34%, upright walking on both audit videos), ending an
+11-run failure streak with a completed causal explanation:
+
+| Cell (reference data x exploration) | Run(s) | Outcome |
+|---|---|---|
+| synthetic, sigma 0.055 | 4-13 | 8 degenerate modes (collapse/dither/march/shuffle/one-legged/in-place/crawl/stand); discriminator wins on physics tells (20 dead feature dims measured) |
+| recorded (0 dead dims), sigma 0.055 | 14 | stands — but FIRST run with a healthy, engaged discriminator: data fix healed the game, not the behavior |
+| recorded, sigma 0.15 | 15 | **WALKS — bar passed** |
+| synthetic, sigma 0.15 | — | UNTESTED (disclosed limitation; data-necessity rests on the measured saturation mechanism, not a direct run) |
+
+**Two jointly-necessary constraints:** physically-consistent reference
+data (removes the discriminator's unwinnable physics tells) AND adequate
+exploration (makes stepping discoverable from the policy's operating
+point). Geometry (run 13) was neither: it relocated the degenerate
+optimum without removing it.
+
+**Final policy standings (9 evaluated policies):** ppo_v3 remains the
+most balanced and the deployment selection (gate 5/5, 0 falls, ref RMS
+4.59 deg, energy 21.6 W, jerk 0.07). amp_v7 is the AMP existence proof
+and the best command-tracker of the entire study (vel err 0.0219 m/s —
+7x better than ppo_v3's 0.155) at honest costs: ref RMS 10.56 deg, jerk
+1.22, energy 29.2 W, and a lateral-condition foot drag (the failed 5th
+gate condition). Archived: `exported_policies/amp_v7_run15_command/`.
+
+**Hypothesis verdicts (final unless run 16 forces revision):**
+- **H1 (AMP more natural / lower-jerk at equal compute): NOT SUPPORTED.**
+  The passing AMP gait is 17x jerkier and 35% more energetic than
+  ppo_v3's, with 2.3x worse reference-pose fidelity — though its gait is
+  qualitatively natural on video and its command tracking is the study's
+  best. Style did not come "for free"; it came at measurable cost.
+- **H2 (AMP reduces reward-engineering effort): REJECTED as stated,
+  sharpened as a finding.** The hand-written imitation composite
+  disappeared, but the effort migrated: data-consistency engineering
+  (runs 4-5, 14 + the recorder/validator pipeline), task-kernel
+  hardening (7), action bounding (12), termination geometry (13), and
+  exploration tuning (15). Headline: the same imperfect reference is
+  survivable as a target and fatal as evidence.
+- **H3 (PPO more stable/faster to a working policy): SUPPORTED.** PPO:
+  2/2 first-try convergences to deployment quality. AMP: 12 runs, one
+  divergence, eight degenerate optima, and two constraint fixes to reach
+  one pass — per-run budgets equal (72k timesteps = 294.9M env-steps),
+  campaign-level compute ~12x PPO's. Framework-default asymmetries
+  (fixed sigma 0.055 vs PPO's adaptive 0.5) are part of this story and
+  were only equalized in the passing run.
+
+**Compute accounting:** 12 AMP training runs x ~2.6 h ~= 31 GPU-hours vs
+PPO's 2 x ~1.8 h; plus 9 full 3,200-episode evals and 8 video audits.
+
+**Seed-confirmation (run 16, `amp_v8_seed`, --seed 123, identical config)
+is in flight** to test reproducibility of the pass; its result will be
+appended as an addendum and adjusts H3's interpretation (reproducible
+pass vs seed-lottery) but not the campaign's causal conclusions.
+
 ## Campaign status — 2026-07-06 (post-audit synthesis)
 
 Consolidated picture after the video audit and the gait-validity gate; this
