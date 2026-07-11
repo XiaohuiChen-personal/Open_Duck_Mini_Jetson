@@ -74,6 +74,22 @@ not mistaken for study runs):
 - `rsl_rl/.../2026-03-31_13-51-16` and `.../2026-04-13_00-08-18` = early
   100-iteration validation runs; `.../2026-04-13_00-03-29` = an aborted run.
   No final checkpoints; not part of the comparison.
+- **(added 2026-07-10)** `rsl_rl/open_duck_ppo/2026-07-06_20-58-16`
+  (v4_inertials) and `rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43`
+  (v4_robust) = robot-project runs launched from the `cad-redesign` branch
+  (worktree `Open_Duck_Mini_Jetson-cad`), **NOT study runs — excluded from
+  the PPO-vs-AMP comparison** (user directive 2026-07-07, reconfirmed
+  2026-07-10). They train on a *different robot model* (CAD layout v2.1,
+  trunk-inertia frame correction, regenerated USD; v4_robust additionally
+  enables domain randomization), so their metrics are not comparable to
+  runs 1-12 and they carry no run number here. Branch-local record:
+  `v4_retrain_results.md` + `eval_results_v4/` on `cad-redesign`.
+  Paper-relevant side fact from that work: runs 1-12 all trained on a
+  trunk inertia mis-read as body-frame (+78/-10/-27% per axis). The study
+  comparison remains internally valid — all six evaluated policies share
+  that same model, and v4_inertials shows the corrected model retrains to
+  v3 parity (mean reward 253.3 vs 253.0) — but disclose this as a
+  threats-to-validity note in the final paper.
 
 ---
 
