@@ -37,6 +37,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 12 | `amp_command7` | AMP | 2026-06-15 | run-11 fix (raw actions clipped +/-5.0) + 14-frame + task/style 0.6/0.4 | ~~best striding AMP~~ REVISED 2026-07-06: **crawl** (see run-12 addendum) — converged, 0-1% falls, but locomotes on its body |
 | 13 | `amp_v5` | AMP | 2026-07-10 | termination height 0.10 -> 0.13 m (run-12 config, hydra override) | **FAIL (gate 0/5)** — crawl excised, posture upright, but stand-and-pivot: no stepping; root-cause #1 (data physics) now primary |
 | 14 | `amp_v6` | AMP | 2026-07-11 | motion library -> 22 physically-consistent clips recorded from ppo_v3 rollouts (0 dead AMP dims) | **FAIL (gate 0/5)** — stands upright; but discriminator ENGAGED all run (no tells): data fix healed the adversarial game without producing locomotion; exploration ceiling promoted |
+| 15 | `amp_v7` | AMP | 2026-07-11 | exploration: initial_log_std -2.9 -> -1.9 (sigma 0.055 -> 0.15), on the recorded clips | **PASS — first acceptable AMP gait of the study.** Gate 4/5, falls 0.34%, vel tracking 0.0219 m/s (best of ALL policies incl. PPO), upright walking on video |
 
 ---
 
@@ -65,7 +66,7 @@ numbers in their entries) but did NOT get a full eval — they failed their gate
 and a full sweep was not warranted. Cite their forensic numbers as diagnostic,
 not as protocol-comparable. Run 12 = `amp_v4` (full eval done 2026-06-15).
 Full-eval set is now: ppo_v2, ppo_v3, amp_v1 (r8), amp_v2 (r9), amp_v3 (r10),
-amp_v4 (r12), amp_v5 (r13), amp_v6 (r14).
+amp_v4 (r12), amp_v5 (r13), amp_v6 (r14), amp_v7 (r15).
 
 **Pre-study / non-study runs on disk** (documented here so stray log dirs are
 not mistaken for study runs):
@@ -554,6 +555,53 @@ not mistaken for study runs):
   and the two arms' exploration budgets were silently unequal (0.5 vs
   0.055) via framework defaults, itself a finding about hidden
   configuration asymmetries in method comparisons.
+
+## Run 15 — `amp_v7` (`2026-07-11_06-36-47_amp_torch`) — exploration lever: PASS
+
+- **Lever (single, pre-registered in run 14's branch-D diagnosis):**
+  `agent.models.policy.initial_log_std` -2.9 -> **-1.9** (fixed sigma
+  0.055 -> 0.1496, verified in `params/agent.yaml`), on the run-14 config
+  (22 recorded ppo_v3 clips, termination 0.10, task/style 0.6/0.4,
+  14-frame window, action clip +/-5, 72k timesteps — standard budget, no
+  resume). Equalizes part of the hidden exploration asymmetry vs the PPO
+  baseline (rsl_rl init_noise_std 0.5, adaptive).
+- **Training (TB, last-100 means):** instantaneous reward 0.31 -> 0.524
+  (0.629 at end, still climbing at budget exhaustion); episode length ->
+  928.9/1000; discriminator loss 1.10 -> 1.44 last-100, **2.04 at end —
+  the policy increasingly WINNING the style game**; sigma 0.1496
+  confirmed constant; 2.65 h.
+- **Full-protocol eval (3,200 episodes, `eval_results/amp_v7.json`):**
+  falls **0.34%** | gait gate **4/5** — stance duty L 74.3 / R 79.8%
+  aggregate, per-condition 64-88% except lateral (79.2/**97.8** — right
+  foot drags under pure-lateral commands, the one failed condition) |
+  **lin vel error 0.0219 m/s — the best command tracking of ALL nine
+  evaluated policies, PPO included** (ppo_v3: 0.155; amp_v1: 0.026) |
+  forward condition: 0 falls, err 0.027 | ref RMS 10.56 deg | jerk 1.22 |
+  action std 0.269 | ang vel err 0.114 | energy 29.2 W (vs ppo_v3's
+  21.6 — style + exploration cost).
+- **Video audit (forward vx=0.2 + turn wz=0.3,
+  `videos/play/play_forward_vx0.2.mp4` / `play_turn_wz0.3.mp4`):**
+  genuine dynamic walking — body translates across the grid, both legs
+  alternate through distinct stance/swing phases with real clearance,
+  trunk upright with a natural stride lean; stepped turning without foot
+  dragging. Checklist: upright PASS; alternating swing PASS; loaded
+  stance PASS; heading PASS; no-dither PASS.
+- **VERDICT: PASS — first AMP policy of the study to meet the full
+  acceptance bar** (gate 4/5 >= 4, falls 0.34% < 1%, upright walking on
+  video). Honest deltas vs ppo_v3 remain: worse reference-pose fidelity
+  (10.6 vs 4.6 deg), higher jerk (1.22 vs 0.07), higher energy (29.2 vs
+  21.6 W), and the lateral-condition drag — a commandable, natural-
+  looking, stable gait, not a strict dominance.
+- **Causal picture completed (runs 12 -> 13 -> 14 -> 15):** synthetic
+  data + low floor -> crawl; geometry fix alone -> stand; honest data
+  alone -> stand (healthy discriminator, no gradient into stepping at
+  sigma 0.055); honest data + adequate exploration -> **walking. Two
+  constraints were jointly necessary: physically-consistent reference
+  data (removes the discriminator's physics tells) and sufficient
+  exploration (makes stepping discoverable). Neither suffices alone.**
+- **Run 16 (pre-registered branch A): seed-confirmation** — identical
+  config, `--seed 123`, to test reproducibility of the positive result
+  (H3 evidence either way).
 
 ## Campaign status — 2026-07-06 (post-audit synthesis)
 
