@@ -12,7 +12,9 @@ Chronological record of every training run in the "Designed vs. Learned
 Imitation" study (EN.665.645 research project). One config lever changes per
 run; each entry records the delta, the training signals, the gate evaluation,
 and the verdict. Quantitative protocol details live in
-`algorithm_comparison.md`; per-policy raw metrics in `eval_results/*.json`.
+`algorithm_comparison.md`; per-policy raw metrics in `eval_results/*.json`
+(both removed from this repo 2026-07-26 — archive repo / tag
+`course-study-freeze` only).
 
 **Compute parity:** full PPO runs are 3000 iterations x 24 steps/env x 4096
 envs (294.9M env-steps, ~1.8-1.9 h on DGX Spark GB10). AMP runs are 72,000
@@ -814,3 +816,39 @@ Phase B (`Isaac-OpenDuck-AMP-v0`, task 0.5/style 0.5, full clip set) launches
 as soon as a pure-style run shows forward locomotion — or directly after
 lever 2 regardless, since the task reward provides a non-adversarial gradient
 that does not depend on winning the discriminator game.
+
+---
+
+## 2026-07-26 — AMP removal + post-removal smoke validation (engineering note, not a run)
+
+**Removal.** The AMP track was removed from this repo per user decision (all
+content preserved in the `open-duck-ppo-vs-amp` archive repo and at tag
+`course-study-freeze`): `isaac_lab_env/open_duck_mini_v2/amp/` (envs, cfgs,
+both motion-clip libraries), six scripts (`train_amp.py`, `play_amp.py`,
+`measure_amp_gait.py`, `record_ppo_rollouts_to_amp.py`,
+`convert_gait_library_to_amp.py`, `export_skrl_policy_onnx.py`), the three
+exported AMP policies, and the frozen study eval pair
+(`algorithm_comparison.md` + `eval_results/`). Per-model eval convention going
+forward: `eval_results_v4/` + `v4_comparison.md` (evaluate_policies.py
+defaults repointed). PPO (v4_robust) is the sole locomotion track.
+
+**Smoke validation (video-audit protocol, both conditions).** v4_robust
+(`open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt`,
+`Isaac-Velocity-Rough-OpenDuck-Robust-Play-v0`, 2 envs, deterministic, 20 s):
+
+- forward vx=0.2 → `<run_dir>/videos/play/smoke_forward_vx02.mp4`
+- turn wz=0.3 → `<run_dir>/videos/play/smoke_turn_wz03.mp4`
+
+Frame audit (1 fps filmstrip + 10 fps burst, per the CLAUDE.md checklist):
+upright trunk at constant height, alternating swing with real ground
+clearance, loaded stance feet, straight heading (forward) / continuous ~full
+revolution with position held (turn), no dither, no drag/glide/crawl.
+**PASS both conditions** — the post-removal tree trains nothing new but
+loads, registers tasks, and plays the deployment candidate correctly.
+
+Operational note: Isaac Lab hydra CLI overrides require square-bracket lists
+(`'env.commands.base_velocity.ranges.ang_vel_z=[0.3,0.3]'`); parenthesis
+tuples abort during startup. PhysX startup warnings (root-prim inertia
+approximation for `/base`, an env_1 collision-path lookup) appear in healthy
+runs on this USD and are benign — the same USD passed the full 3,200-episode
+gated eval.

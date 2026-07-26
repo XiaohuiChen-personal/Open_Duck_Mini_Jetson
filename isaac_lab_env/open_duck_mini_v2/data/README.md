@@ -18,8 +18,8 @@ Consumers:
 - `isaac_lab_env/open_duck_mini_v2/imitation_reward.py` (ImitationReward —
   loads it at init, no fallback; required for v3-reward training)
 - `scripts/evaluate_policies.py` (G1 gate metrics vs the reference)
-- `scripts/convert_gait_library_to_amp.py` (source of the 22 AMP clips in
-  `../amp/motions/`)
+- (historical: the archived `convert_gait_library_to_amp.py` derived the
+  course study's AMP clips from it — removed 2026-07-26 with the AMP track)
 
 Not needed on the Jetson at runtime — the deployed policy only requires the
 gait-phase clock, not the reference library.

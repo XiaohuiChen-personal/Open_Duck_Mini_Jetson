@@ -11,6 +11,13 @@ Environments:
         noise only — dynamics randomization is currently disabled: push_robot /
         add_base_mass / base_com are set to None in env_cfg.py __post_init__)
     Isaac-Velocity-Rough-OpenDuck-Play-v0 : Evaluation/playback (50 envs, no randomization)
+    Isaac-Velocity-Rough-OpenDuck-Robust-v0 / -Robust-Play-v0 : v4-robust track
+        (dynamics DR + asymmetric 59-dim actor obs) and its play twin
+    Isaac-Velocity-Rough-OpenDuck-PushEval-v0 / -PlainPushEval-v0 : push-recovery
+        eval tasks (Task 2.7), 59-dim robust and 62-dim plain variants
+
+(The skrl AMP tasks were removed 2026-07-26 with the course-study archive;
+see the open-duck-ppo-vs-amp repo.)
 """
 
 import gymnasium as gym
@@ -82,5 +89,3 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:OpenDuckPPORunnerCfg",
     },
 )
-
-from . import amp  # noqa: F401 — registers AMP tasks

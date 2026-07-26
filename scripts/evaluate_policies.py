@@ -51,20 +51,22 @@ Policy adapters own BOTH the checkpoint format and WHICH gym task to build:
 RSL-RL policies (62-dim v3 obs, or 59-dim v4-robust actor obs via the
 Robust-Play task) and skrl AMP policies (potentially 51/54-dim direct-env
 observations) are not interchangeable across envs, so each --policies entry
-carries its own task id.
+carries its own task id. (The skrl_amp adapter remains for archived-study
+checkpoints, but their AMP task registrations were removed 2026-07-26 —
+they live in the open-duck-ppo-vs-amp archive repo.)
 
-Outputs:
-    docs/jetson-mod/eval_results/<name>.json   (one file per policy)
-    docs/jetson-mod/algorithm_comparison.md    (regenerated comparison table
-                                                from ALL JSONs in the results
-                                                dir — separate invocations
-                                                accumulate)
+Outputs (per-model convention — one dir + one table per robot model):
+    docs/jetson-mod/eval_results_v4/<name>.json  (one file per policy)
+    docs/jetson-mod/v4_comparison.md             (regenerated comparison table
+                                                  from ALL JSONs in the results
+                                                  dir — separate invocations
+                                                  accumulate)
 
 Usage (GPU required — do NOT run while a training run owns the GPU):
     cd ~/IsaacLab
     ./isaaclab.sh -p ~/Projects/Open_Duck_Mini_Jetson/scripts/evaluate_policies.py \
         --policies ppo_v3=Isaac-Velocity-Rough-OpenDuck-Play-v0:rsl_rl:/path/model.pt \
-        --policies amp_v1=Isaac-OpenDuck-AMP-v0:skrl_amp:/path/agent.pt:/path/skrl_amp_cfg.yaml \
+        --policies v4_robust=Isaac-Velocity-Rough-OpenDuck-Robust-Play-v0:rsl_rl:/path/model.pt \
         --headless
 
 GPU-free unit tests of the pure-numpy metric functions (plain python3):
@@ -136,9 +138,13 @@ DEFAULT_REFERENCE_PKL = os.path.join(
     REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "data",
     "polynomial_coefficients.pkl",
 )
-DEFAULT_OUTPUT_DIR = os.path.join(REPO_ROOT, "docs", "jetson-mod", "eval_results")
+# Per-model convention: one results dir + one comparison table per robot
+# model, never mixed. Defaults target the current layout-v2.1 model; the
+# pre-CAD study pair (eval_results/ + algorithm_comparison.md) was removed
+# 2026-07-26 and lives in the open-duck-ppo-vs-amp archive repo.
+DEFAULT_OUTPUT_DIR = os.path.join(REPO_ROOT, "docs", "jetson-mod", "eval_results_v4")
 DEFAULT_COMPARISON_MD = os.path.join(
-    REPO_ROOT, "docs", "jetson-mod", "algorithm_comparison.md"
+    REPO_ROOT, "docs", "jetson-mod", "v4_comparison.md"
 )
 
 # Frameworks understood by the policy adapters (values are canonical names).
@@ -850,7 +856,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Regenerate the comparison markdown from the JSONs already in "
             "--output_dir and exit (no Isaac Sim). Use after changing "
-            "report/gate code to refresh algorithm_comparison.md. "
+            "report/gate code to refresh the comparison table. "
             "Ignored if --self-test is also given."
         ),
     )

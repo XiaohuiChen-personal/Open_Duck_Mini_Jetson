@@ -5,9 +5,10 @@ Standardized evaluation protocol applied to the post-CAD v4 retrains
 `scripts/evaluate_policies.py`; per-policy raw numbers live in
 `docs/jetson-mod/eval_results_v4/<name>.json` (each JSON records the exact
 protocol parameters used for that run). NOTE: the ppo_v3 row here is the
-pre-CAD-model eval (identical JSON to `eval_results/ppo_v3.json`), included
+pre-CAD-model eval (byte-identical to the archived study JSON), included
 as a cross-model REFERENCE only — v4 rows are the comparable set. The
-frozen course-study table lives in `algorithm_comparison.md`.
+frozen course-study table (`algorithm_comparison.md` + `eval_results/`) was
+removed 2026-07-26; it lives in the `open-duck-ppo-vs-amp` archive repo.
 
 ## Protocol (defaults — all CLI-overridable)
 

@@ -8,7 +8,7 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 - **Onboard computer:** NVIDIA Jetson Orin Nano Super (8 GB, 67 TOPS) — relocated from head to trunk
 - **Training hardware:** NVIDIA DGX Spark (Grace Blackwell)
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
-- **RL framework:** NVIDIA Isaac Lab with RSL-RL (PPO) and SKRL (PPO, AMP — Isaac Lab ships no off-policy skrl task configs; only PPO/AMP plus multi-agent MAPPO/IPPO exist)
+- **RL framework:** NVIDIA Isaac Lab with RSL-RL (PPO). (SKRL was used only for the archived PPO-vs-AMP course study — see `open-duck-ppo-vs-amp`; Isaac Lab ships no off-policy skrl task configs, only PPO/AMP plus multi-agent MAPPO/IPPO)
 - **On-device AI:** Cosmos Reason2-2B (W4A16 quantized) for physical AI reasoning + TensorRT locomotion policy
 - **Task plan:** See `docs/jetson-mod/task_plan.md` for the full 5-phase, 31-task implementation plan
 - **Experiment journal:** EVERY training run gets an entry in `docs/jetson-mod/experiment_journal.md`. Data-sourcing protocol in `.claude/rules/experiment-journal.md` — last-100 TensorBoard means (never single-iteration log samples), measured gate rollouts, every number names its source. **Note (2026-07-26): the EN.665.645 course-paper record is FROZEN in the archive repo `open-duck-ppo-vs-amp` (tag `course-study-freeze` marks the freeze commit); from here on this journal is the robot project's engineering record, and study runs 1-16 in it are historical.**
@@ -35,22 +35,24 @@ pytest -m "phase5" -v   # Cosmos VLM integration
 
 Every trained locomotion policy — PPO, AMP, or any future method — gets the same
 three-step validation before any verdict lands in the journal. Canonical details:
-`scripts/evaluate_policies.py` docstring and `docs/jetson-mod/algorithm_comparison.md`
+`scripts/evaluate_policies.py` docstring and `docs/jetson-mod/v4_comparison.md`
 ("Metric hierarchy").
 
 1. **Quantitative eval (3,200 episodes).** `scripts/evaluate_policies.py`: 5 command
    conditions x 10 windows x 64 envs, 30 s episodes, deterministic, seed 42, obs
-   corruption and pushes disabled. Emits one JSON per policy into
-   `docs/jetson-mod/eval_results/` with metrics 1-9. Metric 9 is the gait-validity
-   gate: BOTH feet's stance duty inside [40, 90]% per condition (`GAIT_DUTY_BAND_PCT`
-   is the single source of truth). `--report-only` regenerates
-   `algorithm_comparison.md` from archived JSONs without Isaac.
+   corruption and pushes disabled. Emits one JSON per policy into the per-model
+   results dir (`docs/jetson-mod/eval_results_v4/` for the current layout-v2.1
+   model; one dir + one table per robot model, never mixed) with metrics 1-9.
+   Metric 9 is the gait-validity gate: BOTH feet's stance duty inside [40, 90]%
+   per condition (`GAIT_DUTY_BAND_PCT` is the single source of truth).
+   `--report-only` regenerates the comparison table (`v4_comparison.md`) from
+   archived JSONs without Isaac.
 2. **Video audit (mandatory — aggregate metrics alone are NOT sufficient).** Render
    deterministic rollout mp4s (robot-tracking camera, ~20 s, seed 42) in TWO
    conditions: fixed forward vx=0.2 AND turn wz=0.3 — defects like one-foot dragging
-   only show off-forward. PPO: `scripts/play_policy.py`. AMP: `scripts/play_amp.py`
-   (registers `Isaac-OpenDuck-AMP-Video-v0` — camera + pinned-command env; overrides
-   must match the checkpoint's `num_amp_observations` / `action_clip`).
+   only show off-forward. PPO: `scripts/play_policy.py`.
+   (AMP tooling was removed 2026-07-26 with the course-study archive; if a
+   future method needs a video wrapper, recreate one from `open-duck-ppo-vs-amp`.)
    Extract a filmstrip (ffmpeg) and check against the fixed checklist: trunk upright
    near 0.17 m; both feet alternate swing with real ground clearance; feet loaded
    during stance (no drag / glide / crawl); heading straight; no action dither.
@@ -66,8 +68,10 @@ Rules:
 - Evaluate on the SAME robot model/USD the policy was trained on (the PPO-vs-AMP
   study runs used the pre-CAD model, frozen in the archive repo; v4+ policies use
   the corrected layout-v2.1 model); cross-model numbers are not comparable.
-- Runs that fail their gate get forensic-rollout numbers (`scripts/measure_amp_gait.py`)
-  cited as diagnostic only — never as protocol-comparable results.
+- Runs that fail their gate get forensic-rollout numbers (targeted diagnostic
+  rollouts, e.g. per-condition metrics from `evaluate_policies.py`; the study-era
+  `measure_amp_gait.py` lives in the archive repo) cited as diagnostic only —
+  never as protocol-comparable results.
 - Planned extension (forward-plan Phase 1): per-episode dumps + posture metrics
   (mean base height, trunk orientation) join the eval JSON as the quantitative twin
   of the video checklist.

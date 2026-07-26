@@ -18,10 +18,11 @@ from that point on serve the robot project's engineering record.)
 2. **Wall-clock = first-to-last event timestamps** (or checkpoint file
    mtimes), never estimates and never reused from a different run.
 3. **Behavioral metrics are measured, not inferred**: gait/gate numbers come
-   from `scripts/evaluate_policies.py` (JSONs in the per-model results dir:
-   `docs/jetson-mod/eval_results/` = frozen pre-CAD study; `eval_results_v4/`
-   = corrected layout-v2.1 model; never mix models in one table)
-   or `scripts/measure_amp_gait.py` rollouts. Reward curves alone cannot
+   from `scripts/evaluate_policies.py` (JSONs in the per-model results dir —
+   `eval_results_v4/` for the corrected layout-v2.1 model; never mix robot
+   models in one table; pre-CAD study JSONs are archive-repo only)
+   or targeted diagnostic rollouts (study-era `measure_amp_gait.py` is in
+   the archive repo). Reward curves alone cannot
    certify a gait (run 4 had healthy-looking episode lengths while standing
    still).
 4. **Every number names its source** (TB tag, JSON field, file path/mtime)
@@ -36,7 +37,7 @@ from that point on serve the robot project's engineering record.)
    G2 measurement was once run against a live training under GPU contention
    because completion was assumed from wall-clock.)
 7. **ONE Isaac Sim / GPU job at a time.** Never launch an evaluation
-   (`evaluate_policies.py`, `measure_amp_gait.py`, `play_policy.py`) while a
+   (`evaluate_policies.py`, `play_policy.py`) while a
    training run is active — two Isaac Sim processes collide on GPU/kit
    resources during startup and the second dies in its init banner (run-10
    amp_v3 eval failed this way, exit 2, while run 11 was training). Evals run
@@ -54,15 +55,16 @@ ONNX, videos, log dir). Update the run-index table at the top of the journal.
 
 - PPO (RSL-RL): `~/IsaacLab/logs/rsl_rl/open_duck_ppo/<timestamp>/`
 - PPO robust track (Run B+): `~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/<timestamp>/`
-- AMP (skrl): `~/IsaacLab/logs/skrl/<experiment.directory>/<timestamp>_amp_torch/`
+- AMP (skrl, archived study era): `~/IsaacLab/logs/skrl/<experiment.directory>/<timestamp>_amp_torch/`
 - Detached run console logs + PIDs: `.training_runs/<run_name>.{log,pid}`
 
 ## Companion documents
 
-- Comparison tables are PER MODEL: `docs/jetson-mod/algorithm_comparison.md`
-  + `eval_results/` are the FROZEN pre-CAD study record (do not add rows);
-  corrected-model (v2.1) policies go to `v4_comparison.md` + `eval_results_v4/`
-  (or a successor per-model pair). Add every gate-passing policy to the table
-  matching its robot model.
+- Comparison tables are PER MODEL: corrected-model (v2.1) policies go to
+  `v4_comparison.md` + `eval_results_v4/` (or a successor per-model pair for
+  future models). Add every gate-passing policy to the table matching its
+  robot model. (The pre-CAD study table `algorithm_comparison.md` +
+  `eval_results/` was removed 2026-07-26 — it lives in the archive repo
+  `open-duck-ppo-vs-amp` and at tag `course-study-freeze`.)
 - `exported_policies/<name>/` — archive checkpoint + `agent.yaml` +
   `env.yaml` + README for any deployment-candidate policy.

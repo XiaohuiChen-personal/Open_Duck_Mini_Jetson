@@ -30,7 +30,7 @@ hardware-realizable observation vector.
 5 velocity conditions × 640 episodes = 3200 episodes, DR off,
 `eval_results_v4/v4_robust.json`. Gate = both feet's stance duty in
 [40, 90]% per condition (applied before ranking; see
-`algorithm_comparison.md`).
+`v4_comparison.md`).
 
 | Metric | v4_robust | acceptance | result |
 |---|---|---|---|

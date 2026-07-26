@@ -29,7 +29,7 @@ The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lin
 1. Read the relevant task in `docs/jetson-mod/task_plan.md` for full context
 2. Each task has: description, steps, automated test code, and manual verification checklist
 3. Mark tests as passing before moving to the next task
-4. Document results in `docs/jetson-mod/validation_results.md` or `docs/jetson-mod/algorithm_comparison.md`
+4. Document results in `docs/jetson-mod/validation_results.md` or `docs/jetson-mod/v4_comparison.md`
 
 ## Output Files Created by Tasks
 
@@ -38,7 +38,7 @@ The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lin
 | 1.1 | `docs/jetson-mod/mass_inertia_calculations.md` |
 | 1.2 | `mini_bdx/robots/open_duck_mini_v2/jetson_orin_nano.stl` |
 | 2.1 | `mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd` |
-| 2.5 | `docs/jetson-mod/algorithm_comparison.md` |
+| 2.5 | `docs/jetson-mod/v4_comparison.md` (study-era `algorithm_comparison.md` archived in `open-duck-ppo-vs-amp`) |
 | 2.6 | `exported_policies/open_duck_*.onnx` |
 | 2.7 | `docs/jetson-mod/validation_results.md` |
 | 3.6 | `print/thermal_partition.stl` |

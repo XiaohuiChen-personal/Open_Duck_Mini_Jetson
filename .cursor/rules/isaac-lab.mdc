@@ -57,7 +57,7 @@ generic literature values. Source of truth: `.claude/rules/rl-training.md`
 
 The Open Duck Playground reference motion generator (https://github.com/apirrone/Open_Duck_reference_motion_generator) produces `polynomial_coefficients.pkl` — 240 parametric walking gaits as degree-15 polynomials over a 0.54s period.
 
-This data is used directly by the `ImitationReward` class in `isaac_lab_env/open_duck_mini_v2/imitation_reward.py` — a BDX-style composite (joint pos -L2*15.0, joint vel -L2*0.001, base vel exp(-8e), contact match; RewTerm weight=1.0). It matches the closest velocity command to a reference motion and evaluates the polynomials at NORMALIZED phase t = (i % nb_steps) / nb_steps (see `.claude/rules/rl-training.md` for the current v3 design and `docs/jetson-mod/experiment_journal.md` for the phase-bug history). The same library, converted to MotionLoader `.npz` clips by `scripts/convert_gait_library_to_amp.py`, feeds the AMP discriminator.
+This data is used directly by the `ImitationReward` class in `isaac_lab_env/open_duck_mini_v2/imitation_reward.py` — a BDX-style composite (joint pos -L2*15.0, joint vel -L2*0.001, base vel exp(-8e), contact match; RewTerm weight=1.0). It matches the closest velocity command to a reference motion and evaluates the polynomials at NORMALIZED phase t = (i % nb_steps) / nb_steps (see `.claude/rules/rl-training.md` for the current v3 design and `docs/jetson-mod/experiment_journal.md` for the phase-bug history). (The AMP clip-conversion path that also consumed this library was removed 2026-07-26 with the course-study archive.)
 
 The polynomial data lives at: `isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl`
 

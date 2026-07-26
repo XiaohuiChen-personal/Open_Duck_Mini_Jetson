@@ -13,7 +13,7 @@ The entire pipeline uses NVIDIA tools. Here's what each tool does and how it fit
 |---|---|---|
 | Physics simulation | **Isaac Sim** (PhysX 5) | MuJoCo |
 | RL training framework | **Isaac Lab** | MuJoCo Playground + Stable-Baselines3 |
-| RL algorithms | **RSL-RL** (PPO) + **SKRL** (PPO, AMP) | SB3 |
+| RL algorithms | **RSL-RL** (PPO; SKRL was used only for the archived AMP course study) | SB3 |
 | Robot model format | **USD** (converted from URDF) | MJCF (.xml) |
 | Training hardware | **DGX Spark** (Grace Blackwell, 1 PFLOP FP4) | Single GPU |
 | Policy deployment | **TensorRT** on Jetson GPU | onnxruntime on Pi CPU |
@@ -35,7 +35,7 @@ RL training framework built on Isaac Sim. Provides environments, reward utilitie
 
 ## SKRL
 
-Modular RL library with the widest algorithm support in Isaac Lab. Only library with AMP (Adversarial Motion Priors) support.
+Modular RL library with the widest algorithm support in Isaac Lab; the only library with AMP (Adversarial Motion Priors) support. No longer used in this repo — the AMP track was removed 2026-07-26 with the course-study archive (`open-duck-ppo-vs-amp`).
 - GitHub: https://github.com/Toni-SM/skrl
 
 ## TensorRT
