@@ -1,7 +1,10 @@
-# Algorithm Comparison — Open Duck Mini v2 (Task 2.5)
+# Algorithm Comparison — Open Duck Mini v2 (Task 2.5, course study, pre-CAD model)
 
-Standardized evaluation protocol applied uniformly to all trained policies
-(PPO v2, PPO v3, AMP variants). Produced by `scripts/evaluate_policies.py`;
+Standardized evaluation protocol applied uniformly to all trained study
+policies (PPO v2, PPO v3, AMP variants), all on the PRE-CAD robot model.
+FROZEN with the 2026-07-26 course-study freeze (archive repo
+`open-duck-ppo-vs-amp`) — do not add corrected-model (v2.1) policies here;
+those go to `v4_comparison.md`. Produced by `scripts/evaluate_policies.py`;
 per-policy raw numbers live in `docs/jetson-mod/eval_results/<name>.json`
 (each JSON records the exact protocol parameters used for that run).
 

@@ -6,9 +6,9 @@ The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lin
 
 | Phase | Tasks | Status | Where |
 |---|---|---|---|
-| Phase 1: Sim Model Update | 1.1-1.6 | Pending | Local machine |
-| Phase 2: Isaac Lab + RL Training | 2.1-2.7 | Pending | DGX Spark |
-| Phase 3: CAD Redesign + Thermal | 3.1-3.7 | Pending | OnShape/Fusion |
+| Phase 1: Sim Model Update | 1.1-1.6 | Complete | Local machine |
+| Phase 2: Isaac Lab + RL Training | 2.1-2.7 | Complete (Task 2.7 push-recovery gate PASSED — validation_results.md, v4_robust) | DGX Spark |
+| Phase 3: CAD Redesign + Thermal | 3.1-3.7 | In progress (cad-redesign merged to v2 2026-07-26) | OnShape/Fusion |
 | Phase 4: Hardware Build + Thermal Mgmt | 4.1-4.6 | Pending | Jetson + 3D printer |
 | Phase 5: Cosmos VLM Integration | 5.1-5.5 | Pending | Jetson |
 

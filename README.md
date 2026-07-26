@@ -19,18 +19,18 @@ A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork migrates th
 | Phase | Description | Status |
 |---|---|---|
 | Phase 1 | Simulation model update (Jetson mass/inertia in trunk) | ✅ Complete |
-| Phase 2 | Isaac Lab environment + PPO locomotion training on DGX Spark | ✅ Complete (PPO baseline shipped; ONNX export and domain randomization remaining) |
-| Phase 3 | CAD redesign of trunk / body / battery for Jetson cavity | 🟡 Planned |
+| Phase 2 | Isaac Lab environment + PPO locomotion training on DGX Spark | ✅ Complete (PPO baseline + v4_robust DR retrain shipped, push-recovery gate passed; ONNX export remaining) |
+| Phase 3 | CAD redesign of trunk / body / battery for Jetson cavity | 🟠 In progress (layout v2.1 + corrected inertials merged 2026-07-26; remaining 3.x tasks pending) |
 | Phase 4 | Hardware build, TensorRT deployment, real-robot walking | 🟡 Planned |
 | Phase 5 | Cosmos Reason2 VLM for vision-language-action control | 🟡 Planned |
 
-Full task breakdown (5 phases, 28 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
+Full task breakdown (5 phases, 31 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
 
 ---
 
 ## What's Working Today
 
-A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. Two reward function iterations (v1 and v2) shipped with documented before/after evaluation.
+A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. Three reward iterations shipped (v1, v2, and the current v3, which fixed the v2 gait-phase bug and passes the G1 gait gate), plus a 16-run PPO-vs-AMP comparison study (archived in [open-duck-ppo-vs-amp](https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp)). After the CAD-driven model correction, the deployment candidate is **v4_robust** — PPO retrained on the corrected layout-v2.1 model with dynamics domain randomization and a hardware-realizable 59-dim observation (`docs/jetson-mod/v4_retrain_results.md`, `validation_results.md`).
 
 **Training setup:**
 - NVIDIA Isaac Lab + RSL-RL PPO on DGX Spark (Grace Blackwell)
@@ -144,7 +144,7 @@ Sim2real videos for the Jetson edition will be added after Phase 4 (hardware bui
 
 ## RL Algorithms
 
-PPO is the primary algorithm and the deployment selection (ppo_v3). AMP is implemented (custom `DirectRLEnv` + skrl) and was trained head-to-head against PPO in a 16-run study — nine June runs failed in instructive ways; the July campaign's amp_v7 passed the acceptance bar (gait gate 4/5, 0.34% falls, best command tracking of the study). The full study is archived in [open-duck-ppo-vs-amp](https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp) (tag `course-study-freeze` in this repo marks the freeze point).
+PPO is the primary algorithm; the course study selected ppo_v3, since superseded for deployment by v4_robust (PPO retrained on the corrected post-CAD model — `docs/jetson-mod/validation_results.md`). AMP is implemented (custom `DirectRLEnv` + skrl) and was trained head-to-head against PPO in a 16-run study — nine June runs failed in instructive ways; the July campaign's amp_v7 passed the acceptance bar (gait gate 4/5, 0.34% falls, best command tracking of the study). The full study is archived in [open-duck-ppo-vs-amp](https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp) (tag `course-study-freeze` in this repo marks the freeze point).
 
 | Algorithm | Framework | Type | Status | Why |
 |---|---|---|---|---|
@@ -165,7 +165,7 @@ Motor parameters identified using BAM system identification. STS3250 parameters 
 
 ## Engineering Rigor
 
-- **Test suite:** 743 lines of pytest tests across 4 files covering model integrity, mass/inertia validation, USD conversion, and Isaac Lab environment correctness ([`tests/`](tests/))
+- **Test suite:** ~1,276 lines of pytest tests across 5 files covering model integrity, mass/inertia validation, CAD dimensions, USD conversion, and Isaac Lab environment correctness ([`tests/`](tests/))
 - **Phase markers:** Tests are tagged by phase (`pytest -m "phase1"`, `pytest -m "phase2"`, etc.)
 - **Training monitoring:** TensorBoard event log parser ([`scripts/monitor_training.py`](scripts/monitor_training.py))
 - **MJCF→USD pipeline:** Headless converter using Isaac Lab's MjcfConverter API ([`scripts/convert_mjcf_to_usd.py`](scripts/convert_mjcf_to_usd.py))
@@ -197,7 +197,7 @@ Additional parts for Jetson modification (planned for Phase 4):
 
 Original CAD: https://cad.onshape.com/documents/64074dfcfa379b37d8a47762/w/3650ab4221e215a4f65eb7fe/e/0505c262d882183a25049d05
 
-Modified parts (planned for Phase 3): `trunk_top`, `trunk_bottom`, `body_back`, `body_middle_top/bottom`, `battery_pack_lid`
+Modified parts (layout v2.1, merged 2026-07-26 — see `docs/jetson-mod/component_layout_v2.md`): `body_front`, `body_back`, `body_middle_bottom`, `trunk_bottom`, plus new `print/thermal_partition.stl`. Still open: `battery_pack_lid` redesign, battery retention tray, partition rails (Phase 3/4).
 
 ---
 
@@ -270,17 +270,19 @@ Open_Duck_Mini_Jetson/
 │   ├── play_policy.py                     # Policy evaluation
 │   └── monitor_training.py                # TensorBoard log parser
 ├── exported_policies/                     # Trained policies ✅
-│   ├── v1_imitation_ppo/                  # First reward iteration
-│   └── v2_bdx_imitation_ppo/              # BDX-aligned reward (current best)
-│       ├── model_2999.pt                  # Final checkpoint
-│       └── README.md                      # Detailed training report
+│   ├── v1_imitation_ppo/                  # First reward iteration (historical)
+│   ├── v2_bdx_imitation_ppo/              # BDX-aligned reward (historical)
+│   ├── v3_bdx_imitation_ppo/              # v3: gait-phase fix (study winner)
+│   └── amp_v*_run*_command/               # Archived AMP study policies
+│       (deployment candidate v4_robust: checkpoint in ~/IsaacLab/logs, see
+│        docs/jetson-mod/v4_retrain_results.md — not yet exported here)
 ├── showcase_videos/                       # Training progression videos ✅
 ├── tests/                                 # Pytest suite ✅
 ├── experiments/                           # Legacy MuJoCo experiment scripts
 ├── print/                                 # 3D printable STL files
 ├── docs/
 │   ├── jetson-mod/
-│   │   ├── task_plan.md                   # 5-phase, 28-task plan
+│   │   ├── task_plan.md                   # 5-phase, 31-task plan
 │   │   └── mass_inertia_calculations.md   # Phase 1 physics math
 │   ├── assembly_guide.md
 │   ├── sim2real.md

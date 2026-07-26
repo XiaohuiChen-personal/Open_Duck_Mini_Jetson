@@ -124,7 +124,7 @@
             </geometry>
         </collision>
         <visual>
-            <origin xyz="-0.087109999999999535025 1.3010426069826053208e-16 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
+            <origin xyz="-0.100 0 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
             <geometry>
                 <mesh filename="package:///bno055.stl"/>
             </geometry>
@@ -133,7 +133,7 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.087109999999999535025 1.3010426069826053208e-16 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
+            <origin xyz="-0.100 0 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
             <geometry>
                 <mesh filename="package:///bno055.stl"/>
             </geometry>
@@ -485,7 +485,7 @@
         </collision>
         <!-- Jetson Orin Nano Dev Kit (103x90.5x34.77mm) in compute zone -->
         <visual>
-            <origin xyz="-0.03 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.03 0 0.006" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///jetson_orin_nano.stl"/>
             </geometry>
@@ -494,14 +494,14 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.03 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.03 0 0.006" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///jetson_orin_nano.stl"/>
             </geometry>
         </collision>
         <!-- Thermal partition wall between battery and compute zones -->
         <visual>
-            <origin xyz="-0.08 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.086 0 0.011" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///thermal_partition.stl"/>
             </geometry>
@@ -510,14 +510,14 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.08 0 0.04" rpy="0 0 0" />
+            <origin xyz="-0.086 0 0.011" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///thermal_partition.stl"/>
             </geometry>
         </collision>
         <!-- DC-DC boost converter in compute zone -->
         <visual>
-            <origin xyz="-0.05 0.03 0.035" rpy="0 0 0" />
+            <origin xyz="-0.06 0.025 0.0355" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///dcdc_converter.stl"/>
             </geometry>
@@ -526,15 +526,15 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.05 0.03 0.035" rpy="0 0 0" />
+            <origin xyz="-0.06 0.025 0.0355" rpy="0 0 0" />
             <geometry>
                 <mesh filename="package:///dcdc_converter.stl"/>
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="-0.0535209 0.0003704 0.0380119" rpy="0 0 0"/>
-            <mass value="1.178026" />
-            <inertia ixx="0.0042539169822142136" ixy="0"  ixz="0" iyy="0.004378109621795835" iyz="0" izz="0.0031135431641949544" />
+            <origin xyz="-0.0635850 0.0000875 0.0339683" rpy="0 0 0"/>
+            <mass value="1.089544" />
+            <inertia ixx="0.00221458" ixy="-2.19953810e-05"  ixz="-1.17035388e-04" iyy="0.00542614" iyz="-6.88783258e-06" izz="0.00481788" />
         </inertial>
     </link>
     <link name="trunk">
@@ -2160,9 +2160,9 @@
             </geometry>
         </collision>
         <inertial>
-            <origin xyz="0.0069046 -0.0012149 0.0247919" rpy="0 0 0"/>
+            <origin xyz="0.0072060 -0.0011494 0.0223904" rpy="0 0 0"/>
             <mass value="0.362083" />
-            <inertia ixx="0.00215959511438104" ixy="0"  ixz="0" iyy="0.0015094410302028995" iyz="0" izz="0.0009254713085296116" />
+            <inertia ixx="0.00207359" ixy="1.05140407e-05"  ixz="9.10371814e-05" iyy="0.00146894" iyz="-1.09250765e-05" izz="0.00088770" />
         </inertial>
     </link>
     <link name="head">

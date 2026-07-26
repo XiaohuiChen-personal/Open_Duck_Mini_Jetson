@@ -1,5 +1,33 @@
 # Mass and Inertia Calculations — Jetson Orin Nano Modification
 
+> **REVISION NOTICE (2026-07-06, layout v2.1).** Two classes of error in
+> this document are superseded — do NOT copy values from the sections below
+> into model files:
+>
+> 1. **Frame error**: the "Existing Bodies" inertia columns are PRINCIPAL
+>    moments (the upstream MJCF inertials carry a `quat`), but every
+>    computation below treats them as body-frame (Ixx, Iyy, Izz). For the
+>    trunk the quat is a near-axis-permutation, making the derived
+>    diaginertia wrong by +78%/−10%/−27% per axis; the head's ~4.5°
+>    principal rotation was dropped too. Every policy trained before this
+>    correction (v1-v3 PPO, all AMP runs) saw the frame-permuted trunk
+>    inertia.
+> 2. **Layout error**: the component positions describe the first-pass
+>    layout, which the pre-Phase-3 audit measured to be physically
+>    unbuildable.
+>
+> The authoritative layout is `docs/jetson-mod/component_layout_v2.md`; the
+> trunk AND head inertials are computed by `scripts/compute_trunk_inertial.py`
+> (full 3×3 tensors from the upstream URDF body-frame matrices, frame
+> self-check at import, every component at its v2.1 position). Current model
+> values (MJCF `fullinertia`): trunk mass 1.089544 kg (after the Part-2
+> CAD shell deltas), CoM (-0.0635850, 0.0000875, 0.0339683), ixx/iyy/izz
+> 0.00221458/0.00542614/0.00481788; head mass 0.362083 kg,
+> CoM (0.0072060, -0.0011494, 0.0223904), ixx/iyy/izz
+> 0.00207359/0.00146894/0.00088770. Total robot mass 2.657067 kg.
+> The parallel-axis methodology below remains a valid illustration; the
+> numbers do not.
+
 ## Input Parameters
 
 ### Existing Bodies
@@ -155,9 +183,10 @@ M_trunk_sts3250 = 1.024526 + 3×0.0195 + 0.095
                 = 1.178026 kg
 ```
 
-Inertia scaled by mass ratio (1.178026 / 1.024526 = 1.1498):
+Inertia scaled by mass ratio (1.178026 / 1.024526 = 1.149823…; the model
+files use the exact ratio, which this doc previously rounded to 1.1498):
 ```
-I_trunk_sts3250 = (0.00425322, 0.00437742, 0.00311345) kg·m²
+I_trunk_sts3250 = (0.00425392, 0.00437811, 0.00311354) kg·m²
 ```
 
 ### Head Assembly (STS3250 update)
@@ -167,23 +196,24 @@ M_head_sts3250 = 0.342583 + 0.0195
                = 0.362083 kg
 ```
 
-Inertia scaled by mass ratio (0.362083 / 0.342583 = 1.0569):
+Inertia scaled by mass ratio (0.362083 / 0.342583 = 1.056918…; exact ratio,
+as in the model files):
 ```
-I_head_sts3250 = (0.00215945, 0.00150937, 0.00092542) kg·m²
+I_head_sts3250 = (0.0021596, 0.00150944, 0.000925471) kg·m²
 ```
 
 ### Other Body Mass Updates
 
 Each non-trunk, non-head servo body gets +19.5g with inertia scaled proportionally. See robot_motors.xml for exact values.
 
-## Final Values for robot_motors.xml
+## Final Values for robot_motors.xml (SUPERSEDED — see revision notice; model files now use frame-correct fullinertia)
 
 ### trunk_assembly
 ```xml
 <inertial
     pos="-0.0535209 0.0003704 0.0380119"
     mass="1.178026"
-    diaginertia="0.00425322 0.00437742 0.00311345"
+    diaginertia="0.00425392 0.00437811 0.00311354"
 />
 ```
 
@@ -192,7 +222,7 @@ Each non-trunk, non-head servo body gets +19.5g with inertia scaled proportional
 <inertial
     pos="0.0069046 -0.0012149 0.0247919"
     mass="0.362083"
-    diaginertia="0.00215945 0.00150937 0.00092542"
+    diaginertia="0.0021596 0.00150944 0.000925471"
 />
 ```
 

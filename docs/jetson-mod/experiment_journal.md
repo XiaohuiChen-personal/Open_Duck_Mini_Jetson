@@ -1,5 +1,13 @@
 # Experiment Journal — PPO vs AMP Locomotion (Open Duck Mini v2)
 
+> **Status note (2026-07-26):** the EN.665.645 course-study record (runs
+> 1-16) is FROZEN in the archive repo `open-duck-ppo-vs-amp` (tag
+> `course-study-freeze`); those entries below are historical. This journal
+> continues as the robot project's engineering record. Deployment has moved
+> past the study: **v4_robust** (corrected layout-v2.1 model) is the
+> deployment candidate — see `v4_retrain_results.md` and
+> `validation_results.md`.
+
 Chronological record of every training run in the "Designed vs. Learned
 Imitation" study (EN.665.645 research project). One config lever changes per
 run; each entry records the delta, the training signals, the gate evaluation,
@@ -86,14 +94,15 @@ not mistaken for study runs):
   2026-07-10). They train on a *different robot model* (CAD layout v2.1,
   trunk-inertia frame correction, regenerated USD; v4_robust additionally
   enables domain randomization), so their metrics are not comparable to
-  runs 1-12 and they carry no run number here. Branch-local record:
-  `v4_retrain_results.md` + `eval_results_v4/` on `cad-redesign`.
-  Paper-relevant side fact from that work: runs 1-12 all trained on a
-  trunk inertia mis-read as body-frame (+78/-10/-27% per axis). The study
-  comparison remains internally valid — all six evaluated policies share
-  that same model, and v4_inertials shows the corrected model retrains to
-  v3 parity (mean reward 253.3 vs 253.0) — but disclose this as a
-  threats-to-validity note in the final paper.
+  the study runs and they carry no run number here. Record (in-tree since
+  the 2026-07-26 merge): `v4_retrain_results.md` + `eval_results_v4/`.
+  Paper-relevant side fact from that work *(updated 2026-07-26)*: ALL
+  study runs 1-16 trained on a trunk inertia mis-read as body-frame
+  (+78/-10/-27% per axis). The study comparison remains internally valid —
+  all ten evaluated policies share that same pre-CAD model, and
+  v4_inertials shows the corrected model retrains to v3 parity (mean
+  reward 253.3 vs 253.0) — but disclose this as a threats-to-validity
+  note in the final paper.
 
 ---
 
@@ -626,7 +635,9 @@ optimum without removing it.
 
 **Final policy standings (9 evaluated policies):** ppo_v3 remains the
 most balanced and the deployment selection (gate 5/5, 0 falls, ref RMS
-4.59 deg, energy 21.6 W, jerk 0.07). amp_v7 is the AMP existence proof
+4.59 deg, energy 21.6 W, jerk 0.07). *(Scope note 2026-07-26: "deployment
+selection" is within-study; post-merge, v4_robust on the corrected model
+superseded it — see `validation_results.md`.)* amp_v7 is the AMP existence proof
 and the best command-tracker of the entire study (vel err 0.0219 m/s —
 7x better than ppo_v3's 0.155) at honest costs: ref RMS 10.56 deg, jerk
 1.22, energy 29.2 W, and a lateral-condition foot drag (the failed 5th
@@ -774,7 +785,9 @@ links.
 Expectation on record: matching ppo_v3's overall quality is unlikely in
 this timeline; the prize is evidence, not a deployable AMP policy. PPO v3
 stays the deployment selection — ONNX export and Isaac Sim validation
-(Tasks 2.6/2.7) proceed independently of all of the above.
+(Tasks 2.6/2.7) proceed independently of all of the above. *(Scope note
+2026-07-26: within-study statement; v4_robust has since superseded ppo_v3
+for deployment, and Task 2.7 validation completed against it.)*
 
 ## Planned lever ladder (one per run, in order, each ~2 h)
 

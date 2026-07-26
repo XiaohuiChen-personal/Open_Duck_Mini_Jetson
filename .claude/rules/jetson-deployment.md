@@ -42,7 +42,10 @@ They share the GPU. Locomotion takes <1 ms, Cosmos takes ~300-500 ms. They time-
 trtexec --onnx=policy.onnx --saveEngine=policy.trt --fp16
 
 # Inference wrapper: jetson_runtime/trt_infer.py
-# Input: 56-dim float32 observation vector
+# Input: 59-dim float32 observation vector — v4_robust actor layout, exact
+# order (see .claude/rules/rl-training.md "v4 Tracks"): base_ang_vel(3),
+# projected_gravity(3), velocity_commands(3), joint_pos(16), joint_vel(16),
+# actions(16), gait_phase(2). (Historical: v3's obs was 62-dim incl. base_lin_vel.)
 # Output: 16-dim float32 action vector
 # Latency: <1 ms
 ```

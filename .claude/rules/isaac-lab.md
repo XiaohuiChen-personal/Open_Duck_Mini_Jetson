@@ -13,7 +13,7 @@ The environment is defined in `isaac_lab_env/open_duck_mini_v2/env_cfg.py`:
 
 - **Sim timestep:** 0.005 s (200 Hz physics)
 - **Policy frequency:** 50 Hz (decimation = 4)
-- **Parallel envs:** 4096 on DGX Spark (512 for off-policy algorithms)
+- **Parallel envs:** 4096 on DGX Spark
 - **Robot USD:** `mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd`
 
 ## Actuator Configuration
@@ -30,13 +30,16 @@ effort_limit = 8.716  # Torque limit in Nm (BAM forcerange)
 
 ## Domain Randomization
 
-Critical for sim2real transfer. Apply during training:
+Critical for sim2real transfer. The implemented, gate-validated DR lives in
+`OpenDuckRobustEnvCfg` (env_cfg.py, v4-robust track) — duck-scaled, NOT the
+generic literature values. Source of truth: `.claude/rules/rl-training.md`
+"v4 Tracks". Summary:
 
-- Mass: +/-10% on all bodies
-- Friction: range [0.5, 2.0]
-- Motor strength: +/-10%
-- Random pushes: [-3.0, 3.0] N every 5-10 seconds
-- Sensor noise on joint positions and IMU
+- Velocity pushes: +/-0.3 m/s every 8-14 s (not force-based)
+- Trunk mass: additive (-0.10, +0.15) kg; trunk CoM +/-10/+/-5 mm
+- Friction: static 0.4-1.0 / dynamic 0.3-0.8
+- Joint reset scale: 0.9-1.1
+- Sensor noise on joint positions and IMU (obs corruption, actor only)
 
 ## Termination Conditions
 

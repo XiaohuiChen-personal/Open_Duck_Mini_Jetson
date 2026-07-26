@@ -4,13 +4,13 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 
 ## Quick Reference
 
-- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.75 kg (after mod)
+- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod)
 - **Onboard computer:** NVIDIA Jetson Orin Nano Super (8 GB, 67 TOPS) — relocated from head to trunk
 - **Training hardware:** NVIDIA DGX Spark (Grace Blackwell)
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
 - **RL framework:** NVIDIA Isaac Lab with RSL-RL (PPO) and SKRL (PPO, AMP — Isaac Lab ships no off-policy skrl task configs; only PPO/AMP plus multi-agent MAPPO/IPPO exist)
 - **On-device AI:** Cosmos Reason2-2B (W4A16 quantized) for physical AI reasoning + TensorRT locomotion policy
-- **Task plan:** See `docs/jetson-mod/task_plan.md` for the full 5-phase, 28-task implementation plan
+- **Task plan:** See `docs/jetson-mod/task_plan.md` for the full 5-phase, 31-task implementation plan
 - **Experiment journal:** EVERY training run gets an entry in `docs/jetson-mod/experiment_journal.md`. Data-sourcing protocol in `.claude/rules/experiment-journal.md` — last-100 TensorBoard means (never single-iteration log samples), measured gate rollouts, every number names its source. **Note (2026-07-26): the EN.665.645 course-paper record is FROZEN in the archive repo `open-duck-ppo-vs-amp` (tag `course-study-freeze` marks the freeze commit); from here on this journal is the robot project's engineering record, and study runs 1-16 in it are historical.**
 
 ## Build & Test
@@ -48,9 +48,9 @@ three-step validation before any verdict lands in the journal. Canonical details
 2. **Video audit (mandatory — aggregate metrics alone are NOT sufficient).** Render
    deterministic rollout mp4s (robot-tracking camera, ~20 s, seed 42) in TWO
    conditions: fixed forward vx=0.2 AND turn wz=0.3 — defects like one-foot dragging
-   only show off-forward. PPO: `scripts/play_policy.py`. AMP: no committed wrapper
-   yet — recreate one (camera-enabled AMP play env; overrides must match the
-   checkpoint's `num_amp_observations` / `action_clip`) before the next AMP run.
+   only show off-forward. PPO: `scripts/play_policy.py`. AMP: `scripts/play_amp.py`
+   (registers `Isaac-OpenDuck-AMP-Video-v0` — camera + pinned-command env; overrides
+   must match the checkpoint's `num_amp_observations` / `action_clip`).
    Extract a filmstrip (ffmpeg) and check against the fixed checklist: trunk upright
    near 0.17 m; both feet alternate swing with real ground clearance; feet loaded
    during stance (no drag / glide / crawl); heading straight; no action dither.
@@ -64,7 +64,8 @@ three-step validation before any verdict lands in the journal. Canonical details
 
 Rules:
 - Evaluate on the SAME robot model/USD the policy was trained on (the PPO-vs-AMP
-  study runs use the v2-branch model); cross-model numbers are not comparable.
+  study runs used the pre-CAD model, frozen in the archive repo; v4+ policies use
+  the corrected layout-v2.1 model); cross-model numbers are not comparable.
 - Runs that fail their gate get forensic-rollout numbers (`scripts/measure_amp_gait.py`)
   cited as diagnostic only — never as protocol-comparable results.
 - Planned extension (forward-plan Phase 1): per-episode dumps + posture metrics
@@ -75,7 +76,7 @@ Rules:
 
 - `mini_bdx/robots/open_duck_mini_v2/` — Robot model files (MJCF, URDF, USD, STL meshes)
 - `isaac_lab_env/` — Isaac Lab RL environment definitions and training configs
-- `jetson_runtime/` — Jetson deployment code (TensorRT, Cosmos Reason2, GPIO)
+- `jetson_runtime/` — Jetson deployment code (TensorRT, Cosmos Reason2, GPIO) — planned, Phases 4-5; not yet created
 - `exported_policies/` — Trained ONNX and TensorRT policy files
 - `experiments/` — Legacy MuJoCo-based experiment scripts (reference only)
 - `docs/jetson-mod/` — Modification documentation and task plan

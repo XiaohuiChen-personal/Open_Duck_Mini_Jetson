@@ -24,6 +24,29 @@ class TestMassInertiaCalculations:
         expected = expected_values["head_assembly_mass_kg"]
         assert abs(head_mass - expected) < 0.001
 
+    def test_trunk_diaginertia_matches_fixture(self, updated_model, expected_values):
+        """trunk_assembly principal inertia must match the fixture.
+
+        The model carries a frame-correct fullinertia; MuJoCo's body_inertia
+        holds its principal moments. Compared as sorted triples to be robust
+        to principal-axis ordering.
+        """
+        trunk_id = updated_model.body("trunk_assembly").id
+        model_inertia = np.sort(updated_model.body_inertia[trunk_id])
+        expected = np.sort(expected_values["trunk_assembly_diaginertia"])
+        assert np.allclose(model_inertia, expected, atol=1e-7), (
+            f"trunk diaginertia {model_inertia} != fixture {expected}"
+        )
+
+    def test_head_diaginertia_matches_fixture(self, updated_model, expected_values):
+        """head_assembly principal inertia must match the fixture (frame-correct)."""
+        head_id = updated_model.body("head_assembly").id
+        model_inertia = np.sort(updated_model.body_inertia[head_id])
+        expected = np.sort(expected_values["head_assembly_diaginertia"])
+        assert np.allclose(model_inertia, expected, atol=1e-7), (
+            f"head diaginertia {model_inertia} != fixture {expected}"
+        )
+
     def test_inertia_tensor_positive_definite(self, updated_model):
         """All diagonal inertia values must be positive."""
         for body_id in range(updated_model.nbody):

@@ -4,9 +4,11 @@
 # skrl AMP agent for Isaac-OpenDuck-AMP-v0.
 # Adapted from the Isaac Lab template:
 #   isaaclab_tasks/direct/humanoid_amp/agents/skrl_walk_amp_cfg.yaml
-# Command-conditioned: task_reward_weight=0.5 / style_reward_weight=0.5 —
-# the env's velocity-tracking reward is mixed 50/50 with the discriminator's
-# style reward.
+# Command-conditioned: task_reward_weight=0.6 / style_reward_weight=0.4 —
+# the env's velocity-tracking reward is mixed 60/40 with the discriminator's
+# style reward. (Runs 8-10 used 0.5/0.5; run 12 / amp_v4 moved to 0.6/0.4 —
+# see experiment_journal.md. Per-run archived configs live in
+# exported_policies/<name>/params/agent.yaml.)
 
 seed: 42
 

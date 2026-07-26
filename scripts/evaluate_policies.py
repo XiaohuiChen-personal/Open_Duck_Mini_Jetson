@@ -48,9 +48,10 @@ Metrics (computed in pure numpy from per-step CPU recordings):
                              2026-07-06 after the amp_v4 video audit.
 
 Policy adapters own BOTH the checkpoint format and WHICH gym task to build:
-RSL-RL policies (62-dim manager-env observations) and skrl AMP policies
-(potentially 51/54-dim direct-env observations) are not interchangeable
-across envs, so each --policies entry carries its own task id.
+RSL-RL policies (62-dim v3 obs, or 59-dim v4-robust actor obs via the
+Robust-Play task) and skrl AMP policies (potentially 51/54-dim direct-env
+observations) are not interchangeable across envs, so each --policies entry
+carries its own task id.
 
 Outputs:
     docs/jetson-mod/eval_results/<name>.json   (one file per policy)
@@ -63,7 +64,7 @@ Usage (GPU required — do NOT run while a training run owns the GPU):
     cd ~/IsaacLab
     ./isaaclab.sh -p ~/Projects/Open_Duck_Mini_Jetson/scripts/evaluate_policies.py \
         --policies ppo_v3=Isaac-Velocity-Rough-OpenDuck-Play-v0:rsl_rl:/path/model.pt \
-        --policies amp_v1=Isaac-Velocity-OpenDuck-AMP-v0:skrl_amp:/path/agent.pt:/path/skrl_amp_cfg.yaml \
+        --policies amp_v1=Isaac-OpenDuck-AMP-v0:skrl_amp:/path/agent.pt:/path/skrl_amp_cfg.yaml \
         --headless
 
 GPU-free unit tests of the pure-numpy metric functions (plain python3):
@@ -180,9 +181,10 @@ SCALAR_METRIC_KEYS = [
 class PolicySpec:
     """One policy to evaluate.
 
-    Each adapter owns WHICH gym task id to build: rsl-rl policies expect the
-    62-dim manager-env observations while skrl AMP policies may expect
-    51/54-dim direct-env observations — the two are not interchangeable.
+    Each adapter owns WHICH gym task id to build: rsl-rl policies expect
+    their task's manager-env observations (62-dim v3, 59-dim v4-robust
+    actor) while skrl AMP policies may expect 51/54-dim direct-env
+    observations — these are not interchangeable.
     """
 
     name: str
@@ -562,12 +564,13 @@ def aggregate_metrics(per_condition: dict) -> dict:
 AUTO_BEGIN = "<!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->"
 AUTO_END = "<!-- END AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->"
 
-PROTOCOL_HEADER = f"""# Algorithm Comparison — Open Duck Mini v2 (Task 2.5)
+PROTOCOL_HEADER = f"""# Algorithm Comparison — Open Duck Mini v2
 
-Standardized evaluation protocol applied uniformly to all trained policies
-(PPO v2, PPO v3, AMP variants). Produced by `scripts/evaluate_policies.py`;
-per-policy raw numbers live in `docs/jetson-mod/eval_results/<name>.json`
-(each JSON records the exact protocol parameters used for that run).
+Standardized evaluation protocol applied uniformly to the policies whose
+JSONs live in this report's results directory (passed via --output_dir;
+one table = one robot model — never mix models across result dirs).
+Produced by `scripts/evaluate_policies.py`; each JSON records the exact
+protocol parameters used for that run.
 
 ## Protocol (defaults — all CLI-overridable)
 
@@ -825,6 +828,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--seed", type=int, default=42, help="Environment seed.",
+    )
+    parser.add_argument(
+        "--keep-pushes", action="store_true", dest="keep_pushes",
+        help=(
+            "Do NOT strip the push_robot / base_external_force_torque events "
+            "from the task cfg. The protocol default disables external pushes "
+            "so quality metrics reflect steady-state gait; set this ONLY for a "
+            "push-recovery evaluation (e.g. the PushEval task), where the "
+            "fall rate under active interval pushes is the deliverable. "
+            "Fall rate remains directly comparable to the same policy's "
+            "no-push run (Task 2.7)."
+        ),
     )
     parser.add_argument(
         "--self-test", action="store_true", dest="self_test",
@@ -1322,11 +1337,19 @@ def build_eval_env_cfg(task_id: str):
         env_cfg.observations.policy.enable_corruption = False
     except AttributeError:
         pass
-    # Protocol: no external pushes during evaluation.
-    if hasattr(env_cfg, "events"):
+    # Protocol: no external pushes during evaluation — UNLESS this is an
+    # explicit push-recovery run (--keep-pushes), where the pushes are the
+    # experiment (Task 2.7 gate).
+    if hasattr(env_cfg, "events") and not getattr(args_cli, "keep_pushes", False):
         for event_name in ("push_robot", "base_external_force_torque"):
             if hasattr(env_cfg.events, event_name):
                 setattr(env_cfg.events, event_name, None)
+    if getattr(args_cli, "keep_pushes", False):
+        pr = getattr(getattr(env_cfg, "events", None), "push_robot", None)
+        print(
+            f"[eval] --keep-pushes: external pushes ACTIVE for {task_id} "
+            f"(push_robot={'set' if pr is not None else 'None'})"
+        )
     return env_cfg
 
 
