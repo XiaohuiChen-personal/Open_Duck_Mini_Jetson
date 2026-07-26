@@ -8,10 +8,10 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 - **Onboard computer:** NVIDIA Jetson Orin Nano Super (8 GB, 67 TOPS) — relocated from head to trunk
 - **Training hardware:** NVIDIA DGX Spark (Grace Blackwell)
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
-- **RL framework:** NVIDIA Isaac Lab with RSL-RL (PPO) and SKRL (SAC, AMP, RPO, TRPO)
+- **RL framework:** NVIDIA Isaac Lab with RSL-RL (PPO) and SKRL (PPO, AMP — Isaac Lab ships no off-policy skrl task configs; only PPO/AMP plus multi-agent MAPPO/IPPO exist)
 - **On-device AI:** Cosmos Reason2-2B (W4A16 quantized) for physical AI reasoning + TensorRT locomotion policy
 - **Task plan:** See `docs/jetson-mod/task_plan.md` for the full 5-phase, 28-task implementation plan
-- **Experiment journal:** EVERY training run gets an entry in `docs/jetson-mod/experiment_journal.md` (a paper artifact). Data-sourcing protocol in `.claude/rules/experiment-journal.md` — last-100 TensorBoard means (never single-iteration log samples), measured gate rollouts, every number names its source.
+- **Experiment journal:** EVERY training run gets an entry in `docs/jetson-mod/experiment_journal.md`. Data-sourcing protocol in `.claude/rules/experiment-journal.md` — last-100 TensorBoard means (never single-iteration log samples), measured gate rollouts, every number names its source. **Note (2026-07-26): the EN.665.645 course-paper record is FROZEN in the archive repo `open-duck-ppo-vs-amp` (tag `course-study-freeze` marks the freeze commit); from here on this journal is the robot project's engineering record, and study runs 1-16 in it are historical.**
 
 ## Build & Test
 
@@ -80,3 +80,9 @@ Rules:
 - `experiments/` — Legacy MuJoCo-based experiment scripts (reference only)
 - `docs/jetson-mod/` — Modification documentation and task plan
 - `tests/` — Automated test suite
+
+**Course-study archive:** the EN.665.645 PPO-vs-AMP study (runs 1-16, journal, eval results,
+policies, training-log evidence) is frozen in the dedicated repo
+https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp (`~/Projects/open-duck-ppo-vs-amp`);
+tag `course-study-freeze` marks the freeze commit here. Post-merge state of this repo is NOT
+the study record.

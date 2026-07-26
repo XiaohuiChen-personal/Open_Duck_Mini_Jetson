@@ -6,9 +6,11 @@ alwaysApply: true
 # Experiment Journal Protocol
 
 Every training run MUST get an entry in `docs/jetson-mod/experiment_journal.md`
-before the next run launches. The journal is a paper artifact — its numbers
-must be reproducible from primary sources, never from memory or mid-training
-log greps.
+before the next run launches. The journal's numbers must be reproducible
+from primary sources, never from memory or mid-training log greps. (The
+EN.665.645 paper's copy of this journal was frozen 2026-07-26 into the
+archive repo `open-duck-ppo-vs-amp` — tag `course-study-freeze`; entries here
+from that point on serve the robot project's engineering record.)
 
 ## Data-sourcing rules (non-negotiable)
 

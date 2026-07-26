@@ -135,7 +135,7 @@ Sim2real videos for the Jetson edition will be added after Phase 4 (hardware bui
 | [Isaac Sim](https://docs.isaacsim.omniverse.nvidia.com) | Physics simulation (PhysX 5, GPU-accelerated) | ✅ In use |
 | [Isaac Lab](https://isaac-sim.github.io/IsaacLab) | RL training framework | ✅ In use |
 | [RSL-RL](https://github.com/leggedrobotics/rsl_rl) | PPO training + built-in ONNX export | ✅ In use (PPO) |
-| [SKRL](https://github.com/Toni-SM/skrl) | AMP (Adversarial Motion Priors) | 🟡 Planned (optional stretch goal) |
+| [SKRL](https://github.com/Toni-SM/skrl) | AMP (Adversarial Motion Priors) | ✅ In use (AMP) |
 | [TensorRT](https://developer.nvidia.com/tensorrt) | On-device policy inference | 🟡 Planned (Phase 4) |
 | [Cosmos Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) | Physical AI reasoning VLM | 🟡 Planned (Phase 5) |
 | [DGX Spark](https://www.nvidia.com/en-us/products/workstations/dgx-spark/) | Training hardware (Grace Blackwell) | ✅ In use |
@@ -144,18 +144,18 @@ Sim2real videos for the Jetson edition will be added after Phase 4 (hardware bui
 
 ## RL Algorithms
 
-PPO is the primary algorithm and is currently shipped. AMP is an optional stretch goal that requires a separate `DirectRLEnv` implementation and is not planned for the initial release.
+PPO is the primary algorithm and the deployment selection (ppo_v3). AMP is implemented (custom `DirectRLEnv` + skrl) and was trained head-to-head against PPO in a 16-run study — nine June runs failed in instructive ways; the July campaign's amp_v7 passed the acceptance bar (gait gate 4/5, 0.34% falls, best command tracking of the study). The full study is archived in [open-duck-ppo-vs-amp](https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp) (tag `course-study-freeze` in this repo marks the freeze point).
 
 | Algorithm | Framework | Type | Status | Why |
 |---|---|---|---|---|
 | **PPO** | RSL-RL | On-policy | ✅ Shipped | Proven baseline for locomotion. All Isaac Lab locomotion examples use it. Built-in ONNX export for Jetson. |
-| **AMP** | SKRL | On-policy + imitation | 🟡 Optional future work | Adversarial Motion Priors for natural-looking gaits. Requires separate DirectRLEnv + reference motion data. |
+| **AMP** | SKRL | On-policy + imitation | ✅ Implemented (16-run study; amp_v7 passed acceptance) | Adversarial Motion Priors: discriminator-learned style reward. Custom DirectRLEnv (`isaac_lab_env/open_duck_mini_v2/amp/`) + reference motion clips. |
 
-> **Note:** The Isaac Lab SKRL training script only supports `--algorithm PPO` and `--algorithm AMP`. Other algorithms (SAC, TRPO, RPO, TD3) would require custom training scripts with no existing locomotion examples in the Isaac Lab ecosystem.
+> **Note:** The Isaac Lab SKRL training script's `--algorithm` flag accepts any skrl algorithm name, but Isaac Lab ships per-task agent configs only for PPO and AMP (plus multi-agent MAPPO/IPPO on a few tasks). Off-policy algorithms (SAC, TD3, DDPG, etc.) ship zero task configs — using them means authoring configs from scratch with no locomotion examples in the Isaac Lab ecosystem.
 
 ### Reference Motion Generation
 
-For AMP (if pursued in the future), reference walking motions are generated using [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator).
+Two reference-motion libraries exist for AMP: (a) the polynomial gait library from [Open_Duck_reference_motion_generator](https://github.com/apirrone/Open_Duck_reference_motion_generator), converted via `scripts/convert_gait_library_to_amp.py`; (b) 22 physically-consistent clips recorded from deterministic ppo_v3 rollouts via `scripts/record_ppo_rollouts_to_amp.py` — the library that made AMP walk (runs 14-16).
 
 ### Actuator Identification
 

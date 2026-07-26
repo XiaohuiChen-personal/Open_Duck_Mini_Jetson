@@ -8,7 +8,7 @@ The entire pipeline uses NVIDIA tools. Here's what each tool does and how it fit
 |---|---|---|
 | Physics simulation | **Isaac Sim** (PhysX 5) | MuJoCo |
 | RL training framework | **Isaac Lab** | MuJoCo Playground + Stable-Baselines3 |
-| RL algorithms | **RSL-RL** (PPO) + **SKRL** (SAC, AMP, RPO, TRPO, TD3) | SB3 |
+| RL algorithms | **RSL-RL** (PPO) + **SKRL** (PPO, AMP) | SB3 |
 | Robot model format | **USD** (converted from URDF) | MJCF (.xml) |
 | Training hardware | **DGX Spark** (Grace Blackwell, 1 PFLOP FP4) | Single GPU |
 | Policy deployment | **TensorRT** on Jetson GPU | onnxruntime on Pi CPU |
@@ -43,7 +43,7 @@ Lightweight PPO implementation optimized for GPU parallel training. Default in I
 Modular RL library with the widest algorithm support in Isaac Lab. Only library with AMP (Adversarial Motion Priors) support.
 
 - GitHub: https://github.com/Toni-SM/skrl
-- Used for: SAC, AMP, RPO, TRPO, TD3 training
+- Used for: AMP training (Isaac Lab ships no off-policy skrl task configs; only PPO/AMP + multi-agent MAPPO/IPPO exist)
 
 ## TensorRT
 

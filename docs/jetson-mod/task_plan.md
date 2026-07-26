@@ -1053,7 +1053,7 @@ class TestIsaacLabEnv:
 ### Task 2.4 — Train Walking Policies
 
 **Description:**
-Train locomotion policies using PPO (primary) and optionally AMP (stretch goal). All training runs on the DGX Spark.
+Train locomotion policies using PPO (primary) and AMP (completed — 16-run comparison study, archived in open-duck-ppo-vs-amp). All training runs on the DGX Spark.
 
 **Algorithm Plan:**
 
@@ -1139,7 +1139,7 @@ class DuckPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     --headless --video --video_length 200 --video_interval 5000
 ```
 
-#### 2.4b — AMP (Adversarial Motion Priors) via SKRL — optional stretch goal
+#### 2.4b — AMP (Adversarial Motion Priors) via SKRL — ✅ COMPLETED (16-run study; amp_v7 passed acceptance; archived in open-duck-ppo-vs-amp)
 
 AMP combines PPO-style RL with a GAN-like discriminator that rewards the policy for producing motions that resemble reference data. This produces more natural-looking gaits.
 
@@ -2753,7 +2753,7 @@ Task 2.3 (Create Isaac Lab env) ── depends on 2.1, 2.2
     v
 Task 2.4 (Train PPO + optional AMP) ── depends on 2.3
     │   ├── 2.4a PPO  (RSL-RL, 4096 envs, ~1 hr)
-    │   └── 2.4b AMP  (SKRL,   4096 envs, ~1-2 hr)  ── optional stretch goal, requires DirectRLEnv
+    │   └── 2.4b AMP  (SKRL,   4096 envs, ~2-3 hr)  ── ✅ completed (DirectRLEnv shipped; study archived)
     │   ├── 2.4c AMP  (SKRL,   4096 envs, ~1-2 hr)  ── parallel (needs ref motion data)
     │
     │
