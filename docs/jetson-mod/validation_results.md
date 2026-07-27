@@ -129,7 +129,7 @@ survives 93.2% of push episodes (vs 53.7% for the no-DR policy), and its
 - **No ONNX/TensorRT parity check yet.** The 59-dim actor still needs
   ONNX export + a numerical parity check vs the PyTorch policy, and the
   Jetson observation builder must emit the exact 59-dim term order
-  (documented in `.claude/rules/rl-training.md`) — Phase 4 / Task 2.6.
+  (documented in `AGENTS.md` — RL Training) — Phase 4 / Task 2.6.
 - The push schedule (±0.3 m/s, 4-7 s interval) is a design choice, not a
   hardware-derived spec; revisit against real disturbance measurements.
 

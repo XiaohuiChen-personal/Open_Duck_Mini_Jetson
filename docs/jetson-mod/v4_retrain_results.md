@@ -140,4 +140,4 @@ domain randomization (a real robustness margin — see
 only policy whose actor observation is realizable on the BNO055-equipped
 hardware. Run A confirms the model correction itself is sound; Run B is
 what should be exported to ONNX/TensorRT for the Jetson (59-dim actor
-layout — see `.claude/rules/rl-training.md`).
+layout — see `AGENTS.md`, RL Training section).
