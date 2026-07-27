@@ -1445,6 +1445,199 @@ Run the selected best policy in Isaac Sim with full rendering to visually valida
 
 ---
 
+### Task 2.8 — Retrain Contact-Rich Locomotion (v5) via PPO
+
+**Status:** PLANNED (added 2026-07-27, motivated by the Duck Embody benchmark results)
+
+**Description:**
+Retrain the locomotion policy to survive *contact* — walking beside, brushing
+against, and being pressed into obstacles, including while rotating. v4_robust
+is the sole mainline and is excellent in the regime it was trained for (flat,
+empty, push-impulse world: gate 5/5, 0.00% unpushed falls, 6.84% pushed falls
+vs 46.28% without DR). The Duck Embody benchmark (the sibling repo
+`duck-embody`, 12 LLM-driven apartment trials, frozen `config_hash
+cf29ec164676`) measured what happens when that policy meets furniture:
+**10 falls in 12 trials, 1.58 falls per policy-minute of walking**, and the
+falls — not the LLMs' navigation — were the first-order cause of a 0/12
+benchmark result. This task is the fix, and it is also a hard prerequisite for
+Phase 4/5: a robot that topples when it grazes a cabinet while turning is
+unusable in any real apartment, simulated or physical.
+
+#### Why retrain — the benchmark evidence (all falls fully diagnosed)
+
+Every fall in the benchmark carries `fall_diagnostics` (tilt, height, the
+termination term, the command in flight) plus a rule-11 video audit. The
+mechanism table over all 10 falls:
+
+| Mechanism | Count | Signature |
+|---|---|---|
+| (a) rotation under/just-after contact | **7** | 4 pure spins at wz = ±0.5 died 0.50–1.00 s into the turn, each started 0.0 policy-s and 0.15–0.21 m after a bump; 2 curved moves (vx 0.2, wz −0.28/−0.29) with torso contact at the fall step; 1 move with heading-hold wz pegged at −0.5 after a head bump |
+| (b) rotation in free space | 1 | curved move, wz −0.22, no contact recorded in the whole trial |
+| (c) sustained press/wedge, no rotation | 2 | vx 0.2, wz ≈ 0, torso pressed on bbox-proxy furniture |
+
+Precision matters (rule-11 audit caution): 5 falls at exactly \|wz\| = 0.5,
+3 in the heading-correction band 0.22–0.29, 2 at \|wz\| ≤ 0.06. All 10
+terminated on `fell_over` (tilt ≥ 60°); `fell_low` **never** fired (pre-step
+heights 0.149–0.171 m vs the 0.09 m threshold) — the duck tips, it never
+crumples. 9 of 10 falls were within 0.28 m of an obstacle. Contact per se is
+survivable: the T2.4 physics gate survived all four auto-stopped move-speed
+bumps (wall, sofa, fridge proxy, counter); what kills is *rotation while
+loaded* and *sustained pressing* (the max-vx wall press fell in both T2.4 and
+the gap-hunt S2 scenario).
+
+#### Root cause — six regimes the v4 training never contained
+
+From a line-level read of `isaac_lab_env/open_duck_mini_v2/env_cfg.py`,
+`imitation_reward.py`, and `data/polynomial_coefficients.pkl`:
+
+1. **No obstacle has ever existed in training.** Flat infinite plane,
+   `terrain_generator=None`, no scene objects, env spacing 2.5 m,
+   self-collisions off. The policy has never once felt lateral body contact.
+2. **Training taught "contact = death", not recovery.** The only non-timeout
+   termination is `illegal_contact` on `trunk_assembly` > 1 N with the −200
+   termination penalty. Every trunk touch in 3,000 iterations ended the
+   episode instantly — there was no gradient toward surviving contact, only
+   toward never having it. In the apartment, contact is unavoidable (0.35 m
+   doorways vs a 0.16 m body with ±3 cm gait sway — measured swept half-width
+   0.11–0.15 m, `duck-embody` gap-hunt S4).
+3. **Sustained forces never occurred.** The only disturbance is an
+   instantaneous velocity overwrite (±0.3 m/s planar, every 8–14 s);
+   `base_external_force_torque` is a zeroed placeholder. A 2–6 s press —
+   the class-(c) killer — is outside everything the policy has experienced.
+4. **Sustained turn-in-place at 0.5 rad/s was effectively never trained.**
+   All envs use `heading_command=True`: wz = clip(0.5·heading_err, ±0.5)
+   *decays* as the robot aligns, so wz = ±0.5 appears only transiently. The
+   eval protocol's maximum tested wz is 0.3. Yet the deployment harness's
+   `turn_to_heading` slews at wz = ±0.5 for up to 8 s — the exact command
+   4 of 10 falls died under, within a second.
+5. **The gait library cannot even represent the deployed commands.** The 240
+   polynomial reference motions form a 6×4×10 grid with **no vy = 0 and no
+   wz = 0 cells**. Turn-in-place (0, 0, 0.5) snaps (unweighted mixed-unit L2)
+   to reference (0.0, −0.037, 0.444) — a gait that side-steps while turning
+   ~11% slower than commanded, so the imitation term actively fights
+   `track_ang_vel_z_exp` at the exact command that kills. Even straight walk
+   (0.2, 0, 0) snaps to (0.222, −0.037, −0.074), a slight right-curving gait.
+6. **Command switching is 50× faster at deployment.** Training resamples
+   commands every 10 s; the deployment macros re-command every 0.2 s chunk
+   (heading-hold corrections). The harness measured heading-hold corrective
+   rotation widening the swept gait from 7 cm-clean to 9 cm-clean clearance.
+
+#### Reward-function design (delta from the current `DuckRewards`)
+
+Current table (verified): alive +10.0, imitation ×1.0 (internal: joint_pos
+15.0 / joint_vel 0.001 / base_vel 1.0 / foot-contact 1.0, gated to zero below
+0.01 m/s), track_lin +1.0, track_ang +0.5, termination −200, action_rate −1.0,
+flat_orientation −2.0, joint_pos_limits −1.0, joint_deviation_head −0.1. No
+torque/energy/slip terms; no curriculum.
+
+Planned changes, with the literature behind each:
+
+1. **Disturbance-gated imitation and tracking** (the core idea, from Hartmann
+   et al., "Deep Compliant Control for Legged Robots", ETH CRL 2024). While a
+   push/wrench event is active OR \|base ang_vel_xy\| > ~1.5 rad/s, and for
+   1.0 s after: imitation weight → 0–0.2 and the two tracking terms are
+   frozen to their running-average pre-disturbance values (so recovery is not
+   punished as tracking error); full weights restore afterwards, so the gait
+   must resume. This resolves the imitation-fights-recovery failure mode
+   directly — their result: the 80%-success push contour covered 78% of a
+   ±1.5 m/s impulse grid, with 15% less post-push power than the ungated
+   baseline.
+2. **Tilt-rate penalty** `ang_vel_xy_l2` at −0.05 to −0.1 (currently
+   disabled). The falls are tips (never crumples), and tilt *rate* is the
+   earliest proprioceptive signature.
+3. **Feet-slip penalty** ~−0.1: pressed robots skate their stance feet
+   (visible in the wedge-fall videos).
+4. **Ground-contact penalty for head/knees only** (−0.5 at 1 N) — NOT a
+   blanket non-foot contact penalty: penalizing torso side-contact would
+   train obstacle *avoidance* and re-create failure mode 2. In obstacle envs
+   (below), torso contact carries **no penalty at all**; the objective there
+   is upright survival + command tracking, i.e. compliant sliding along the
+   obstacle (Hartmann's transfer result: base-wrench training generalized
+   zero-shot to box collisions, drags, and clutter without ever meshing them).
+5. **Soften `flat_orientation_l2`** (−2.0 → ~−1.0 with a ~0.1 rad dead zone)
+   so lean-against-load is not fought while the waddle stays intact.
+6. **Termination change:** replace trunk-contact-death with fall-only
+   termination (torso/head *ground* contact > 1 N, or the existing tilt-60°),
+   keeping −200 for genuine falls. Near-falls against furniture must carry
+   gradient, not end episodes.
+7. **Reference-library patch:** add the missing wz = 0 and vy = 0 rows to the
+   polynomial grid (or at minimum a (0, 0, ±0.5) turn-in-place pair and a
+   true (vx, 0, 0) straight-walk row), and make the nearest-motion match
+   unit-weighted so wz no longer dominates the L2 distance. Without this, the
+   imitation prior contradicts the most safety-critical command.
+
+#### Domain-randomization / event changes
+
+| Event | Current | v5 plan |
+|---|---|---|
+| Impulse push | ±0.3 m/s planar, every 8–14 s | every 4–8 s, ramp 0.5→1.3 m/s over first ~1.5k iters; ADD rotational pushes ±1.0 rad/s yaw, ±0.5 rad/s roll/pitch (Hartmann trains exactly this) |
+| Sustained wrench | none (zeroed placeholder) | constant horizontal force held 2–6 s, 5–30% of body weight (0.8–4.8 N at ~1.6 kg), direction biased lateral, application point randomized over torso, τz ±0.05–0.15 N·m; active in ~50% of envs; **≥30% triggered while \|wz cmd\| ≥ 0.25** (co-occurrence must be enforced, not hoped for — no published curriculum isolates push-during-rotation) |
+| Obstacles | none | static boxes/wall segments in 20–30% of envs at 0.10–0.35 m lateral offset, commands that drive grazing contact; fall-only termination there (Parkour-style contact curriculum, soft-to-hard optional) |
+| Commands | heading-derived wz, resample 10 s | add a direct-wz env fraction (~30%) holding wz = ±0.35–0.5 for 2–6 s (the turn_to_heading regime); resample interval mixed 2–10 s to cover 0.2 s-scale re-commanding |
+| Standing envs | 2% (imitation gated off) | 5–10%, so contact-while-stationary is trained |
+
+#### Training protocol
+
+- **Fine-tune from the v4_robust checkpoint** (`model_2999.pt`), resuming
+  optimizer state — NOT from scratch. Evidence: PPF (arXiv 2504.09833) shows
+  naive fine-tuning catastrophically forgets and from-scratch fails to
+  recover gait quality; their fix (L2 anchor of the policy mean to the
+  frozen-prior action, weight ~5 adaptive, annealed) is the fallback if gait
+  degrades during the robustness ramp. Motion Priors Reimagined
+  (arXiv 2505.16084) quantifies the residual-bound sweet spot (−0.1) if a
+  frozen-prior architecture is ever preferred — but a bounded residual caps
+  recovery maneuvers, so gated-imitation fine-tune is the primary plan.
+- 3,000 iterations ≈ **1.9 h on the DGX Spark GB10** (measured: v4 runs at
+  ~2.3 s/iter, 4096 envs × 24 steps). Budget 2–3 runs for the
+  gate-vs-magnitude sweep. Launch via the existing detached runner:
+  `./scripts/launch_training_detached.sh v5_contact --task
+  Isaac-Velocity-Rough-OpenDuck-Robust-v0 --headless --max_iterations 3000`.
+- Keep the 59-dim asymmetric actor (hardware constraint: BNO055 has no
+  base_lin_vel) — all new disturbances must be inferable from the existing
+  history (ang_vel + gravity + joint states + last actions). If recovery
+  quality plateaus, consider a longer actor history before any obs change.
+
+#### Evaluation gates (all already exist — reuse, do not rewrite)
+
+1. The parent eval protocol (`scripts/evaluate_policies.py`, 3,200 episodes,
+   gait gate + video audit) — v5 must not regress: gate 5/5, unpushed falls
+   ≤ 0.5%, ref RMS within 1° of v4_robust, **plus** extend the command grid
+   to wz = 0.5 (the current protocol never tests above 0.3 — that gap is how
+   the turn-in-place fragility shipped).
+2. The push eval (`--keep-pushes`): v5 target ≤ 3% (v4_robust: 6.84%).
+3. **The Duck Embody gates, unchanged** (sibling repo): T2.4 physics pass
+   (`scripts/smoke_physics_pass.py`) and gap-hunt S0–S5
+   (`scripts/smoke_gap_hunt.py`) must stay green with the new checkpoint.
+4. **The deterministic fall reproductions** from the benchmark: seed-101
+   sofa-channel spawn + move(1.5); bump-then-turn-at-±0.5 at each of the
+   five fall sites; the S2 sustained counter press. v5 acceptance: ≥ 9 of 10
+   reproduced fall scenarios survive with the same commands.
+5. New scripted test: constant 2–6 s lateral force at 0.1/0.2/0.3 × body
+   weight during max-wz tracking (the Hartmann-style furniture proxy), plus a
+   wall-graze corridor course.
+
+**Acceptance:**
+- All five gates above pass; no gait-quality regression on the parent eval.
+- Re-run the Duck Embody benchmark (new freeze, 12 trials, ~$10 / ~1 h) —
+  the benchmark headline should stop being fall-dominated: falls/policy-min
+  < 0.3 (v4: 1.58), and trials should reach turn/policy-second caps or
+  declares instead of falls.
+- The write-up records this as v5 with the same evidence discipline as
+  v4_comparison.md.
+
+**References:** Hartmann et al., Deep Compliant Control (ETH CRL 2024,
+crl.ethz.ch/papers/hartmann2024deep.pdf); Rudin et al., Learning to Walk in
+Minutes (arXiv 2109.11978); Robot Parkour Learning (arXiv 2309.05665); PPF —
+preservative policy fine-tuning (arXiv 2504.09833); Motion Priors Reimagined
+(arXiv 2505.16084); ALMI (arXiv 2504.14305); Ferigo et al., push-recovery
+emergence (arXiv 2104.14534); Haarnoja et al., OP3 soccer (Science Robotics
+2024, arXiv 2304.13653); Isaac Lab velocity task defaults; legged_gym;
+Open Duck Playground. Benchmark evidence: duck-embody
+`results/raw/*.json` (per-fall `fall_diagnostics`), `results/audit_notes.md`
+(rule-11 video audits), `results/scores.json`, gap-hunt S2/S4 reports.
+
+---
+
 ## Phase 3: CAD Redesign
 
 > **Prerequisite:** Phase 2 must pass (either existing policies work, or retraining succeeded).
