@@ -451,3 +451,123 @@ class TestDirectoryStructure:
             REPO_ROOT, "mini_bdx", "robots", "open_duck_mini_v2", "usd"
         )
         assert os.path.isdir(path)
+
+
+@pytest.mark.phase2
+class TestV5ContactTrack:
+    """Verify the v5 contact-rich track (Task 2.8).
+
+    Source-text assertions in the style of the rest of this file (no Isaac Sim
+    required), plus real checks on the generated reference library — that one
+    is a data artifact, so it can be validated properly rather than grepped.
+    """
+
+    ENV_CFG = os.path.join(REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py")
+    INIT = os.path.join(REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "__init__.py")
+    AGENT_CFG = os.path.join(
+        REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "agents", "rsl_rl_ppo_cfg.py"
+    )
+    DATA_DIR = os.path.join(REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "data")
+
+    def test_new_modules_exist(self):
+        """The three new runtime modules must be present."""
+        for name in ("contact_events.py", "gated_rewards.py", "duck_commands.py",
+                     "disturbance_state.py"):
+            path = os.path.join(REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", name)
+            assert os.path.exists(path), f"{name} not found"
+
+    def test_env_cfg_defines_v5_classes(self):
+        content = open(self.ENV_CFG).read()
+        for cls in (
+            "class DuckContactRewards",
+            "class OpenDuckContactEnvCfg",
+            "class OpenDuckContactEnvCfg_PLAY",
+            "class OpenDuckWrenchEvalEnvCfg",
+            "class OpenDuckObstacleEvalEnvCfg",
+            "class OpenDuckContactPushEvalEnvCfg",
+        ):
+            assert cls in content, f"{cls} missing from env_cfg.py"
+
+    def test_v5_tasks_registered(self):
+        content = open(self.INIT).read()
+        for task in (
+            "Isaac-Velocity-Rough-OpenDuck-Contact-v0",
+            "Isaac-Velocity-Rough-OpenDuck-Contact-Play-v0",
+            "Isaac-Velocity-Rough-OpenDuck-WrenchEval-v0",
+            "Isaac-Velocity-Rough-OpenDuck-ObstacleEval-v0",
+            "Isaac-Velocity-Rough-OpenDuck-ContactPushEval-v0",
+        ):
+            assert task in content, f"{task} not registered"
+
+    def test_v5_runner_cfg(self):
+        content = open(self.AGENT_CFG).read()
+        assert "class OpenDuckContactPPORunnerCfg" in content
+        assert 'experiment_name = "open_duck_ppo_v5"' in content
+
+    def test_v5_replaces_contact_death_with_fall_termination(self):
+        """The core Task 2.8 change: trunk contact must stop being fatal."""
+        content = open(self.ENV_CFG).read()
+        assert "self.terminations.base_contact = None" in content
+        assert "mdp.bad_orientation" in content
+        assert "mdp.root_height_below_minimum" in content
+
+    def test_v5_push_ramp_endpoint_is_researched_value(self):
+        """0.7 m/s per axis — see v5_retrain_plan.md section 11.4.
+
+        Guards against a silent revert to Task 2.8's original 1.3 m/s, which
+        would demand a 24 cm capture step on a robot whose CoM sits at 17 cm.
+        """
+        content = open(self.ENV_CFG).read()
+        assert "PUSH_START = 0.4" in content
+        assert "PUSH_END = 0.7" in content
+
+    def test_v5_wrench_owns_the_composer_alone(self):
+        """Two writers to the permanent wrench composer would silently fight."""
+        content = open(self.ENV_CFG).read()
+        assert "self.events.base_external_force_torque = None" in content
+
+    def test_v4_and_v3_tracks_unchanged(self):
+        """v5 must be additive: the v4/v3 recipe keeps contact-death and +/-0.5."""
+        content = open(self.ENV_CFG).read()
+        assert 'self.terminations.base_contact.params["sensor_cfg"].body_names' in content
+        assert "self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)" in content
+
+    def test_reference_library_v2_grid_is_complete(self):
+        """The patched library must contain the rows the deployment commands need."""
+        import pickle
+
+        path = os.path.join(self.DATA_DIR, "polynomial_coefficients_v2.pkl")
+        assert os.path.exists(path), "run scripts/patch_reference_library.py"
+        lib = pickle.load(open(path, "rb"))
+
+        keys = set(lib)
+        assert "0.0_0.0_0.5" in keys, "turn-in-place at the deployment hull limit missing"
+        assert "0.0_0.0_-0.5" in keys
+        assert "0.222_0.0_0.0" in keys, "true straight-walk row missing"
+        # The rows that did not exist in the frozen library at all.
+        assert any(k.split("_")[1] == "0.0" for k in keys), "no vy=0 row"
+        assert any(k.split("_")[2] == "0.0" for k in keys), "no wz=0 row"
+        assert len(lib) == 388, f"expected 388 cells (390 minus 2 quarantined), got {len(lib)}"
+
+    def test_reference_library_v2_is_numpy_free(self):
+        """Must load under Isaac Sim's numpy 1.x, not just the system numpy 2.x."""
+        import pickle
+
+        path = os.path.join(self.DATA_DIR, "polynomial_coefficients_v2.pkl")
+        lib = pickle.load(open(path, "rb"))
+        sample = lib["0.0_0.0_0.5"]["coefficients"]["dim_0"]
+        assert all(type(c) is float for c in sample), (
+            "coefficients must be built-in floats; numpy scalars re-pickled under "
+            "numpy 2.x are unreadable inside Isaac Sim"
+        )
+
+    def test_frozen_reference_library_untouched(self):
+        """The original library is an immutable dataset (data/README.md)."""
+        import hashlib
+
+        path = os.path.join(self.DATA_DIR, "polynomial_coefficients.pkl")
+        digest = hashlib.md5(open(path, "rb").read()).hexdigest()
+        assert digest == "7a5515dce7610094bc8da28cfb690a07", (
+            "the frozen gait library changed — every journaled gate metric was "
+            "measured against it"
+        )

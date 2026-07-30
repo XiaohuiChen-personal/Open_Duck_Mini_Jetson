@@ -5,6 +5,10 @@ gym/logs/*
 # ImitationReward and gate evaluation depend on this exact artifact
 # (see isaac_lab_env/open_duck_mini_v2/data/README.md)
 !isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl
+# v5 grid-completed library (scripts/patch_reference_library.py). Committed for
+# the same reason as the original: a fresh clone must be able to train the v5
+# task, and the file is a validated artifact, not derivable-on-demand code.
+!isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients_v2.pkl
 mini_bdx/mini_bdx.egg-info/*
 experiments/RL/data/*
 experiments/RL/new/logs/

@@ -41,6 +41,8 @@ import torch
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.managers import ManagerTermBase
 
+from isaac_lab_env.open_duck_mini_v2 import disturbance_state as _disturbance_state
+
 # Module-level storage for sharing phase state with observation function.
 _instances: dict[int, "ImitationReward"] = {}
 
@@ -94,10 +96,13 @@ class ImitationReward(ManagerTermBase):
     def __init__(self, cfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
 
-        # Load polynomial coefficients
-        data_path = os.path.join(
-            os.path.dirname(__file__), "data", "polynomial_coefficients.pkl"
-        )
+        # Load polynomial coefficients. The library is selectable so the v5
+        # track can train against the grid-completed variant
+        # (polynomial_coefficients_v2.pkl, see scripts/patch_reference_library.py)
+        # while every v3/v4 task and the eval protocol keep the frozen original
+        # — the dataset all journaled gate metrics were measured against.
+        reference_pkl = cfg.params.get("reference_pkl") or "polynomial_coefficients.pkl"
+        data_path = os.path.join(os.path.dirname(__file__), "data", reference_pkl)
         with open(data_path, "rb") as f:
             raw_data = pickle.load(f)
 
@@ -141,6 +146,15 @@ class ImitationReward(ManagerTermBase):
         )
         self._current_motion_idx = torch.zeros(
             env.num_envs, dtype=torch.long, device=env.device
+        )
+
+        # Per-axis spans of the command grid, used only when the nearest-motion
+        # match is span-normalized (see `normalized_match` in __call__): the
+        # raw L2 mixes m/s with rad/s, so wz — whose span is ~10x that of vy —
+        # dominates which gait a command snaps to.
+        self._velocity_spans = torch.clamp(
+            self._velocities.max(dim=0).values - self._velocities.min(dim=0).values,
+            min=1e-6,
         )
 
         # Joint order mapping — built lazily
@@ -194,13 +208,32 @@ class ImitationReward(ManagerTermBase):
         self,
         env: ManagerBasedRLEnv,
         command_name: str = "base_velocity",
+        reference_pkl: str | None = None,
+        normalized_match: bool = False,
+        disturbance_gate_scale: float | None = None,
     ) -> torch.Tensor:
+        """Composite imitation reward.
+
+        Args:
+            reference_pkl: consumed in ``__init__``; accepted here so the term
+                config can carry it.
+            normalized_match: divide each command axis by its grid span before
+                the nearest-motion L2. Off by default — v3/v4 policies were
+                trained with the raw mixed-unit distance and their journaled
+                metrics depend on it.
+            disturbance_gate_scale: when set, the whole composite is scaled
+                toward this value while the environment's disturbance gate is
+                up (v5). Recovering from a shove should not be scored against
+                a nominal gait; see ``gated_rewards``.
+        """
         if self._il_leg_indices is None:
             self._build_joint_mapping(env)
 
         # 1. Match velocity command to closest reference motion
         vel_cmd = env.command_manager.get_command(command_name)[:, :3]
         diffs = vel_cmd.unsqueeze(1) - self._velocities.unsqueeze(0)
+        if normalized_match:
+            diffs = diffs / self._velocity_spans.view(1, 1, 3)
         dists = torch.sum(diffs**2, dim=-1)
         self._current_motion_idx = torch.argmin(dists, dim=-1)
 
@@ -285,6 +318,15 @@ class ImitationReward(ManagerTermBase):
         # has no standing gait, so standing envs get no imitation signal.
         cmd_active = (torch.norm(vel_cmd, dim=-1) > 0.01).float()
         reward = reward * cmd_active
+
+        # Fade the imitation prior out while the robot is being disturbed: the
+        # reference library contains only nominal gaits, so demanding precise
+        # joint tracking mid-recovery penalises exactly the compliance v5 is
+        # trying to learn (Hartmann et al., ETH CRL 2024).
+        if disturbance_gate_scale is not None:
+            state = _disturbance_state.peek_state(env)
+            if state is not None:
+                reward = reward * (1.0 - (1.0 - disturbance_gate_scale) * state.gate)
 
         # Advance the gait-cycle step counter (one increment per control step)
         self._step_idx = (self._step_idx + 1) % nb_steps

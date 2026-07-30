@@ -68,3 +68,22 @@ class OpenDuckRobustPPORunnerCfg(OpenDuckPPORunnerCfg):
 
     experiment_name = "open_duck_ppo_robust"
     obs_groups = {"actor": ["policy"], "critic": ["critic"]}
+
+
+@configclass
+class OpenDuckContactPPORunnerCfg(OpenDuckRobustPPORunnerCfg):
+    """PPO runner for the v5 contact-rich track (Task 2.8).
+
+    Hyperparameters and the asymmetric obs-group mapping are inherited
+    unchanged — v5 is an environment change, not an algorithm change, and the
+    59-dim actor / 62-dim critic shapes must stay fixed anyway so that
+    fine-tuning from the v4_robust checkpoint passes rsl-rl's strict weight
+    load (rsl_rl/algorithms/ppo.py:457-462).
+
+    Note on resume: rsl-rl restores the iteration counter along with the
+    weights, so a 3,000-iteration fine-tune from ``model_2999.pt`` runs
+    iterations 2999-5998 and its FINAL checkpoint is ``model_5998.pt`` — not
+    ``model_5999.pt``. Any completion check must expect that.
+    """
+
+    experiment_name = "open_duck_ppo_v5"
