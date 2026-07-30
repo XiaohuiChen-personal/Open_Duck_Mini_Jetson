@@ -1322,3 +1322,90 @@ Recorded now so the v5 evidence is not lost when this thread ends:
 6. Full `build_scores.py` parity for out-of-tree batches (it hardcodes
    `RAW = results/raw`), so a candidate batch can be scored by the repo's own
    scorer rather than the headline-metric computation in `auto_pipeline.sh`.
+
+---
+
+## 25. Benchmark attempt 1 (2026-07-30): stopped early, two findings
+
+Launched with v5d after the re-freeze (`config_hash 6a65f335`), all gates green:
+replay 9/9, physics PASS, calibration K=0.9617 matching the measurement,
+provenance sha recorded. Stopped by hand after **one partial trial, $4.87**.
+
+### Finding 1 — the locomotion retrain works under LLM control
+
+`fable5_seed101`: **34 turns, 35 bump events, ZERO falls.** In the frozen v4
+batch the same seed and spawn fell on turn 2, 3.74 policy-seconds into its first
+`move`, torso on the sofa. Frame-by-frame audit of 543 recorded frames: trunk
+upright, legs alternating with real ground clearance, no drag, tracking straight
+along the sofa face. The replay-suite result (v5d survives 9/9 gates v4 fell in)
+reproduces in the live LLM-driven setting.
+
+This is the Task 2.8 objective met. Everything below is a different problem.
+
+### Finding 2 — ~95% of the "dead-reckoning drift" was an accounting bug
+
+The trial's believed position ended **26.65 m** from truth in a 4.8 x 3.6 m
+apartment. Attribution, re-derived from the trial JSON:
+
+| source | believed | true | inflation |
+|---|---|---|---|
+| `send_velocity` (49 calls) | 27.09 m | 1.99 m | **25.10 m** |
+| `move` (19 calls) | 3.66 m | 2.42 m | 1.24 m |
+| clean moves only | 1.10 m | 0.97 m | 0.13 m |
+
+A duck wedged against furniture with its legs cycling was credited
+`commanded_speed x time` — 0.60 m for 0.01 m of real motion, 49 times. Genuine
+policy-tracking error was 0.13 m, ~0.5% of the total. Fixed in duck-embody
+`e0ac862` (contact-time discounting in both the reported distance and the
+integrator). Consequence for this project: **v5d's calibration constants are
+sound** — the 4.3% k shortfall is real and the recalibration was correct — but
+the drift figure quoted from this trial was not a policy property.
+
+### Why the batch was stopped, and the cost lesson
+
+The benchmark had stopped measuring locomotion and started measuring a harness
+bug. Also: a non-falling trial costs ~$4.9 because it runs to the caps, against
+the frozen batch's ~$0.80 average for fall-shortened trials. **12 such trials is
+$50-60, not the ~$10 this plan estimated** — that estimate silently assumed v4's
+early deaths. Any future full batch needs that budget stated up front.
+
+### Why `correct_position` is never called (0 uses, 3 models x 13 trials)
+
+Investigated because loop closure is not optional in SLAM. Two independent
+blockers, both verified:
+
+1. **The tool demands a coordinate the system cannot produce.** `correct_position`
+   requires `x` and `y` as numbers; the map's `Room` dataclass is
+   `['name', 'description', 'landmarks']` — no coordinate field anywhere, and no
+   observation payload supplies one. Recognition yields a NAME. It is the only
+   tool of twelve whose required arguments are absolute world quantities the
+   harness never provides. Corroboration: 14 free-text writes across the trials
+   smuggle coordinates into `description` strings, i.e. the models wanted metric
+   anchors badly enough to hide them in prose.
+2. **The trigger almost never fired.** The prompt gates it on "when you recognize
+   a place you already mapped"; exactly **1 of 13 trials** ever revisited a
+   mapped room, and 8 of 13 mapped only one. The single trial that did close a
+   loop named the coordinate in its reasoning and called `set_current_room`
+   instead — that tool accepts a name.
+
+SLAM mapping: place recognition present, **data association broken**, correction
+unreachable. The map holds semantics without geometry.
+
+Honest claim: zero uptake is explained by an affordance gap, not model
+incapacity. Nothing here bounds whether these models *can* close loops.
+
+### v6 backlog additions
+
+7. **Doorway anchors, not room anchors.** A per-place beacon is the right
+   granularity (per-object is impossible: monocular camera, no depth, so object
+   coordinates would be invented). But a room-centroid anchor leaves ~1.8 m of
+   intra-room error against a 0.35 m success radius, whereas a **doorway** is a
+   0.35 m gap — anchoring on `Exit` (already marked by the models, 24 calls)
+   gives ~0.175 m. Requires an `anchor_xy` written from the integrator when the
+   place is first mapped, and rendered in the memory block, so
+   `correct_position`'s argument becomes copy-from-the-block. Touches frozen
+   files.
+8. Replace the recognition-gated prompt trigger with an observable one, and
+   un-gate the `Re-anchored: N times` line (it currently renders only after a
+   correction has happened, so the null action is self-reinforcing).
+9. Re-run the benchmark only after 7-8, with the $50-60 budget acknowledged.
