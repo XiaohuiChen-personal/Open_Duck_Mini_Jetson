@@ -13,7 +13,7 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 
 ## Quick Reference
 
-- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod)
+- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod). **Isaac simulates 3.66 kg, not 2.66 kg** — a PhysX default on the massless MJCF root frame. Known, unfixed, affects every Isaac-trained policy: `docs/jetson-mod/sim-plant-fidelity.md`
 - **Onboard computer:** NVIDIA Jetson Orin Nano Super (8 GB, 67 TOPS) — relocated from head to trunk
 - **Training hardware:** NVIDIA DGX Spark (Grace Blackwell)
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
@@ -93,6 +93,9 @@ Rules:
 - `exported_policies/` — Trained ONNX and TensorRT policy files
 - `experiments/` — Legacy MuJoCo-based experiment scripts (reference only)
 - `docs/jetson-mod/` — Modification documentation and task plan
+  - `sim-plant-fidelity.md` — **where the simulated plant differs from the real
+    robot.** Read before any sim2real work, any retrain, or quoting a sim number
+    as a hardware number. Reproduce with `scripts/audit_plant_mass.py`.
 - `tests/` — Automated test suite
 
 **Course-study archive:** the EN.665.645 PPO-vs-AMP study (runs 1-16, journal, eval results,
@@ -158,6 +161,7 @@ _Hardware specifications for the robot, Jetson Orin Nano, servos, batteries, and
 |---|---|
 | Total height | ~420 mm (legs extended) |
 | Total mass (after mod) | ~2,657 g (Part-2 CAD mods removed ~88.5 g of shell/chassis PLA) |
+| **Mass Isaac actually simulates** | **3,657 g** — the row above **plus a 1,000 g PhysX default** on the massless MJCF root frame `base`. Real robot = 2,657 g; simulated plant = 3,657 g. Use the right one for the question you are asking, and see `docs/jetson-mod/sim-plant-fidelity.md` |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
 | Servos | 14x Feetech STS3250 (12V, 50 kg.cm stall, 74.5g each) |
 | Ear servos | 2x SG90 micro servos (in head) |
@@ -219,7 +223,7 @@ Source: `experiments/v2/params_sts3250_id008.json` (kscalelabs/sysid STS3250 id0
 | kd (velocity gain) | 1.346 | Isaac Lab actuator config |
 | armature | 0.040 | MuJoCo/Isaac Sim joint model |
 | frictionloss | 0.200 | MuJoCo/Isaac Sim joint model |
-| torque limit | 8.716 Nm | Actuator effort_limit |
+| torque limit | 8.716 Nm | Actuator effort_limit — **1.78x the 50 kg.cm (4.90 Nm) datasheet stall in the specs table above.** BAM's figure is electrical stall from its identified model (kt*V/R = 1.0006*12.1/1.389); the datasheet is rated stall. The simulator enforces BAM's, so a policy may lean on torque the hardware cannot deliver. Unresolved — see `docs/jetson-mod/sim-plant-fidelity.md` §4.5 |
 | kt (torque constant) | 1.0006 | BAM motor model |
 | R (resistance) | 1.3890 | BAM motor model |
 
@@ -342,10 +346,33 @@ generic literature values. Source of truth: the [RL Training](#rl-training) sect
 - Joint reset scale: 0.9-1.1
 - Sensor noise on joint positions and IMU (obs corruption, actor only)
 
+> **Known coverage gap — `add_base_mass` does not cover the base.** The term is
+> named for the concept "base mass" but bound to the *body* `trunk_assembly`
+> (`env_cfg.py:365`). The plant's single largest mass error is a phantom
+> **1.000 kg** on the body actually called `base` — 6.7x this term's upper bound,
+> constant rather than sampled, and on a different body — so no amount of this
+> randomization exposes a policy to it. Full analysis, measurement, and fix
+> options: **`docs/jetson-mod/sim-plant-fidelity.md`**.
+>
+> Generalize the lesson when adding terms: a randomization can be present,
+> correctly configured and gate-validated, and still randomize the wrong body.
+> Check the term against the body that actually carries the uncertainty.
+
+**Not randomized at all** (name them honestly rather than implying full
+coverage): control/observation latency, actuator gain and thermal drift, servo
+backlash, IMU bias/drift and mounting misalignment, battery voltage sag under
+load, per-joint friction spread, and mass distribution outside the trunk.
+
 ### Termination Conditions
 
-- Trunk height < 0.08 m (fallen)
-- Trunk tilt > 90 degrees (flipped)
+Read from `env_cfg.py:591,594` (repeated at `700,703`) — verified 2026-08-02.
+An earlier revision of this section said 0.08 m / 90 degrees; **both numbers
+were wrong, and wrong in the permissive direction**, which matters because fall
+rate is a headline gate in every policy comparison here. The gate has always
+been stricter than this section described; the measurements are unaffected.
+
+- Trunk height < **0.09 m** (`root_height_below_minimum`, `minimum_height=0.09`)
+- Trunk tilt > **60 degrees** (`bad_orientation`, `limit_angle=radians(60.0)`)
 
 ### Reference Motions (Imitation Reward)
 
@@ -388,21 +415,33 @@ The robot learns to walk through trial-and-error in simulation (Isaac Sim). A ne
 
 ### Observation Space
 
-Standard Isaac Lab locomotion observations plus gait phase:
+**The row order below IS the concatenation order — do not reorder it.** A prior
+revision of this table listed "Velocity command" second-to-last; it is actually
+the 4th term in the v3 layout and the 3rd in v5d. Corrected 2026-08-02 against
+the exported `env.yaml` term order.
 
-| Component | Dimensions | Description |
-|---|---|---|
-| Base linear velocity | 3 | Inherited from `LocomotionVelocityRoughEnvCfg` — NOT directly measurable by the BNO055 on hardware (deployment gap; needs an estimator or a retrain without it) |
-| Base angular velocity | 3 | Gyro (measurable on hardware) |
-| Projected gravity | 3 | Gravity direction in robot frame (from IMU) |
-| Joint positions | 16 | Current angle of each joint (rad) |
-| Joint velocities | 16 | Current speed of each joint (rad/s) |
-| Previous action | 16 | Last motor command sent |
-| Velocity command | 3 | Desired (vx, vy, yaw_rate) from user or VLM |
-| Gait phase | 2 | [cos(phase), sin(phase)] of gait cycle |
+**Current policy (v5d_contact_wrench) — 59 dims**, verified against
+`exported_policies/v5d_contact_wrench_ppo/env.yaml:435-514`:
 
-**Total: 62 dims** (verified against `exported_policies/v3_bdx_imitation_ppo/env.yaml`
-— the ONNX exporter's OBS_LAYOUT_62 that mirrored it was removed with the AMP track; RSL-RL exports ONNX natively).
+| # | Component | Dims | Slice | Isaac Lab term |
+|---|---|---|---|---|
+| 1 | Base angular velocity | 3 | `[0:3]` | `base_ang_vel` — gyro |
+| 2 | Projected gravity | 3 | `[3:6]` | `projected_gravity` — from IMU |
+| 3 | Velocity command | 3 | `[6:9]` | `generated_commands` — (vx, vy, yaw_rate) |
+| 4 | Joint positions | 16 | `[9:25]` | **`joint_pos_rel`** — `q − q_default`, NOT absolute |
+| 5 | Joint velocities | 16 | `[25:41]` | **`joint_vel_rel`** — minus default joint vel (zero, so numerically absolute) |
+| 6 | Previous action | 16 | `[41:57]` | `last_action` |
+| 7 | Gait phase | 2 | `[57:59]` | `[cos(phase), sin(phase)]` |
+
+> **Deployment trap — read this before writing the Jetson obs builder.**
+> Term 4 is `joint_pos_rel`, so the runtime must send `q − q_default`, not raw
+> encoder angles. The offset is the entire standing pose: large, constant, and
+> it would not present as noise. Export `q_default` (`robot_cfg.py`
+> `init_state.joint_pos`) alongside the policy.
+
+**Historical (v3, retired) — 62 dims.** Same terms with `base_lin_vel(3)`
+prepended at `[0:3]`, shifting velocity command to `[9:12]`. `base_lin_vel` is
+not directly measurable by the BNO055, which is why the v4/v5 layout drops it.
 
 ### Action Space (16 dimensions)
 
@@ -518,7 +557,10 @@ Action scale: 0.25 (matching Open Duck Playground)
 - Deployed ONNX for Run B consumes the 59-dim actor layout (v3's was 62).
   Surviving term order (the Jetson obs builder must emit exactly this):
   base_ang_vel(3), projected_gravity(3), velocity_commands(3),
-  joint_pos(16), joint_vel(16), actions(16), gait_phase(2).
+  **joint_pos_rel**(16), **joint_vel_rel**(16), actions(16), gait_phase(2).
+  The `_rel` matters and was missing here until 2026-08-02: the policy consumes
+  `q - q_default`, not raw encoder angles (`env.yaml:472` binds `joint_pos_rel`).
+  Ship `q_default` with the policy. Full table: [Observation Space](#observation-space).
 
 ### AMP Track (removed 2026-07-26)
 
@@ -620,8 +662,11 @@ trtexec --onnx=policy.onnx --saveEngine=policy.trt --fp16
 # Inference wrapper: jetson_runtime/trt_infer.py
 # Input: 59-dim float32 observation vector — v4_robust actor layout, exact
 # order (see the RL Training section of AGENTS.md "v4 Tracks"): base_ang_vel(3),
-# projected_gravity(3), velocity_commands(3), joint_pos(16), joint_vel(16),
-# actions(16), gait_phase(2). (Historical: v3's obs was 62-dim incl. base_lin_vel.)
+# projected_gravity(3), velocity_commands(3), joint_pos_rel(16),
+# joint_vel_rel(16), actions(16), gait_phase(2).
+#   joint_pos_rel = q - q_default (robot_cfg.py init_state.joint_pos), NOT raw
+#   encoder angles. Sending absolute angles offsets 16 inputs by the whole
+#   standing pose. (Historical: v3's obs was 62-dim incl. base_lin_vel.)
 # Output: 16-dim float32 action vector
 # Latency: <1 ms
 ```
