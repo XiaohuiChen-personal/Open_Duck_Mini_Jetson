@@ -215,7 +215,7 @@ Ordered by what would hurt most on hardware.
 > document** — `AGENTS.md` now states the correct values. They are recorded here
 > anyway because the wrong values were load-bearing: they were the contract a
 > future Jetson runtime would have been built against. Quoted line numbers refer
-> to `AGENTS.md` *before* that fix. **§4.4–4.9 are plant defects and remain
+> to `AGENTS.md` *before* that fix. **§4.4–4.12 are plant/behaviour/deployment defects and remain
 > open** — fixing any of them changes the plant and forces a retrain.
 
 ### 4.1 The deployment contract omits that joint positions are *relative* — HIGH
@@ -334,6 +334,22 @@ Worth resolving before deployment, because it compounds with §1: a policy
 trained to lift 37.6% extra mass *and* allowed 1.78× the datasheet torque has
 two independent reasons to over-command on a real servo. The cheap check is a
 stall-torque measurement on one servo at the deployment battery voltage.
+
+**And the ceiling is pinned to a voltage the robot rarely sees.** BAM identified
+at `vin: 12.1` V. The robot runs a 3S2P 18650 pack — `AGENTS.md:168`, "11.1V"
+nominal. Since stall torque scales with supply:
+
+| Supply | `kt·V/R` |
+|---|---:|
+| 12.1 V (BAM identification) | **8.716 N·m** ← what Isaac enforces |
+| 12.0 V (servo rated) | 8.644 N·m |
+| 11.1 V (pack nominal) | 7.996 N·m |
+| 9.9 V (pack near empty) | 7.131 N·m |
+
+So the real ceiling drifts ~8–18% below the simulated one over a discharge, and
+**no domain randomization touches any actuator parameter** — not stiffness, not
+damping, not effort limit. The simulated servo is a constant-strength ideal at
+the top of its voltage range for the whole of training.
 
 > The remaining BAM parameters check out exactly: `kp 45.53`, `damping 1.346`,
 > `armature 0.040`, `friction 0.200` in `robot_cfg.py` all match
@@ -462,7 +478,87 @@ the config will ever look wrong, and the gap only appears on hardware. It is
 also the cheapest of these to address, since Isaac Lab supports action delay
 without touching the asset.
 
-### 4.10 The pattern behind §2, §4.6, and arguably §1
+### 4.10 v5d never saw a constant yaw-rate command in training — HIGH for teleop
+
+`exported_policies/v5d_contact_wrench_ppo/env.yaml:984-987`:
+
+```yaml
+heading_command: true
+heading_control_stiffness: 0.5
+rel_standing_envs: 0.02
+rel_heading_envs: 1.0
+```
+
+`rel_heading_envs: 1.0` means **every** environment is a heading environment.
+Isaac Lab's `UniformVelocityCommand._update_command`
+(`velocity_command.py:150-159`) then overwrites the yaw channel every single
+step:
+
+```python
+heading_error = wrap_to_pi(self.heading_target[env_ids] - self.robot.data.heading_w[env_ids])
+self.vel_command_b[env_ids, 2] = torch.clip(
+    self.cfg.heading_control_stiffness * heading_error, ...)
+```
+
+So the `ang_vel_z` range `(-0.5, 0.5)` was never sampled as a yaw command.
+Observation dim 8 always carried a **decaying heading-error signal** — a
+P-controller output with stiffness 0.5, i.e. a ~2 s time constant, shrinking
+toward zero as the robot turns to face its target.
+
+Consequence: **a sustained constant yaw rate is out of distribution.** Any
+consumer that writes `vel_command_b[:, 2]` directly — a joystick, a VLM, the
+haptic teleop layer — is feeding the policy a signal shape it never trained on.
+The policy still turns, but its yaw tracking should not be assumed to be
+characterized by the training ranges.
+
+This is not a plant defect and nothing is misconfigured; it is an undocumented
+property of the training distribution that matters the moment anything drives
+yaw open-loop. Worth either documenting as a known limitation or fixing in the
+next campaign by setting `rel_heading_envs` below 1.0 so some envs train on
+direct yaw-rate commands.
+
+### 4.11 Four of the 59 observation dims cannot be measured on hardware — HIGH for deployment
+
+The 16-joint vector includes the two antennas (`robot_cfg.py` `init_state.joint_pos`):
+
+```
+left_hip_yaw, left_hip_roll, left_hip_pitch, left_knee, left_ankle,
+right_hip_yaw, right_hip_roll, right_hip_pitch, right_knee, right_ankle,
+neck_pitch, head_pitch, head_yaw, head_roll, left_antenna, right_antenna
+```
+
+`joint_pos` and `joint_vel` therefore each carry an antenna pair, so **4 of the
+59 actor inputs are antenna state**. The antennas are SG90 micro servos
+(`AGENTS.md:161`) — open-loop PWM hobby servos with no position feedback. The 14
+Feetech STS3250s report position and velocity over the serial bus; the SG90s
+report nothing.
+
+The Jetson obs builder will therefore have four inputs it cannot fill. Neither
+option is free: feeding zeros or the commanded angle is a distribution shift on
+those dims, and the policy was trained with them live (and with the wrong
+actuator model behind them, §4.4).
+
+This is a deployment blocker that has to be decided before the runtime is
+written, and the cheapest resolution is upstream — drop the antennas from the
+action and observation spaces in the next training campaign, since they
+contribute nothing to locomotion.
+
+### 4.12 The planned TensorRT wrapper is specified against 56 dims — MEDIUM
+
+`docs/jetson-mod/task_plan.md:2076` and `:2092`, in the Phase-4 acceptance
+snippet for `jetson_runtime/trt_infer.py`:
+
+```python
+obs = np.random.randn(56).astype(np.float32)
+action = policy.infer(obs)
+```
+
+The pinned v5d actor takes **59**. The number is stale from an earlier obs
+layout and nothing has reconciled it. Harmless today because
+`jetson_runtime/` does not exist yet — which is exactly why it should be fixed
+now, before it becomes the spec someone codes against.
+
+### 4.13 The pattern behind §2, §4.6, and arguably §1
 
 Three independent config sites bind to a body whose **name reads correctly** but
 whose **physics is wrong**:
@@ -565,3 +661,27 @@ the imitation reference-motion library; training hyperparameters; anything in
 `jetson_runtime/` (it does not exist yet); and real-hardware measurements of any
 kind. Nothing here is a claim about the physical robot's behaviour — only about
 what the simulator does and whether the repo describes it accurately.
+
+**Nothing here is unverified.** 25 candidate findings were raised; 9 went
+through adversarial verification and 1 of those was refuted (as a duplicate).
+Everything written up above was then re-measured by hand. Findings that were
+neither verified nor hand-checked were **left out entirely** rather than
+included with a caveat.
+
+**Candidates raised but not pursued**, listed so they are not lost. Each is
+plausible and unconfirmed — treat as leads, not findings:
+
+- Isaac disables self-collision entirely (`enabled_self_collisions=False`);
+  a claimed 71.5% of in-limit poses self-collide in MuJoCo but not in Isaac.
+- Trunk CoM randomization reportedly delivers ~3.4× less whole-body CoM shift
+  than its ±10/±5 mm range suggests, because it moves one body of 22.
+- Observation corruption is i.i.d. zero-mean only — no IMU bias, drift, or
+  mounting misalignment — and no gate is measured with corruption on.
+- The three in-repo plants (`robot.xml`, `robot_motors.xml`, `robot_cfg.py`)
+  may disagree on joint damping and actuator gain, with no test covering it.
+- The documented deployment velocity clamp may permit commands outside the
+  trained hull.
+- The eval protocol is documented as 5 conditions / 3,200 episodes; v5-era
+  results appear to have used 6 / 3,840.
+- `AGENTS.md` never mentions v5 in its plant/DR description, which predates the
+  pinned policy by two curriculum changes.
