@@ -48,6 +48,25 @@ BASELINE_COMMIT = "adbc082"
 # density baked into the upstream 698.5 g trunk booking, NOT a measured
 # value — the spine region is bulky (not thin-wall), so the true delta
 # carries a +/-10-30 g band. True-up by weighing old/new prints in Phase 4.
+#
+# !!! MEASURED WRONG 2026-08-11 — see docs/jetson-mod/known_issues.md#plant-10.
+# The band above is far too optimistic. Slicing the adbc082 baseline geometry
+# against the current geometry with identical settings measures the delta as
+# -6.60 g, not the -88.48 g this constant books, i.e. trunk_assembly is 54-82 g
+# heavier than the model says. The error keeps its sign across 2-3 perimeters
+# and 15-40% infill. Reproduce with:
+#
+#     python3 scripts/measure_print_mass.py --cad-delta --sweep
+#
+# Why one density cannot work: material REMOVED came from bulky interiors that
+# are mostly infill (0.28x solid measured on trunk_bottom), while material ADDED
+# is thin vents/bosses that print nearly solid. Both errors push the same way.
+#
+# The constant is deliberately NOT changed here. Correcting it moves the plant,
+# and the right value depends on the print process, which is still an open
+# decision (FDM at ~1158 g vs MJF PA12 at ~1598 g for the same geometry — for
+# powder processes there is no infill at all). Fix it in the same change that
+# re-derives the trunk inertial and retrains, not before.
 PLA_EFFECTIVE_DENSITY = 1116.0  # kg/m^3 (0.9 x solid)
 
 DELTAS_JSON = os.path.join(REPO, "scripts", "cad_mod_deltas.json")

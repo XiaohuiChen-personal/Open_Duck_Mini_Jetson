@@ -611,6 +611,26 @@ current STLs and book the measured difference, or weigh the printed parts. Note
 that the delta is robust to the print profile *because both sides use the same
 profile*, so this works even before the print process is finally chosen.
 
+**Tooling added 2026-08-11.** `scripts/measure_print_mass.py` replaces the
+assumption with a measurement and is parameterised by process:
+
+```
+python3 scripts/measure_print_mass.py --cad-delta --sweep      # this measurement
+python3 scripts/measure_print_mass.py --process mjf-pa12       # no slicer needed
+python3 scripts/measure_print_mass.py --process fdm-pla --perimeters 2 --infill 15
+```
+
+It counts **pieces, not files** (`print_guide.md` has ×2/×4 on nine rows, so the
+set is 52 pieces / 1571.94 cm³; summing the 37 distinct STLs undercounts by 13%)
+and auto-reorients parts whose authored pose gives the slicer a knife-edge first
+layer. Whole-set totals it produces: **1158 g** FDM PLA at 2 perim/15%,
+**1598 g** MJF PA12 (solid — powder processes have no infill parameter).
+
+`PLA_EFFECTIVE_DENSITY` is deliberately **left unchanged** for now. Correcting it
+moves the plant, and the right value depends on the print process, which is an
+open decision. It should be fixed in the same change that re-derives the trunk
+inertial and retrains — not before, and not separately from PLANT-1's retrain.
+
 > **Scope caution.** The 698.5 g upstream trunk booking carries its own unknown
 > density, so this fix corrects the *delta*, not the absolute baseline. The
 > absolute number is only settled by the bottom-up rebuild or by weighing.
