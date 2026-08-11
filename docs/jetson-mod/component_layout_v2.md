@@ -55,7 +55,7 @@ the combined effect.
 | DC-DC converter | (**-0.060, 0.025, 0.0355**) | [28.5, 42.5] | Under-plate mount (foam pad), rear corner of the plenum, off the fan axis; short 19 V run |
 | BNO055 IMU | (**-0.100**, 0, 0.0418) | [41.8, 44.8] | Battery-side pocket between partition and lid: cool, stable temperature, away from Jetson EMI |
 | Servo-driver board | **unchanged** (-0.06349, 0.0165, 0.0604) | [58.8, 60.4] | First-pass move REVERTED: the shortened partition (top 44.35) no longer reaches the board's z-band, and the board's original trunk_top tray pocket is the only verified-clear mount (the moved position was inside solid trunk_top) |
-| Battery pack 6× 18650 (3S2P) + BMS | hump + **declared rear extension** | — | 2 original cells at the modeled positions; **4 extra cells as a 2×2 vertical grid at (-0.145, 0, 0.0306)** (seated on the extension bore floor at z=−2) inside the Part-2 hump extension (current hump interior is only ~18 mm deep behind the lid and tapers — it cannot take more than the 2 existing cells) |
+| Battery pack 6× 18650 (3S2P) + BMS | hump + **declared rear extension** | — | 2 original cells at the modeled positions; **4 extra cells do NOT fit as a 2×2 grid: the declared block at (-0.145, 0, 0.0306) (38×38×65 mm) overlaps each modeled cell by ~11.9 cm³; the bore behind the existing pair is only 28.4 mm deep = one 18 mm column (2 cells), so the 6-cell pack needs a deeper hump or the existing pair moved forward** (seated on the extension bore floor at z=−2) inside the Part-2 hump extension (current hump interior is only ~18 mm deep behind the lid and tapers — it cannot take more than the 2 existing cells) |
 
 Whole-robot mass after the Part-2 shell mods: **2.657067 kg** (the CAD cuts
 removed ~88.5 g of PLA; see "Part-2 status" below). Frame-correct inertials
@@ -81,13 +81,13 @@ polygon; Run A's gait gate measures the consequence.
 ## Clearances (asserted in test_cad_dimensions.py)
 
 - Jetson ↔ cavity floor ≥ 2 mm (12.5 mm actual)
-- Jetson ↔ side walls ≥ 6 mm/side (6.75 actual)
+- Jetson ↔ side walls ≥ 6 mm/side only above z ≈ +2 (6.75 actual); below that the 24.6° wall fillet closes the interior half-width to 46.08 mm, leaving a **0.83 mm** minimum along the whole bottom edge (no interference, but no 6 mm margin either — the test asserts a hardcoded ±0.052 m interior, not the measured wall)
 - Jetson ↔ trunk_top plate ≥ 5 mm (21.4 actual — plenum)
 - Jetson ↔ roll bearings ≥ 1.5 mm (2.0 actual)
 - Jetson ↔ partition ≥ 2 mm (3.0 actual)
 - Partition ↔ battery lid ≥ 2 mm (26.5 actual; IMU lives in this pocket)
 - Board / DC-DC / IMU / partition mesh-level clear of all chassis+shell
-  meshes (partition: except the two declared chamfer corners)
+  meshes (partition: except the two declared chamfer corners, plus 24.5 mm³ where the placeholder's bottom edge sits in the central floor ridge, y ±41 at z[-22.35,-21.93] — the printed part's rabbet clears it)
 
 ## Keep-outs and known compromises (review-corrected)
 
@@ -109,7 +109,7 @@ polygon; Run A's gait gate measures the consequence.
   if used, come from the P3768 reference design files or physical
   measurement — never from the 58×86 assumption.
 - **Ventilation goes in body_middle_bottom/top, NOT body_back**: body_back
-  (x[-154,-114] world) is entirely the battery hump shell — venting it
+  (x[-170,-114] body frame, after the Part-2 hump extension) is entirely the battery hump shell — venting it
   would ventilate the battery zone. Exhaust: ±y louvers in the body_middle
   shells at fin height (z ≈ -11..+23) in the compute-zone x-range, plus the
   +y port opening. Intake: body_front slots at plenum height (z ≈ +25..44)
@@ -144,8 +144,8 @@ body_middle_bottom −4.1 +2.5 cm³, body_front −7.2 cm³, hump extension
 foot origins.
 
 As-built details (post-review corrections): +y port opening
-**x[−80,−58] z[−16.5,+24]** — the leg cutout's measured edge is x=−54.5
-(not −50 as first documented), so the opening keeps a 3.5 mm mullion and
+**x[−80,−58] z[−16.5,+24]** — the leg cutout's measured edge is x=−54.0
+(not −50 as first documented), so the opening keeps a 4.0 mm mullion and
 its floor was dropped to kill a 0.2-1.6 mm sill knife-edge; **2× −y
 louvers** (8 mm, z[−8,+20], x centers −78/−66 — the originally planned
 third merged with the leg cutout); 6 inlet slots 20×6 in body_front at
@@ -189,8 +189,8 @@ at z=−2, no modeled retainer), partition retention rails/gasket.
    edge; optional −y CSI-flex slot. **body_front**: inlet slots at plenum
    height. **body_back: solid (no vents)**.
 4. **body_back + battery_pack_lid**: extend the hump rearward and
-   straighten its taper so the interior takes a 2×2 grid of 18650s behind
+   straighten its taper; the bore takes only ONE extra 18650 column (2 cells) behind
    the existing pair (declared extension: interior deepened from
-   x≈-0.1396 to ≈-0.166, ≥44 mm straight width); 6-cell (3S2P) lid with
+   x≈-0.1396 to ≈-0.166, 41 mm straight width (bore y ±20.5)); 6-cell (3S2P) lid with
    partition mating lip, NTC thermistor clip, <5 mm cable notch.
 5. body_middle x-extension: NOT needed (low mount leaves 21 mm headroom).

@@ -19,7 +19,7 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
 - **RL framework:** NVIDIA Isaac Lab with RSL-RL (PPO). (SKRL was used only for the archived PPO-vs-AMP course study — see `open-duck-ppo-vs-amp`; Isaac Lab ships no off-policy skrl task configs, only PPO/AMP plus multi-agent MAPPO/IPPO)
 - **On-device AI:** Cosmos Reason2-2B (W4A16 quantized) for physical AI reasoning + TensorRT locomotion policy
-- **Task plan:** See `docs/jetson-mod/task_plan.md` for the full 5-phase, 31-task implementation plan
+- **Task plan:** See `docs/jetson-mod/task_plan.md` for the full 5-phase, 32-task implementation plan
 - **Experiment journal:** EVERY training run gets an entry in `docs/jetson-mod/experiment_journal.md`. Data-sourcing protocol in the [Experiment Journal Protocol](#experiment-journal-protocol) section below — last-100 TensorBoard means (never single-iteration log samples), measured gate rollouts, every number names its source. **Note (2026-07-26): the EN.665.645 course-paper record is FROZEN in the archive repo `open-duck-ppo-vs-amp` (tag `course-study-freeze` marks the freeze commit); from here on this journal is the robot project's engineering record, and study runs 1-16 in it are historical.**
 
 ## Build & Test
@@ -116,7 +116,7 @@ This project is modifying the Open Duck Mini v2 bipedal robot to use NVIDIA hard
 
 ### What Changed and Why
 
-The original robot uses a Raspberry Pi Zero 2W (65x30x5mm, 10g, no GPU) in the head. We are replacing it with a Jetson Orin Nano Super Dev Kit (103x90.5x34.77mm incl. heatsink+fan, 176g, 67 TOPS GPU) relocated to the trunk/body cavity.
+The original robot uses a Raspberry Pi Zero 2W (65x30x5mm, 10g, no GPU) in the head. We are replacing it with a Jetson Orin Nano Super Dev Kit (103x90.5x34.77mm incl. heatsink+fan, 176 g as booked in the model (NVIDIA SP-11324-001 v1.3 §4 publishes 175 g), 67 TOPS GPU) relocated to the trunk/body cavity.
 
 **Why:** To add physical AI capabilities (vision, language understanding, autonomous navigation) and learn the NVIDIA robotics stack (Isaac Sim, Isaac Lab, TensorRT, Cosmos).
 
@@ -162,7 +162,7 @@ _Hardware specifications for the robot, Jetson Orin Nano, servos, batteries, and
 | Parameter | Value |
 |---|---|
 | Total height | ~420 mm (legs extended) |
-| Total mass (after mod) | ~2,657 g (Part-2 CAD mods removed ~88.5 g of shell/chassis PLA) |
+| Total mass (after mod) | ~2,657 g declared; **PhysX simulates 3,657 g** ([PLANT-1](docs/jetson-mod/known_issues.md#plant-1)) and the true build is ~2,810 g once the Part-2 CAD delta is measured rather than assumed ([PLANT-10](docs/jetson-mod/known_issues.md#plant-10)) and the 4 booked-but-unmodelled 18650 cells are counted |
 | **Mass Isaac actually simulates** | **3,657 g** — the row above **plus a 1,000 g PhysX default** on the massless MJCF root frame `base`. Real robot = 2,657 g; simulated plant = 3,657 g. Use the right one for the question you are asking, and see `docs/jetson-mod/known_issues.md` |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
 | Servos | 14x Feetech STS3250 (12V, 50 kg.cm stall, 74.5g each) |
@@ -175,7 +175,7 @@ _Hardware specifications for the robot, Jetson Orin Nano, servos, batteries, and
 | Spec | Value |
 |---|---|
 | Dimensions | 103 x 90.5 x 34.77 mm (full dev kit incl. heatsink+fan) |
-| Weight | 176 g |
+| Weight | 176 g (design input carried in the MJCF; NVIDIA publishes 175 g) |
 | GPU | 1024 CUDA + 32 Tensor cores (Ampere) |
 | AI Performance | 67 TOPS |
 | RAM | 8 GB LPDDR5 unified (shared CPU+GPU) |
@@ -199,7 +199,7 @@ Total:                         ~7.7 GB  (fits)
 
 | Body | Original (g) | Modified (g) | Change |
 |---|---|---|---|
-| trunk_assembly | 698.5 | ~1,089 | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +180 (batteries: 4 extra 18650 cells, 2→6 total) +5 (BMS) +15 (DC-DC) +37 (thermal partition assembly) +8 (wiring) −88.5 (Part-2 CAD: spine cut −67.3, vents/port/bosses net −9.9, hump extension net −11.2; printed-PLA 1.116 g/cm³ assumption, ±10-30 g band on the bulky spine region — weigh prints in Phase 4) |
+| trunk_assembly | 698.5 | ~1,089 | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +180 (batteries: 4 extra 18650 cells, 2→6 total) +5 (BMS) +15 (DC-DC) +37 (thermal partition assembly) +8 (wiring) −88.5 (Part-2 CAD: spine cut −67.3, vents/port/bosses net −9.9, hump extension net −11.2; printed-PLA 1.116 g/cm³ assumption — **MEASURED WRONG, see [known_issues.md PLANT-10](docs/jetson-mod/known_issues.md#plant-10)**: slicing the baseline vs current geometry gives a true delta of −6.6 g at the documented print profile, not −88.5 g, so `trunk_assembly` is 54–82 g heavier than this row states) |
 | head_assembly | 352.6 | ~362.1 | -10 (Pi removed) +19.5 (head_roll servo upgrade) |
 | All 14 servos | 770 (14x55g) | 1,043 (14x74.5g) | +273 g total (+19.5g each x14: 3 in trunk, 1 in head, 10 in limb/neck bodies) |
 | Total robot | 2,062 | ~2,657 | +595 g (+28.9%) |
@@ -622,7 +622,7 @@ Isaac Lab (DGX Spark) → .pt checkpoint → ONNX export → TensorRT engine →
 - `isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl` — 240 polynomial walking gaits
 - `isaac_lab_env/open_duck_mini_v2/agents/rsl_rl_ppo_cfg.py` — PPO hyperparameters
 - `isaac_lab_env/open_duck_mini_v2/robot_cfg.py` — Robot articulation config
-- `exported_policies/*.onnx` — Exported policies
+- `exported_policies/<name>/policy.onnx` — Exported policies (currently only `v5d_contact_wrench_ppo/`; `*.onnx` is gitignored)
 - `experiments/v2/params_sts3250_id008.json` — BAM motor identification parameters (STS3250)
 - `mini_bdx/mini_bdx/utils/rl_utils.py` — Joint order conversion, action scaling
 
@@ -696,7 +696,7 @@ docker run --rm -it --runtime=nvidia --network host --shm-size=4g \
 
 ### Safety Rules
 
-- All velocity commands from Cosmos MUST be clamped: forward [-0.2, 0.3], lateral [-0.2, 0.2], turn [-0.3, 0.3]
+- Apply the same line edit — `All velocity commands from Cosmos MUST be clamped to the trained command hull: forward [-0.148, 0.222], lateral [-0.111, 0.111], turn [-0.3, 0.3]` — but ONLY as part of a three-file change: (1) AGENTS.md:699 as above; (2) docs/jetson-mod/known_issues.md — close DEPLOY-5 (line 105 index row and the section at 789-798) as FIXED, since its body verbatim-quotes the old numbers; (3) scripts/verify_known_issues.py — remove or invert the `EVAL-3` check at lines 344-358, which otherwise reports REFUTED and makes the script exit 1.
 - On any Cosmos inference failure, fall back to last known good command (not zero — that could cause mid-stride fall)
 - IMU-based emergency stop: if tilt > 60 degrees, cut all motors
 - Servo current monitoring: if any servo exceeds safe current, reduce velocity
@@ -786,23 +786,23 @@ ONNX, videos, log dir). Update the run-index table at the top of the journal.
 
 ## Task Plan Reference
 
-_Task plan summary — 5 phases, 31 tasks, dependencies, and output files reference_
+_Task plan summary — 5 phases, 32 tasks, dependencies, and output files reference_
 
-The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lines, 31 tasks).
+The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lines, 32 tasks).
 
 ### Phase Summary
 
 | Phase | Tasks | Status | Where |
 |---|---|---|---|
 | Phase 1: Sim Model Update | 1.1-1.6 | Complete | Local machine |
-| Phase 2: Isaac Lab + RL Training | 2.1-2.7 | Complete (Task 2.7 push-recovery gate PASSED — validation_results.md, v4_robust) | DGX Spark |
+| Phase 2: Isaac Lab + RL Training | 2.1-2.8 | Complete (Task 2.7 push-recovery gate PASSED — validation_results.md, v4_robust; Task 2.8 v5 contact-rich retrain shipped v5d_contact_wrench) | DGX Spark |
 | Phase 3: CAD Redesign + Thermal | 3.1-3.7 | In progress (cad-redesign merged to v2 2026-07-26) | OnShape/Fusion |
 | Phase 4: Hardware Build + Thermal Mgmt | 4.1-4.6 | Pending | Jetson + 3D printer |
 | Phase 5: Cosmos VLM Integration | 5.1-5.5 | Pending | Jetson |
 
 ### Key Task Dependencies
 
-- Phase 1 → Phase 2: URDF must be updated before Isaac Sim import
+- Phase 1 → Phase 2: `robot_motors.xml` (MJCF) must be updated before Isaac Sim import
 - Phase 2 → Phase 3: RL policy must walk in sim before committing to CAD changes
 - Phase 3 → Phase 4: Parts must be redesigned before printing
 - Phase 4 → Phase 5: Robot must walk physically before adding VLM
@@ -822,7 +822,7 @@ The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lin
 | 1.2 | `mini_bdx/robots/open_duck_mini_v2/jetson_orin_nano.stl` |
 | 2.1 | `mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd` |
 | 2.5 | `docs/jetson-mod/v4_comparison.md` (study-era `algorithm_comparison.md` archived in `open-duck-ppo-vs-amp`) |
-| 2.6 | `exported_policies/open_duck_*.onnx` |
+| 2.6 | `exported_policies/<name>/policy.onnx` (currently `v5d_contact_wrench_ppo/`) |
 | 2.7 | `docs/jetson-mod/validation_results.md` |
 | 3.6 | `print/thermal_partition.stl` |
 | 4.6 | `jetson_runtime/thermal_manager.py` |

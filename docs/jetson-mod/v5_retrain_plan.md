@@ -110,8 +110,8 @@ and by the frozen Jetson/duck-embody deployment interface.
      `env.command_manager.get_command("base_velocity")`).
    - Wrench: force magnitude 5–30% of robot weight **measured at init** from
      the articulation's body masses — do NOT hardcode: the task plan's
-     "0.8–4.8 N" assumed a 1.6 kg robot; the sim robot is ~2.66 kg →
-     ~1.3–7.8 N. Direction biased lateral (body frame), application point
+     "0.8–4.8 N" assumed a 1.6 kg robot; the sim robot is 3.657 kg (PhysX's 1.000 kg default on the massless root, PLANT-1) →
+     ~1.8–10.8 N. Direction biased lateral (body frame), application point
      uniform over the trunk AABB, τz ∈ ±(0.05–0.15) N·m, duration 2–6 s.
    - Apply via `robot.permanent_wrench_composer.set_forces_and_torques(forces,
      torques, positions=..., body_ids=[trunk_id], env_ids=..., is_global=False)` —
@@ -661,13 +661,13 @@ Three independent lines converge on 0.68–0.75 m/s:
   v/√(gh) ≡ d_step/h): duck-equivalents across seven published configs
   (G1, Berkeley Humanoid, Booster T1, ANYmal/legged_gym, Go1) have median
   **0.741 m/s**.
-- **Capture point** at h = 0.17 m (ω₀ = 7.60 s⁻¹): 0.68–0.76 m/s for a
+- **Capture point** at the measured CoM height h = 0.203 m (ω₀ = 6.95 s⁻¹): 0.63–0.70 m/s for a
   9–10 cm reactive step. Measured leg geometry supports this — hip-pitch
   travel is 100° (−70°/+30°, `robot.xml`), giving ~0.10–0.12 m of reach,
   vs a 6 cm nominal stride.
 
 Task 2.8's 1.3 m/s per axis would mean a 1.84 m/s resultant needing a
-**24 cm** capture step on a robot whose CoM sits at 17 cm — unrecoverable by
+**26 cm** capture step on a robot whose CoM sits at 20.3 cm — unrecoverable by
 construction, injecting −200 termination noise with no learnable gradient.
 Interval moves to upstream's 5–10 s rather than the plan's earlier 4–8 s, to
 remove a free variable while two other disturbance sources are being added.
@@ -1210,7 +1210,7 @@ Filmstrips at 1.5 fps from the four rendered conditions:
   10 benchmark falls died under. PASS.
 - **sustained press** — the trunk visibly leans into the applied load while the
   feet keep cycling, then recovers. That lean is the intended compliance, and
-  it is what the dead-zoned orientation penalty was meant to permit. PASS.
+  it is what v5c/v5d's fall-only terminations permit — the dead-zoned orientation penalty was a v5a/v5b term and is NOT in this arm, which carries v4's stock `flat_orientation_l2` at -2.0. PASS.
 
 ### Verdict
 

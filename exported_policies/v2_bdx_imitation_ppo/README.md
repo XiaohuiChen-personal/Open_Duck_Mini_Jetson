@@ -26,15 +26,16 @@ Robotic Character", Jan 2025) and Open Duck Playground. Key change from v1:
 replaced exponential kernel with raw quadratic joint tracking plus full
 polynomial reference data (velocities, contacts, base velocity).
 
-### Positive Rewards (3 terms)
+### Positive Rewards (4 terms)
 
 | Term | Weight | Description |
 |------|--------|-------------|
 | `alive_bonus` | **+10.0** | Survival bonus per step (BDX uses +20.0) |
 | `imitation_reward` | **+1.0** | BDX-style composite with internal weights: joint_pos=-L2*15.0, joint_vel=-L2*0.001, base_vel=exp(-8*error)*1.0, contacts=match*1.0 |
 | `track_ang_vel_z_exp` | +0.5 | Yaw tracking (BDX weight) |
+| `track_lin_vel_xy_exp` | +1.0 | Linear velocity tracking, std=0.5 (base frame, not yaw frame as in v1) |
 
-### Penalties (6 terms)
+### Penalties (5 terms)
 
 | Term | Weight | Description |
 |------|--------|-------------|
@@ -53,7 +54,7 @@ polynomial reference data (velocities, contacts, base velocity).
 | Alive bonus | None | +10.0 |
 | Action rate | -0.005 | **-1.0** (200x stronger) |
 | Flat orientation | -1.0 | **-2.0** (doubled) |
-| Velocity tracking | track_lin_vel_xy (std=0.25) | imitation_base_vel from polynomial reference |
+| Velocity tracking | track_lin_vel_xy_yaw_frame_exp (w=2.0, std=0.25) | track_lin_vel_xy_exp retained (w=1.0, std=0.5) plus imitation_base_vel from polynomial reference |
 | Stepping reward | feet_air_time (0.25) | imitation_contacts from polynomial reference |
 | base_height | -2.0 (target 0.20m) | Removed (imitation handles implicitly) |
 | lin_vel_z | -1.0 | Removed (imitation handles implicitly) |

@@ -21,7 +21,7 @@ Open_Duck_Mini_Jetson/
 ├── mini_bdx/
 │   ├── robots/
 │   │   └── open_duck_mini_v2/
-│   │       ├── robot_motors.xml      # PRIMARY MuJoCo model (torque-controlled, 1086 lines)
+│   │       ├── robot_motors.xml      # PRIMARY MuJoCo model (torque-controlled, 432 lines)
 │   │       ├── robot.xml             # MuJoCo model (position-controlled)
 │   │       ├── robot.urdf            # URDF version of the model
 │   │       ├── scene.xml             # Simulation scene (includes robot_motors.xml)
@@ -104,9 +104,9 @@ Open_Duck_Mini_Jetson/
 | Action dim | 15 or 16 (depending on policy) | experiments/RL/new/env.py |
 | STL unit in robots/ dir | Meters | Verified via bounding box analysis |
 | STL unit in print/ dir | Millimeters | Verified via bounding box analysis |
-| Current total robot mass | 2,062 g | Sum of all body masses in robot_motors.xml |
-| trunk_assembly mass | 698.526 g | robot_motors.xml line 115 |
-| head_assembly mass | 352.583 g | robot_motors.xml line 652 |
+| Current total robot mass | 2,657 g | Sum of all body masses in robot_motors.xml |
+| trunk_assembly mass | 1,089.544 g | robot_motors.xml line 72 |
+| head_assembly mass | 362.083 g | robot_motors.xml line 272 |
 | Servo model | Feetech STS3250 (12V, 50 kg.cm stall) | setup.cfg, params_sts3250_id008.json |
 | Servo weight | 74.5g each, 14 servos total | Datasheet |
 
@@ -115,7 +115,7 @@ Open_Duck_Mini_Jetson/
 | Parameter | Raspberry Pi Zero 2W (remove) | Jetson Orin Nano Super Dev Kit (add) |
 |---|---|---|
 | Dimensions | 65 x 30 x 5 mm | 103 x 90.5 x 34.77 mm (full dev kit incl. heatsink+fan) |
-| Weight | 10 g | 176 g |
+| Weight | 10 g | 176 g (design input carried in the MJCF; NVIDIA publishes 175 g) |
 | Power (typical) | ~1-3 W | 7-25 W |
 | Current location | Head (head_assembly body) | Trunk (trunk_assembly body) — NEW |
 | AI compute | None | 67 TOPS (1024 CUDA + 32 Tensor cores) |
@@ -127,7 +127,7 @@ Open_Duck_Mini_Jetson/
 - DC-DC boost converter (11.1V to 19V): ~15g, ~43x21x14mm (XL6009-based module)
 - CSI camera module: ~3g, mounted in head
 - Thermal partition wall (PLA, 2mm thick, ~110x90mm): ~25g
-- Mica insulation sheet (1mm thick, ~110x90mm): ~12g
+- Mica insulation sheet (1mm thick, ~50x100mm): ~12g
 - NTC 10kΩ thermistor: ~0.5g (negligible)
 - Additional wiring/cables: ~8g estimated
 
@@ -308,8 +308,8 @@ Compute the updated mass, center-of-mass (CoM), and diagonal inertia tensor for 
 - Current `trunk_assembly`: mass=0.698526 kg, pos=(-0.0483259, -9.97823e-05, 0.0384971), diaginertia=(0.00344489, 0.00292719, 0.00167606)
 - Current `head_assembly`: mass=0.352583 kg, pos=(0.00761779, 0.00018098, 0.0242575), diaginertia=(0.00207104, 0.00144128, 0.000909578)
 - Raspberry Pi Zero 2W: 10g, 65x30x5mm, located at pos=(0.03205, 0.048, 0.00595) in head_assembly frame
-- Jetson Orin Nano Dev Kit (full kit incl. heatsink+fan): 176g, 103x90.5x34.77mm
-- 2x extra 18650 cells: 45g each, 18mm diameter x 65mm long
+- Jetson Orin Nano Dev Kit (full kit incl. heatsink+fan): 175g per NVIDIA SP-11324-001 v1.3 §4 (the inertia terms below and the shipped MJCF were built with 0.176 kg), 103x90.5x34.77mm
+- 4x extra 18650 cells: 45g each, 18mm diameter x 65mm long
 - DC-DC boost converter (XL6009): 15g, 43x21x14mm
 - Thermal partition wall (PLA, 2mm thick): ~25g, ~110x90x2mm
 - Mica insulation sheet (1mm thick, bonded to partition): ~12g, ~110x90x1mm
@@ -321,9 +321,9 @@ Compute the updated mass, center-of-mass (CoM), and diagonal inertia tensor for 
    - Ixx = m/12 * (height^2 + depth^2) = 0.176/12 * (0.03477^2 + 0.0905^2)
    - Iyy = m/12 * (height^2 + width^2) = 0.176/12 * (0.03477^2 + 0.103^2)
    - Izz = m/12 * (width^2 + depth^2) = 0.176/12 * (0.103^2 + 0.0905^2)
-3. Compute extra battery inertia (2 cylinders, I_axial = m*r^2/2, I_transverse = m/12*(3r^2+h^2))
+3. Compute extra battery inertia (4 cylinders, I_axial = m*r^2/2, I_transverse = m/12*(3r^2+h^2))
 4. Compute DC-DC converter inertia (rectangular solid, 0.015 kg, 43x21x14mm)
-5. Compute thermal partition + mica inertia (thin slab, ~0.037 kg total, 110x90x3mm composite at partition position X ≈ -0.08m)
+5. Compute thermal partition + mica inertia (thin slab, ~0.037 kg total, 103.5x66.7x3mm composite at partition position X ≈ -0.08m)
 6. Use the parallel axis theorem to compute the new composite trunk_assembly inertia:
    - I_composite = I_existing + I_jetson_at_new_pos + I_batteries_at_pos + I_dcdc_at_pos + I_partition_at_pos + I_wiring
    - New CoM = (m_existing * pos_existing + m_jetson * pos_jetson + ...) / m_total
@@ -353,13 +353,13 @@ class TestMassInertiaCalculations:
     def test_total_mass_is_correct(self, expected_values):
         """Total mass should equal sum of all body masses."""
         # Sum all body masses from the updated XML
-        # Compare against expected total (~2406g)
+        # Compare against expected total (~2657g)
         assert abs(total_mass - expected_values["total_mass_kg"]) < 0.001
 
     def test_trunk_mass_increased(self, expected_values):
         """trunk_assembly mass should reflect Jetson + extra batteries + thermal partition + wiring."""
         expected = expected_values["trunk_assembly_mass_kg"]
-        # Should be ~1.0545 kg (original 0.6985 + 0.176 + 0.090 + 0.015 + 0.037 + 0.008)
+        # Should be ~1.0895 kg (0.6985 + 0.176 Jetson + 0.0585 servo upgrades + 0.180 batteries + 0.005 BMS + 0.015 DC-DC + 0.037 partition + 0.008 wiring - 0.0885 CAD removal)
         assert abs(trunk_mass - expected) < 0.001
 
     def test_head_mass_decreased(self, expected_values):
@@ -396,9 +396,9 @@ class TestMassInertiaCalculations:
 
 *Manual verification:*
 - [ ] Open the calculations spreadsheet/document and verify each formula step
-- [ ] Cross-check: new trunk mass ≈ 0.6985 + 0.176 + 0.090 + 0.015 + 0.037 + 0.008 = 1.0245 kg
+- [ ] Cross-check: new trunk mass ≈ 0.6985 + 0.176 + 0.0585 + 0.180 + 0.005 + 0.015 + 0.037 + 0.008 - 0.0885 = 1.0895 kg
 - [ ] Cross-check: new head mass ≈ 0.3526 - 0.010 = 0.3426 kg
-- [ ] Cross-check: new total mass ≈ 2.062 + 0.176 + 0.090 + 0.015 + 0.037 + 0.008 - 0.010 = 2.378 kg
+- [ ] Cross-check: new total mass = 2.657 kg (measured sum of all body masses in robot_motors.xml; the 2.062 kg baseline predates the 14x STS3215→STS3250 servo upgrade)
 
 ---
 
@@ -412,7 +412,7 @@ Create a simple box-shaped STL file representing the Jetson Orin Nano Dev Kit fo
 **Steps:**
 1. Write a Python script to generate a box STL with the correct dimensions
 2. Save as `mini_bdx/robots/open_duck_mini_v2/jetson_orin_nano.stl`
-3. Create `mini_bdx/robots/open_duck_mini_v2/thermal_partition.stl` — thin slab (0.110 x 0.090 x 0.003 m) representing the PLA partition wall + mica insulation
+3. Create `mini_bdx/robots/open_duck_mini_v2/thermal_partition.stl` — thin slab (0.003 x 0.1035 x 0.0667 m, X x Y x Z) representing the PLA partition wall + mica insulation
 4. Optionally create `mini_bdx/robots/open_duck_mini_v2/dcdc_converter.stl` (0.043 x 0.021 x 0.014 m)
 
 **How to test:**
@@ -1368,7 +1368,7 @@ Export the selected PPO policy to ONNX format for Jetson deployment.
    import onnxruntime as ort, numpy as np
    sess = ort.InferenceSession('exported_policies/open_duck_ppo_policy.onnx')
    print(f'inputs={[(i.name, i.shape) for i in sess.get_inputs()]}')
-   dummy = np.zeros((1, 60), dtype=np.float32)
+   dummy = np.zeros((1, 59), dtype=np.float32)
    out = sess.run(None, {sess.get_inputs()[0].name: dummy})
    print(f'output shape={out[0].shape}')
    assert out[0].shape[-1] == 16
@@ -1447,7 +1447,12 @@ Run the selected best policy in Isaac Sim with full rendering to visually valida
 
 ### Task 2.8 — Retrain Contact-Rich Locomotion (v5) via PPO
 
-**Status:** PLANNED (added 2026-07-27, motivated by the Duck Embody benchmark results)
+**Status:** COMPLETE (added 2026-07-27, motivated by the Duck Embody benchmark
+results). Four arms ran (v5a–v5d); **v5d_contact_wrench** won on every contact
+gate and is the shipped policy — see `docs/jetson-mod/v5_retrain_plan.md`
+§13 and `exported_policies/v5d_contact_wrench_ppo/`. Design numbers in the
+subsections below are the *original* plan; where `v5_retrain_plan.md` amends
+them, that document is authoritative.
 
 **Description:**
 Retrain the locomotion policy to survive *contact* — walking beside, brushing
@@ -1570,8 +1575,8 @@ Planned changes, with the literature behind each:
 
 | Event | Current | v5 plan |
 |---|---|---|
-| Impulse push | ±0.3 m/s planar, every 8–14 s | every 4–8 s, ramp 0.5→1.3 m/s over first ~1.5k iters; ADD rotational pushes ±1.0 rad/s yaw, ±0.5 rad/s roll/pitch (Hartmann trains exactly this) |
-| Sustained wrench | none (zeroed placeholder) | constant horizontal force held 2–6 s, 5–30% of body weight (0.8–4.8 N at ~1.6 kg), direction biased lateral, application point randomized over torso, τz ±0.05–0.15 N·m; active in ~50% of envs; **≥30% triggered while \|wz cmd\| ≥ 0.25** (co-occurrence must be enforced, not hoped for — no published curriculum isolates push-during-rotation) |
+| Impulse push | ±0.3 m/s planar, every 8–14 s | every 5–10 s, ramp **0.4→0.7 m/s** per axis over first ~1.5k iters (this row's original ramp was amended by `v5_retrain_plan.md` §11.4, which is what actually ran); ADD rotational pushes ±1.0 rad/s yaw, ±0.5 rad/s roll/pitch (Hartmann trains exactly this) |
+| Sustained wrench | none (zeroed placeholder) | constant horizontal force held 2–6 s, 5–30% of body weight (1.3–7.8 N at the 2.657 kg declared mass), direction biased lateral, application point randomized over torso, τz ±0.05–0.15 N·m; active in ~50% of envs; **≥30% triggered while \|wz cmd\| ≥ 0.25** (co-occurrence must be enforced, not hoped for — no published curriculum isolates push-during-rotation) |
 | Obstacles | none | static boxes/wall segments in 20–30% of envs at 0.10–0.35 m lateral offset, commands that drive grazing contact; fall-only termination there (Parkour-style contact curriculum, soft-to-hard optional) |
 | Commands | heading-derived wz, resample 10 s | add a direct-wz env fraction (~30%) holding wz = ±0.35–0.5 for 2–6 s (the turn_to_heading regime); resample interval mixed 2–10 s to cover 0.2 s-scale re-commanding |
 | Standing envs | 2% (imitation gated off) | 5–10%, so contact-while-stationary is trained |
@@ -1827,10 +1832,10 @@ The Jetson Orin Nano dissipates 20-22W at 25W power mode. Its heatsink surface t
 ```
 
 **Partition wall construction:**
-- **Base material:** PLA, 2mm thick, printed to span the full width (Y: 110mm) and height (Z: ~90mm) of the trunk cavity
+- **Base material:** PLA, 2mm thick; the delivered `print/thermal_partition.stl` measures 103.5mm wide (Y) x 66.7mm tall (Z), so it spans nearly the full trunk-cavity width but not its full height
 - **Thermal insulation:** Bond a 1mm **mica sheet** (cut to size) to the compute-zone-facing side of the partition wall
   - Mica thermal conductivity: ~0.5-0.7 W/mK (good insulator; note: silicone thermal pads are designed to *conduct* heat, not insulate — mica is the correct choice here)
-  - Mica density: ~2.2-2.3 g/cm³ → a 110x90x1mm sheet weighs ~12g
+  - Mica density: ~2.2-2.3 g/cm³ → the 50x100x1mm sheet in the shopping list weighs ~12g
   - Mica is flame resistant (rated to 500°C+), electrically insulating
   - Total partition assembly weight: ~37g (25g PLA wall + 12g mica sheet)
 - **Mounting:** Slot into grooves in `trunk_top` and `trunk_bottom` (add matching slots in Task 3.1 and existing trunk_bottom redesign)
@@ -2114,7 +2119,7 @@ assert 'CUDAExecutionProvider' in ort.get_available_providers()
 sess = ort.InferenceSession('open_duck_walk_policy.onnx',
                             providers=['CUDAExecutionProvider'])
 import numpy as np
-inp = np.zeros((1, 56), dtype=np.float32)
+inp = np.zeros((1, 59), dtype=np.float32)
 out = sess.run(None, {sess.get_inputs()[0].name: inp})
 print('Output shape:', out[0].shape)
 print('PASS: ONNX GPU inference works')

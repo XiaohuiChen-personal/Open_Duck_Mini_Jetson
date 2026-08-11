@@ -341,20 +341,11 @@ def _():
     ]
 
 
-@issue("EVAL-3", "Documented deployment clamp exceeds the trained command hull")
-def _():
-    ag, env = R("AGENTS.md"), R("isaac_lab_env/open_duck_mini_v2/env_cfg.py")
-    m = re.search(r"forward \[([-\d., ]+)\], lateral \[([-\d., ]+)\], turn \[([-\d., ]+)\]", ag)
-    hx = [float(x) for x in re.search(r"ranges\.lin_vel_x = \(([-\d., ]+)\)", env).group(1).split(",")]
-    hy = [float(x) for x in re.search(r"ranges\.lin_vel_y = \(([-\d., ]+)\)", env).group(1).split(",")]
-    f = [float(x) for x in m.group(1).split(",")]
-    lat = [float(x) for x in m.group(2).split(",")]
-    return ("CONFIRMED" if f[1] > hx[1] else "REFUTED"), [
-        f"clamp: forward {m.group(1)}, lateral {m.group(2)}, turn {m.group(3)}",
-        f"hull : vx {hx}, vy {hy}",
-        f"forward {f[1]}/{hx[1]} = {f[1]/hx[1]:.2f}x, backward {abs(f[0]/hx[0]):.2f}x, "
-        f"lateral {lat[1]/hy[1]:.2f}x; turn is correctly inside",
-    ]
+# DEPLOY-5 (formerly checked here under the stale id "EVAL-3") was FIXED on
+# 2026-08-11: the documented clamp in AGENTS.md now equals the trained hull
+# exactly (forward 1.00x, backward 1.00x, lateral 1.00x, turn inside). Per this
+# script's own convention a fixed issue carries no check, so the check is
+# retired rather than inverted.
 
 
 # ------------------------------------------------------------------ SHELL
@@ -598,18 +589,10 @@ def _():
     ]
 
 
-@issue("DOC-4", "task_plan.md still carries superseded v5 numbers")
-def _():
-    tp = R("docs/jetson-mod/task_plan.md")
-    ev, found = [], 0
-    for pat, label in ((r"1\.3 m/s", "push ramp 0.5->1.3 m/s (superseded by 0.4->0.7)"),
-                       (r"1\.6 kg", "wrench sized at ~1.6 kg body weight (sim robot is 3.657 kg)")):
-        for ln, line in enumerate(tp.splitlines(), 1):
-            if re.search(pat, line):
-                ev.append(f"{label} -- task_plan.md:{ln}"); found += 1
-                break
-    ev.append(f"56-dim TensorRT spec still present: {'randn(56)' in tp}  (fixed 2026-08-09)")
-    return ("CONFIRMED" if found >= 2 else "REFUTED"), ev
+# DOC-4 was FIXED on 2026-08-11. All four axes are closed: the 56-dim TensorRT
+# spec (2026-08-09), the "0.5->1.3 m/s" push ramp, the "0.8-4.8 N at ~1.6 kg"
+# wrench sizing, and Task 2.8's PLANNED status after four arms shipped a winner.
+# Check retired per this script's convention.
 
 
 # -------------------------------------------- verified refutations (regression)

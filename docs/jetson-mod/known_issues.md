@@ -24,7 +24,7 @@ Two verification passes exist, and both are runnable:
 | Pass | Covers | Command |
 |---|---|---|
 | Static / data | 34 checks over source, MJCF, USD, ONNX, JSON, pickles, and the archived eval results | `python3 scripts/verify_known_issues.py` |
-| Runtime (GPU) | plant mass, wrench composer, reward wiring, obstacle placement, contact-sensor timing | `cd ~/IsaacLab && ./isaaclab.sh -p <repo>/scripts/audit_plant_mass.py --headless` |
+| Runtime (GPU) | plant mass and per-body inertia only — the CFG-1..CFG-5 runtime figures came from ad-hoc probes, not from this script (see the Appendix) | `cd ~/IsaacLab && ./isaaclab.sh -p <repo>/scripts/audit_plant_mass.py --headless` |
 
 `verify_known_issues.py` needs no GPU and no Isaac Sim — plain `python3` with
 `numpy` and `mujoco`, the same dependencies `tests/` already uses. Current state:
@@ -76,13 +76,15 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | ID | Issue | Sev | Scope |
 |---|---|---|---|
 | [PLANT-1](#plant-1) | Phantom 1.000 kg on the articulation root `base` | CRITICAL | every Isaac policy, v1–v5d |
-| [PLANT-2](#plant-2) | The one DR term that could cover PLANT-1 misses on both axes | CRITICAL | v4_robust, v5c, v5d |
+| [PLANT-2](#plant-2) | The one DR term that could cover PLANT-1 misses on both axes | CRITICAL | v4_robust, v5a–v5d |
 | [PLANT-3](#plant-3) | 61.7% of training resets start inside the ground plane | MEDIUM | training only |
 | [PLANT-4](#plant-4) | Antennas simulated with STS3250 parameters (~48× torque, ~10⁴× armature) | MEDIUM | all |
 | [PLANT-5](#plant-5) | Torque ceiling is 1.78× datasheet stall, pinned to 12.1 V, never randomized | MEDIUM | all |
 | [PLANT-6](#plant-6) | Joint dry friction is inactive during motion; BAM's viscous term is dropped | MEDIUM | all |
 | [PLANT-7](#plant-7) | No latency model of any kind | MEDIUM | all |
 | [PLANT-8](#plant-8) | The yaw command is a heading servo, never an open-loop rate | MEDIUM | teleop / VLM consumers |
+| [PLANT-9](#plant-9) | The push curriculum is sized against a "0.17 m CoM height"; 0.17 m is the root spawn height and the measured CoM is 0.203 m | LOW | v5a/v5b only |
+| [PLANT-10](#plant-10) | CAD-mod mass deltas are booked at 0.9× solid PLA; measured as-printed is 0.28–0.53×, so `trunk_assembly` is 54–82 g light | HIGH | v4_robust, v5a–v5d, hardware |
 | [CFG-1](#cfg-1) | `torque_z_range` is silently discarded — a dead configured parameter | MEDIUM | all v5 arms incl. v5d |
 | [CFG-2](#cfg-2) | Obstacles are placed twice per episode, with two independent draws | MEDIUM | v5a–v5d, ObstacleEval |
 | [CFG-3](#cfg-3) | In v5c/v5d the disturbance gate is maintained every step and read by nothing | LOW | v5c, v5d |
@@ -102,15 +104,15 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [DEPLOY-2](#deploy-2) | The normalizer epsilon is in the graph but not in the checkpoint | MEDIUM | Phase 4 |
 | [DEPLOY-3](#deploy-3) | 4 of the 59 observation dims cannot be measured on hardware | HIGH | Phase 4 blocker |
 | [DEPLOY-4](#deploy-4) | Exported ONNX has a hard-fixed batch dimension of 1 | LOW | offline tooling |
-| [DEPLOY-5](#deploy-5) | Documented velocity clamp exceeds the trained command hull | MEDIUM | Phase 5 |
-| [TEST-1](#test-1) | The test suite is source-text grepping; 4 of 7 real regressions pass | HIGH | all future changes |
+| [DEPLOY-5](#deploy-5) | Documented velocity clamp exceeds the trained command hull | MEDIUM | **FIXED 2026-08-11** |
+| [TEST-1](#test-1) | The test suite is source-text grepping; 5 of 7 real regressions pass | HIGH | all future changes |
 | [TEST-2](#test-2) | A bare `pytest` from the repo root fails at collection | LOW | developer experience |
 | [TEST-3](#test-3) | `requires_isaac_sim` is documented but applied to zero tests | LOW | false assurance |
 | [REF-1](#ref-1) | Reference library has no `vy=0` and no `wz=0` cell; contact dims are constant | MEDIUM | v3–v5d |
 | [REF-2](#ref-2) | 33.6% of reachable knee references are clamped; velocity targets are not | MEDIUM | v3–v5d |
 | [DOC-2](#doc-2) | The experiment journal has zero v5 entries | MEDIUM | engineering record |
 | [DOC-3](#doc-3) | Task 2.7 docs still assert a 2.657 kg plant | HIGH | **caveated 2026-08-09** |
-| [DOC-4](#doc-4) | `task_plan.md` is stale on four axes | MEDIUM | TRT dim **fixed**; 3 remain |
+| [DOC-4](#doc-4) | `task_plan.md` is stale on four axes | MEDIUM | **FIXED 2026-08-11** (all four) |
 | [DOC-5](#doc-5) | `AGENTS.md` says the USD came from URDF; it came from MJCF | LOW | **FIXED 2026-08-09** |
 | [DOC-6](#doc-6) | `AGENTS.md` actuator snippet sets a field the code does not use | LOW | **FIXED 2026-08-09** |
 
@@ -283,7 +285,7 @@ directions.
 <a id="plant-2"></a>
 ## PLANT-2 · The DR term that could cover PLANT-1 misses on both axes — CRITICAL
 
-**Scope:** `OpenDuckRobustEnvCfg` and everything below it — v4_robust, v5c, v5d.
+**Scope:** `OpenDuckRobustEnvCfg` and everything below it — v4_robust, v5a, v5b, v5c, v5d.
 
 **Evidence [GPU]**, resolved at runtime:
 
@@ -460,6 +462,95 @@ persistence-after-alignment, not "the endpoint was never trained".
 > decaying heading-error signal" and concluded that a sustained yaw rate was out
 > of distribution. That was wrong; the disproof was the `torch.clip` in the
 > section's own quoted snippet. Corrected 2026-08-09 by the measurement above.
+
+<a id="plant-9"></a>
+## PLANT-9 · The push curriculum is sized against the spawn height, not the CoM — LOW
+
+`isaac_lab_env/open_duck_mini_v2/env_cfg.py:73` derives the recoverable
+push velocity from a capture-point argument that names **"a 0.17 m CoM height"**.
+0.17 m is not the CoM height — it is the **root spawn height**
+(`init_state.pos=(0, 0, 0.17)` in `robot_cfg.py`).
+
+Measured by forward kinematics at the `robot_cfg.py` standing pose, transforming
+every collision-mesh vertex to world:
+
+```
+lowest collision vertex   = +3.17 mm
+CoM above the sole        = 203.1 mm      <- the h the capture point wants
+value used in the comment = 170   mm
+```
+
+Capture-point velocity goes as `sqrt(g/h)`, so using 0.17 m where the CoM is
+0.203 m overstates the recoverable velocity by `sqrt(203.1/170) - 1` ≈ **9%**.
+
+**Scope.** `PUSH_END` is consumed only by the v5a/v5b arms, which were
+abandoned; the shipped v5d wrench does not use it. No published gate number
+moves. Recorded because the same constant is the natural thing to reach for when
+sizing a future push curriculum, and because it reads as a measured property of
+the robot when it is not one.
+
+**Fix:** use the measured 0.203 m, or compute the CoM height at reset rather
+than hard-coding either number.
+
+<a id="plant-10"></a>
+## PLANT-10 · CAD-mod mass deltas are booked at a density the parts are not printed at — HIGH
+
+`scripts/generate_cad_mods.py:51` converts Part-2 CAD volume deltas to mass with
+
+```python
+PLA_EFFECTIVE_DENSITY = 1116.0  # kg/m^3 (0.9 x solid)
+```
+
+and writes the result to `scripts/cad_mod_deltas.json` (`density_kg_m3: 1116.0`,
+total **−88.48 g**). That number is the `−88.5` term in the `AGENTS.md` trunk
+mass chain and in `component_layout_v2.md`.
+
+The script's own comment is honest that this is a consistency choice rather than
+a measurement. It can now be measured. Slicing the **adbc082 baseline geometry**
+and the **current geometry** with identical settings (PrusaSlicer 2.7.2, PLA
+1.24 g/cm³, supports/brim/skirt/raft/wipe-tower all off, so the reported
+`filament used [g]` is the part) gives:
+
+```
+part                 baseline    current     delta
+body_front             62.23 g    63.64 g    +1.41
+body_middle_bottom     90.96 g    92.83 g    +1.87
+trunk_bottom           34.40 g    13.60 g   -20.80
+body_back              70.11 g    81.03 g   +10.92
+                                  MEASURED   -6.60 g      BOOKED  -88.48 g
+```
+
+The sign and magnitude of the error survive every plausible print profile, so
+this is not an artefact of the settings chosen:
+
+| profile | measured delta | booked | error |
+|---|---|---|---|
+| 2 perim / 15% infill (`print_guide.md`'s profile) | −6.60 g | −88.48 g | **+81.88 g** |
+| 3 perim / 15% | −10.73 g | −88.48 g | +77.75 g |
+| 2 perim / 25% | −17.49 g | −88.48 g | +70.99 g |
+| 3 perim / 40% | −34.70 g | −88.48 g | +53.78 g |
+
+**Mechanism.** One density is applied to both sides of the diff, but the two
+sides do not print at the same density. Material *removed* came from bulky
+interiors that are mostly infill — `trunk_bottom`'s removal measures **0.28×
+solid**. Material *added* is thin vents, bosses and the hump extension, which are
+nearly all perimeter and print close to solid. Both errors push the same way.
+Reaching −88.48 g would require printing essentially solid, which contradicts
+`docs/print_guide.md:5` ("standard PLA with 15% infill").
+
+**Consequence.** `trunk_assembly` is **54–82 g heavier** than the 1.089544 kg the
+MJCF declares — on top of, and independent of, [PLANT-1](#plant-1)'s phantom
+kilogram. Both errors are in the same direction for the real robot: the hardware
+will be heavier than the number every mass document quotes.
+
+**Fix:** stop deriving the delta from an assumed density. Slice the baseline and
+current STLs and book the measured difference, or weigh the printed parts. Note
+that the delta is robust to the print profile *because both sides use the same
+profile*, so this works even before the print process is finally chosen.
+
+> **Scope caution.** The 698.5 g upstream trunk booking carries its own unknown
+> density, so this fix corrects the *delta*, not the absolute baseline. The
+> absolute number is only settled by the bottom-up rebuild or by weighing.
 
 ---
 
@@ -793,17 +884,22 @@ AGENTS.md clamp : forward [-0.2, 0.3], lateral [-0.2, 0.2], turn [-0.3, 0.3]
 trained hull    : vx (-0.148, 0.222), vy (-0.111, 0.111), wz (-0.5, 0.5)
 forward overshoot 0.30/0.222 = 1.35x ; backward 0.20/0.148 = 1.35x ; lateral 1.80x
 ```
-The turn clamp (±0.3) is correctly *inside* the trained ±0.5. Two numbers 155
+The turn clamp (±0.3) is correctly *inside* the trained ±0.5. Two numbers 158
 lines apart in the same document disagree.
+
+> **FIXED 2026-08-11.** `AGENTS.md` now documents the clamp as the trained hull
+> exactly — forward 1.00×, backward 1.00×, lateral 1.00×, turn still correctly
+> inside. The verifier check has been retired per this register's convention
+> that a fixed issue carries no check.
 
 ---
 
 # TEST
 
 <a id="test-1"></a>
-## TEST-1 · The suite is source-text grepping; 4 of 7 regressions pass — HIGH
+## TEST-1 · The suite is source-text grepping; 5 of 7 regressions pass — HIGH
 
-43 of the 47 tests in `tests/test_isaac_lab_env.py` are
+33 of the 47 tests in `tests/test_isaac_lab_env.py` are
 `assert "<literal>" in open(file).read()`; the file imports no project code.
 Because the literals are not unique in the 1046-line `env_cfg.py`, several
 assertions cannot fail for the reason their docstrings claim.
@@ -923,6 +1019,11 @@ still marked `PLANNED` after four runs shipped a winning policy.
 
 The 56-dim spec has been corrected, since it is the number someone would code
 Phase 4 against.
+
+> **FIXED 2026-08-11 — all four axes.** The push ramp now reads 0.4→0.7 m/s with
+> a pointer to `v5_retrain_plan.md` §11.4; the wrench row is sized against the
+> declared 2.657 kg rather than "~1.6 kg"; Task 2.8 is marked COMPLETE with v5d
+> named as the shipped winner. The verifier check has been retired.
 
 <a id="doc-5"></a>
 ## DOC-5 · `AGENTS.md` says the USD came from URDF — LOW

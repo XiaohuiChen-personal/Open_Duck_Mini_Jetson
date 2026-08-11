@@ -65,6 +65,8 @@ Standard Isaac Lab locomotion observations plus gait phase:
 
 | Component | Dims |
 |-----------|------|
+| Base linear velocity | 3 |
+| Base angular velocity | 3 |
 | Projected gravity | 3 |
 | Joint positions | 16 |
 | Joint velocities | 16 |
@@ -162,7 +164,7 @@ Prior to this first usable policy, three failed reward designs were attempted an
 cd ~/IsaacLab && ./isaaclab.sh -p ~/Projects/Open_Duck_Mini_Jetson/scripts/play_policy.py \
     --task Isaac-Velocity-Rough-OpenDuck-Play-v0 \
     --num_envs 50 \
-    --checkpoint ~/Projects/Open_Duck_Mini_Jetson/exported_policies/imitation_ppo/model_2999.pt \
+    --checkpoint ~/Projects/Open_Duck_Mini_Jetson/exported_policies/v1_imitation_ppo/model_2999.pt \
     --headless --video --video_length 500
 ```
 

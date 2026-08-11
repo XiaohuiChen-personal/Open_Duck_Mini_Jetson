@@ -4,6 +4,17 @@ You can find the `.stl` files under the `print/` directory at the root of this r
 
 All the parts are printed in standard PLA with 15% infill, except for `foot_bottom_tpu.stl`, which is to be printed in TPU at 40% infill.
 
+> **Perimeter count is not specified above, and it should be.** Slicing this
+> part set at 15% infill gives **1,158 g at 2 perimeters and 1,309 g at 3** —
+> a 151 g swing on a 2.8 kg robot, larger than any material choice. Pick one and
+> record it here before printing.
+>
+> **If you are buying these parts from a printing service rather than printing
+> them**, infill stops being a lever for powder processes (MJF/SLS parts are
+> solid) and the same geometry lands at ~1,588 g in MJF PA12. See
+> `docs/jetson-mod/known_issues.md` [PLANT-10](jetson-mod/known_issues.md#plant-10)
+> for why the mass model is sensitive to this.
+
 ## Parts to print
 - foot_top.stl x2
 - foot_side.stl x2
@@ -41,3 +52,12 @@ All the parts are printed in standard PLA with 15% infill, except for `foot_bott
 - right_eye.stl x1
 - speaker_interface.stl x1
 - speaker_stand.stl x1
+
+### Jetson modification (not part of the upstream build)
+- thermal_partition.stl x1 — 2 mm PLA, backed with a mica sheet; separates the
+  Jetson from the battery compartment. `print/thermal_partition.stl` exists in
+  this repo but was missing from the list above.
+
+Totals: **36 upstream parts / 51 pieces**, plus the partition = **52 pieces**,
+**1,571.94 cm³** of solid volume. Note the nine ×2/×4 rows — counting distinct
+files instead of pieces undercounts the set by 13%.

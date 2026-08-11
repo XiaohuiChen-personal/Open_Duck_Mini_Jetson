@@ -62,7 +62,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 
 **Archived policies** (`exported_policies/`, checkpoint + agent.yaml + env.yaml):
 v1_imitation_ppo, v2_bdx_imitation_ppo, v3_bdx_imitation_ppo (PPO only).
-Two key AMP checkpoints are now also archived here (2026-06-15):
+Two key AMP checkpoints were also archived here (2026-06-15) but were REMOVED with the AMP track on 2026-07-26 (commit `34f70fd`) and now live only in the `open-duck-ppo-vs-amp` archive repo / tag `course-study-freeze`:
 `amp_v1_run8_command/` (the precise command-following shuffler) and
 `amp_v4_run12_command/` (converged command-follower; video audit 2026-07-06:
 locomotes in a crawl — see the run-12 addendum), each with its

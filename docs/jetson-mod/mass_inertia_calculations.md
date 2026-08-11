@@ -41,8 +41,8 @@
 
 | Component | Mass (kg) | Dimensions (m) | Position in trunk frame (m) | Shape |
 |---|---|---|---|---|
-| Jetson Orin Nano Dev Kit | 0.176 | 0.103 × 0.0905 × 0.03477 | (-0.03, 0.0, 0.04) | Box |
-| 2× extra 18650 cells | 0.045 each | ⌀0.018 × 0.065 | (-0.13, 0.0, 0.03) | Cylinder (Y-axis) |
+| Jetson Orin Nano Dev Kit | 0.176 (design input used throughout this derivation and in the model files; NVIDIA SP-11324-001 v1.3 §4 gives 175 g) | 0.103 × 0.0905 × 0.03477 | (-0.03, 0.0, 0.04) | Box |
+| 2× extra 18650 cells | 0.045 each | ⌀0.018 × 0.065 | (-0.13, 0.0, 0.03) | Cylinder (Z-axis) |
 | DC-DC boost converter | 0.015 | 0.043 × 0.021 × 0.014 | (-0.05, 0.03, 0.035) | Box |
 | Thermal partition + mica | 0.037 | 0.003 × 0.110 × 0.090 | (-0.08, 0.0, 0.04) | Box (thin slab) |
 | Wiring/cables | 0.008 | — | at trunk CoM | Point mass |
@@ -62,10 +62,10 @@ Iyy = m/12 × (Lx² + Lz²)
 Izz = m/12 × (Lx² + Ly²)
 ```
 
-### Cylinder about CoM (axis along Y)
+### Cylinder about CoM (axis along Z)
 ```
-Iyy = m × r² / 2        (axial)
-Ixx = Izz = m/12 × (3r² + h²)  (transverse)
+Izz = m × r² / 2        (axial)
+Ixx = Iyy = m/12 × (3r² + h²)  (transverse)
 ```
 
 ### Parallel Axis Theorem
@@ -104,7 +104,7 @@ CoM_new = (-0.0535209, 0.0003704, 0.0380119) m
 | Component | Ixx | Iyy | Izz |
 |---|---|---|---|
 | Jetson | 1.3785e-04 | 1.7333e-04 | 2.7572e-04 |
-| Battery (each) | 1.6755e-05 | 1.8225e-06 | 1.6755e-05 |
+| Battery (each) | 1.6755e-05 | 1.6755e-05 | 1.8225e-06 |
 | DC-DC | 7.9625e-07 | 2.5563e-06 | 2.8625e-06 |
 | Partition+mica | 6.2283e-05 | 2.5003e-05 | 3.7336e-05 |
 
@@ -112,6 +112,21 @@ CoM_new = (-0.0535209, 0.0003704, 0.0380119) m
 ```
 I_new_trunk = (0.00369962, 0.00380763, 0.00270784) kg·m²
 ```
+
+> **Axis-order correction (2026-08-11).** The battery row in Step 3 and the
+> cylinder formula above originally placed the axial moment on **Iyy**, i.e.
+> they assumed the 18650 cells lie along trunk Y. The cells stand along trunk
+> **Z** — `cell.stl` measures 18.00 × 18.00 × 65.00 mm with its axis of
+> revolution on Z, and both instance quaternions in `robot_motors.xml` map that
+> axis onto trunk ∓Z. The formula and the Step-3 row are now correct.
+>
+> **Step 4 and everything derived from it below were computed with the old Y
+> ordering and have been left untouched**, because they are the record of what
+> was actually shipped. Recomputing Step 4 with the corrected ordering gives
+> `(0.00369962, 0.00383749, 0.00267797)` — a −0.8% / +1.1% shift on Iyy/Izz.
+> The magnitudes were always right; only the axis assignment was wrong. The
+> authoritative pipeline (`scripts/compute_trunk_inertial.py:107`) models the
+> extra cells as a correctly-oriented vertical 2×2 grid and is unaffected.
 
 **Step 5: Triangle inequality verification** ✓
 - Ixx + Iyy = 0.00750725 ≥ Izz = 0.00270784 ✓
@@ -145,7 +160,7 @@ I_new_head = (0.00204329, 0.00142815, 0.00087563) kg·m²
 
 ## STS3250 Servo Migration
 
-The STS3215 servos (55g each) are replaced with STS3250 servos (74.5g each), adding +19.5g per servo. The battery is upgraded from 2S2P (4x 18650, 7.4V) to 3S2P (6x 18650, 11.1V), adding 2 more cells (+90g) and a larger BMS (+5g).
+The STS3215 servos (55g each) are replaced with STS3250 servos (74.5g each), adding +19.5g per servo. The stock pack is 2S1P (2x 18650, 7.4V); the Jetson-mod step above already added 2 cells (2S2P, 7.4V), and this step adds 2 more to reach 3S2P (6x 18650, 11.1V) — 4 extra cells and +180g over the stock pack in total — plus a larger BMS (+5g).
 
 ### Servo Mass Changes
 
@@ -183,7 +198,7 @@ M_trunk_sts3250 = 1.024526 + 3×0.0195 + 0.095
                 = 1.178026 kg
 ```
 
-Inertia scaled by mass ratio (1.178026 / 1.024526 = 1.149823…; the model
+Inertia scaled by mass ratio (1.178026 / 1.024526 = 1.149825…; the model
 files use the exact ratio, which this doc previously rounded to 1.1498):
 ```
 I_trunk_sts3250 = (0.00425392, 0.00437811, 0.00311354) kg·m²
@@ -196,7 +211,7 @@ M_head_sts3250 = 0.342583 + 0.0195
                = 0.362083 kg
 ```
 
-Inertia scaled by mass ratio (0.362083 / 0.342583 = 1.056918…; exact ratio,
+Inertia scaled by mass ratio (0.362083 / 0.342583 = 1.056920…; exact ratio,
 as in the model files):
 ```
 I_head_sts3250 = (0.0021596, 0.00150944, 0.000925471) kg·m²
@@ -232,5 +247,5 @@ Each non-trunk, non-head servo body gets +19.5g with inertia scaled proportional
 |---|---|---|---|---|
 | trunk_assembly | 698.5 | 1024.5 | 1178.0 | +479.5 |
 | head_assembly | 352.6 | 342.6 | 362.1 | +9.5 |
-| Other bodies (12 servo bodies) | 1010.4 | 1010.4 | 1205.4 | +195.0 |
+| Other bodies (10 servo bodies) | 1010.4 | 1010.4 | 1205.4 | +195.0 |
 | **Total** | **2061.5** | **2377.5** | **2745.5** | **+684.0 (+33.2%)** |

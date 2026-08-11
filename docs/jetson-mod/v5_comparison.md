@@ -3,8 +3,11 @@
 Standardized evaluation protocol applied uniformly to the policies whose
 JSONs live in this report's results directory (passed via --output_dir;
 one table = one robot model — never mix models across result dirs).
-Produced by `scripts/evaluate_policies.py`; each JSON records the exact
-protocol parameters used for that run.
+Produced by `scripts/evaluate_policies.py`; each JSON records the sampling
+parameters used for that run (conditions, windows, envs, seed) plus its
+`task_id`. It does NOT record `--keep-pushes` or any disturbance setting, so a
+`*PushEval*` JSON on its own cannot say whether pushes were active — the runs
+here passed `--keep-pushes` (`scripts/v5_pipeline.sh:143-144`).
 
 ## Protocol (defaults — all CLI-overridable)
 
@@ -40,7 +43,20 @@ the quality metrics. The gate is necessary, not sufficient — a policy can
 pass it and still fail on falls or on the qualitative video audit, which
 remains a mandatory protocol step.
 
-Aggregate values below are means over the five conditions.
+Aggregate values below are means over the six conditions (640 episodes each,
+3,840 per policy).
+
+> **Caveats on every row below.** (1) PhysX simulated a **3.657067 kg** plant,
+> not the 2.657067 kg the MJCF and USD author: the articulation root `base` has
+> no `<inertial>` and takes PhysX's 1.000 kg default (`known_issues.md`
+> PLANT-1). These are results for a 3.657 kg plant; do not quote them as
+> hardware numbers. (2) The `*_wrencheval` rows scale the wrench by that
+> inflated mass (`contact_events.py:112-113`), so the configured 20% of body
+> weight is ~27.5% of the 2.657 kg design mass. (3) On the `*_obstacleeval`
+> rows the obstacle is placed twice per episode (`known_issues.md` CFG-2), so
+> the box's realized offset is the second draw's, taken after the robot has
+> already stepped; exposure itself is unaffected there because
+> `obstacle_frac = 1.0` (`env_cfg.py:973`).
 
 <!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
 ## Results
