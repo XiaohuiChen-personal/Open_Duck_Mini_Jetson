@@ -2034,7 +2034,10 @@ class TRTInfer:
             self.engine = trt.Runtime(logger).deserialize_cuda_engine(f.read())
         self.context = self.engine.create_execution_context()
         # Allocate GPU buffers for input/output
-        self.d_input = cuda.mem_alloc(1 * 56 * 4)   # 56 floats, FP32
+        # 59 = the pinned v5d actor observation width. This was 56 (a stale
+        # pre-v4 layout) until 2026-08-09; see docs/jetson-mod/known_issues.md
+        # DEPLOY-1..3 for the full contract the runtime must satisfy.
+        self.d_input = cuda.mem_alloc(1 * 59 * 4)   # 59 floats, FP32
         self.d_output = cuda.mem_alloc(1 * 16 * 4)   # 16 floats, FP32
 
     def infer(self, obs: np.ndarray) -> np.ndarray:
@@ -2073,7 +2076,7 @@ python -c "
 from jetson_runtime.trt_infer import TRTInfer
 import numpy as np
 policy = TRTInfer('open_duck_walk_policy.trt')
-obs = np.random.randn(56).astype(np.float32)
+obs = np.random.randn(59).astype(np.float32)  # 59 = pinned v5d actor width
 action = policy.infer(obs)
 print('Action shape:', action.shape)
 print('Action values:', action)
@@ -2089,7 +2092,7 @@ python -c "
 from jetson_runtime.trt_infer import TRTInfer
 import numpy as np, time
 policy = TRTInfer('open_duck_walk_policy.trt')
-obs = np.random.randn(56).astype(np.float32)
+obs = np.random.randn(59).astype(np.float32)  # 59 = pinned v5d actor width
 # Warm up
 for _ in range(100): policy.infer(obs)
 # Benchmark

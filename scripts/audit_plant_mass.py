@@ -6,7 +6,7 @@ carries the ``<freejoint>`` and declares no ``<inertial>`` and no ``<geom>``.
 MuJoCo gives such a body mass 0. PhysX instead fills the unauthored value with
 its own default, so the simulated plant is heavier than the robot. Nothing on
 disk is wrong; the divergence appears only at load time, which is why it went
-unnoticed. See docs/jetson-mod/sim-plant-fidelity.md.
+unnoticed. See docs/jetson-mod/known_issues.md (PLANT-1).
 
 Run it after ANY change to robot_motors.xml, the STLs, or the USD conversion:
 

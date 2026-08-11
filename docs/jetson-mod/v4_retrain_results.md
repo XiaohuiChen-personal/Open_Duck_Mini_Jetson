@@ -18,6 +18,11 @@ was off +78%/−10%/−27% for all of study runs 1-16 — every pre-correction
 policy: v1-v3 PPO and all AMP runs) + the Part-2 CAD mesh cuts
 (robot 2.657067 kg, −88.5 g). USD regenerated and hash-guarded.
 
+> **Caveat added 2026-08-09.** 2.657067 kg is what the MJCF/USD *author*; PhysX
+> simulates **3.657067 kg** because the articulation root `base` carries no
+> `<inertial>` and gets a 1.000 kg default. Both v4 runs below trained on the
+> heavier plant. See `known_issues.md` PLANT-1.
+
 ## Run A — `v4_inertials` (model-correction isolation)
 
 **Config**: task `Isaac-Velocity-Rough-OpenDuck-v0`, UNCHANGED v3 recipe

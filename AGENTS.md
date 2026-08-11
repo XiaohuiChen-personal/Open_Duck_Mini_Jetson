@@ -13,7 +13,7 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 
 ## Quick Reference
 
-- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod). **Isaac simulates 3.66 kg, not 2.66 kg** — a PhysX default on the massless MJCF root frame. Known, unfixed, affects every Isaac-trained policy: `docs/jetson-mod/sim-plant-fidelity.md`
+- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod). **Isaac simulates 3.66 kg, not 2.66 kg** — a PhysX default on the massless MJCF root frame. Known, unfixed, affects every Isaac-trained policy: `docs/jetson-mod/known_issues.md`
 - **Onboard computer:** NVIDIA Jetson Orin Nano Super (8 GB, 67 TOPS) — relocated from head to trunk
 - **Training hardware:** NVIDIA DGX Spark (Grace Blackwell)
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
@@ -93,9 +93,11 @@ Rules:
 - `exported_policies/` — Trained ONNX and TensorRT policy files
 - `experiments/` — Legacy MuJoCo-based experiment scripts (reference only)
 - `docs/jetson-mod/` — Modification documentation and task plan
-  - `sim-plant-fidelity.md` — **where the simulated plant differs from the real
-    robot.** Read before any sim2real work, any retrain, or quoting a sim number
-    as a hardware number. Reproduce with `scripts/audit_plant_mass.py`.
+  - `known_issues.md` — **the consolidated register of every known defect**, each
+    mechanically re-verified before inclusion (2026-08-09). Read this first;
+    it carries severity, scope, evidence and a reproduction command per issue,
+    plus a list of claims that were tested and *refuted* so they are not raised
+    again. Start here before filing or fixing anything.
 - `tests/` — Automated test suite
 
 **Course-study archive:** the EN.665.645 PPO-vs-AMP study (runs 1-16, journal, eval results,
@@ -161,7 +163,7 @@ _Hardware specifications for the robot, Jetson Orin Nano, servos, batteries, and
 |---|---|
 | Total height | ~420 mm (legs extended) |
 | Total mass (after mod) | ~2,657 g (Part-2 CAD mods removed ~88.5 g of shell/chassis PLA) |
-| **Mass Isaac actually simulates** | **3,657 g** — the row above **plus a 1,000 g PhysX default** on the massless MJCF root frame `base`. Real robot = 2,657 g; simulated plant = 3,657 g. Use the right one for the question you are asking, and see `docs/jetson-mod/sim-plant-fidelity.md` |
+| **Mass Isaac actually simulates** | **3,657 g** — the row above **plus a 1,000 g PhysX default** on the massless MJCF root frame `base`. Real robot = 2,657 g; simulated plant = 3,657 g. Use the right one for the question you are asking, and see `docs/jetson-mod/known_issues.md` |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
 | Servos | 14x Feetech STS3250 (12V, 50 kg.cm stall, 74.5g each) |
 | Ear servos | 2x SG90 micro servos (in head) |
@@ -223,7 +225,7 @@ Source: `experiments/v2/params_sts3250_id008.json` (kscalelabs/sysid STS3250 id0
 | kd (velocity gain) | 1.346 | Isaac Lab actuator config |
 | armature | 0.040 | MuJoCo/Isaac Sim joint model |
 | frictionloss | 0.200 | MuJoCo/Isaac Sim joint model |
-| torque limit | 8.716 Nm | Actuator effort_limit — **1.78x the 50 kg.cm (4.90 Nm) datasheet stall in the specs table above.** BAM's figure is electrical stall from its identified model (kt*V/R = 1.0006*12.1/1.389); the datasheet is rated stall. The simulator enforces BAM's, so a policy may lean on torque the hardware cannot deliver. Unresolved — see `docs/jetson-mod/sim-plant-fidelity.md` §4.5 |
+| torque limit | 8.716 Nm | Actuator effort_limit — **1.78x the 50 kg.cm (4.90 Nm) datasheet stall in the specs table above.** BAM's figure is electrical stall from its identified model (kt*V/R = 1.0006*12.1/1.389); the datasheet is rated stall. The simulator enforces BAM's, so a policy may lean on torque the hardware cannot deliver. Unresolved — see `docs/jetson-mod/known_issues.md` PLANT-5 |
 | kt (torque constant) | 1.0006 | BAM motor model |
 | R (resistance) | 1.3890 | BAM motor model |
 
@@ -242,7 +244,7 @@ The entire pipeline uses NVIDIA tools. Here's what each tool does and how it fit
 | Physics simulation | **Isaac Sim** (PhysX 5) | MuJoCo |
 | RL training framework | **Isaac Lab** | MuJoCo Playground + Stable-Baselines3 |
 | RL algorithms | **RSL-RL** (PPO; SKRL was used only for the archived AMP course study) | SB3 |
-| Robot model format | **USD** (converted from URDF) | MJCF (.xml) |
+| Robot model format | **USD** (converted from **MJCF**, `robot_motors.xml`) | MJCF (.xml) |
 | Training hardware | **DGX Spark** (Grace Blackwell, 1 PFLOP FP4) | Single GPU |
 | Policy deployment | **TensorRT** on Jetson GPU | onnxruntime on Pi CPU |
 | Physical AI reasoning | **Cosmos Reason2-2B** (W4A16) | None (new capability) |
@@ -330,7 +332,10 @@ stiffness = 45.53     # kp from BAM (STS3250 id008)
 damping = 1.346       # kd from BAM (STS3250 id008)
 armature = 0.040      # From BAM id008
 friction = 0.200      # frictionloss from BAM id008
-effort_limit = 8.716  # Torque limit in Nm (BAM forcerange)
+effort_limit_sim = 8.716  # Torque limit in Nm (BAM forcerange). NOTE the _sim
+                          # suffix: robot_cfg.py sets effort_limit_sim and leaves
+                          # effort_limit at None. Pasting `effort_limit=` sets a
+                          # different, currently-unused field.
 ```
 
 ### Domain Randomization
@@ -352,7 +357,7 @@ generic literature values. Source of truth: the [RL Training](#rl-training) sect
 > **1.000 kg** on the body actually called `base` — 6.7x this term's upper bound,
 > constant rather than sampled, and on a different body — so no amount of this
 > randomization exposes a policy to it. Full analysis, measurement, and fix
-> options: **`docs/jetson-mod/sim-plant-fidelity.md`**.
+> options: **`docs/jetson-mod/known_issues.md`**.
 >
 > Generalize the lesson when adding terms: a randomization can be present,
 > correctly configured and gate-validated, and still randomize the wrong body.
@@ -584,7 +589,10 @@ stiffness = 45.53     # kp from BAM (STS3250 id008)
 damping = 1.346       # kd from BAM (STS3250 id008)
 armature = 0.040      # From BAM id008
 friction = 0.200      # frictionloss from BAM id008
-effort_limit = 8.716  # Torque limit in Nm (BAM forcerange)
+effort_limit_sim = 8.716  # Torque limit in Nm (BAM forcerange). NOTE the _sim
+                          # suffix: robot_cfg.py sets effort_limit_sim and leaves
+                          # effort_limit at None. Pasting `effort_limit=` sets a
+                          # different, currently-unused field.
 ```
 
 ### Policy Network Architecture

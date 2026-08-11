@@ -1,5 +1,11 @@
 # v5 Contact-Rich Retrain — Execution Plan (Task 2.8)
 
+> **Defects do not live in this file.** Every issue mentioned here is recorded,
+> verified and tracked in **`docs/jetson-mod/known_issues.md`** — that is the
+> single register. This document is the v5 *plan and run record*: it is
+> currently the only place the v5a–v5d runs are written up at all
+> (`known_issues.md` DOC-2), so it is kept for that history.
+
 **Status:** PLAN v2 (drafted 2026-07-28; revised same day after a 3-lens
 adversarial review — code reality, protocol coverage, experiment design — all
 findings folded in below and marked "(review)"). Executes `task_plan.md`
@@ -681,57 +687,31 @@ BDX publishes **no** disturbance magnitudes at all — it is a structural
 precedent (forces and torques on torso, head, hips and feet) and must not be
 cited as a numeric anchor.
 
-## 12. FINDING (2026-07-28): the simulated robot is 1.000 kg heavier than the design
+## 12. DECISION (2026-07-28): the phantom kilogram is not fixed inside v5
 
-Surfaced by the v5 wrench event, which measures body weight at init instead of
-hardcoding it. **Not introduced by v5 — it affects every policy this project
-has ever trained, v4_robust included.**
+The full analysis, measurement and fix options for the 1.000 kg phantom mass on
+the articulation root now live in **`docs/jetson-mod/known_issues.md`
+(PLANT-1)**, together with the DR term that fails to cover it (PLANT-2). The
+duplicate write-up that used to sit here was removed on 2026-08-09 — it had
+already begun to drift from the register.
 
-```
-MJCF robot.xml total (21 bodies with <inertial>) : 2.6571 kg   <- the documented design
-Isaac default_mass total (22 bodies)             : 3.6571 kg
-PhysX solver masses                              : 3.6259 kg
-```
+What belongs to *this* document is the decision it forced:
 
-The whole difference is one body:
+**Do NOT fix it inside v5.** Changing the robot's mass changes the plant, which
+would (a) confound the contact-rich experiment with a dynamics change, (b) break
+fine-tuning from the v4_robust checkpoint as a controlled comparison, and (c)
+make every v4 eval number cross-model — which this project's own rule forbids
+("Evaluate on the SAME robot model/USD the policy was trained on", AGENTS.md).
+v5 continues on the current plant.
 
-```
-base   1.000000 kg   <- exactly the PhysX default
-```
+It does **not** invalidate the v5 experiment: v5 fine-tunes from v4_robust on
+the same plant, so v5-vs-v4 remains a controlled comparison. It does mean no v5
+number may be quoted as a hardware number.
 
-`base` is the articulation root (`articulation_root_prim_path = /base/base`).
-It carries no `<inertial>` in the MJCF — MuJoCo treats such a body as
-massless, which is what AGENTS.md records ("the conversion's root body 'base'
-is massless"). USD/PhysX cannot represent a massless dynamic link, so the
-MJCF->USD conversion (Task 2.1) silently assigned it the default 1 kg. The
-AGENTS.md assumption is true of the MJCF and false of the USD actually
-simulated.
-
-**Consequences**
-- Every trained policy, including the deployment candidate v4_robust, has been
-  optimised for a robot **37.6% heavier** than the one being built. Torque-to
-  -weight ratio, capture-point envelope and the push-recovery numbers all
-  shift on the real 2.66 kg hardware.
-- It dwarfs the DR meant to cover mass uncertainty: `add_base_mass` randomises
-  the trunk by (-0.10, +0.15) kg against a 1.0 kg systematic error.
-- The mass sits at the ROOT link, so it also perturbs CoM height — the term
-  the capture-point push-magnitude analysis in section 11.4 rests on.
-- It does NOT invalidate the v5 experiment: v5 fine-tunes from v4_robust on
-  the same plant, so v5-vs-v4 stays a controlled comparison.
-
-**Decision taken: do NOT fix it inside v5.** Changing the robot's mass changes
-the plant, which would (a) confound the contact-rich experiment with a
-dynamics change, (b) break fine-tuning from the v4_robust checkpoint as a
-controlled comparison, and (c) make every v4 eval number cross-model — which
-this project's own rule forbids ("Evaluate on the SAME robot model/USD the
-policy was trained on", AGENTS.md). v5 continues on the current plant.
-
-**Recommended follow-up (owner decision; should block Phase 4):** a separate
-model-correction task — give the root link a negligible mass (or fold it into
-`trunk_assembly`), re-verify against `mass_inertia_calculations.md`, then
-retrain the winning recipe on the corrected plant and re-run the full gate
-protocol into a new per-model results dir. This is a sim-to-real fidelity
-error, so it belongs before the hardware build, not after.
+**Follow-up, owner decision, should block Phase 4:** a separate model-correction
+task — see PLANT-1 "Fix options" — then retrain the winning recipe on the
+corrected plant and re-run the full gate protocol into a new per-model results
+dir.
 
 Also observed, lower severity: `enable_external_forces_every_iteration` is
 False, so an applied wrench is integrated once per physics step rather than

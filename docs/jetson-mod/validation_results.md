@@ -12,6 +12,13 @@ the push-recovery numbers from the same protocol with `--keep-pushes` on the
 PushEval tasks; the video observations from deterministic rollouts. Model:
 layout v2.1, frame-correct inertia, 2.657 kg (see `component_layout_v2.md`).
 
+> **Caveat added 2026-08-09.** 2.657 kg is the CAD/MJCF-authored mass and is
+> correct for hardware and BOM. **Isaac/PhysX actually simulated 3.657 kg**
+> during this validation — a phantom 1.000 kg on the massless articulation root
+> (`known_issues.md` PLANT-1, reproducible with `scripts/audit_plant_mass.py`,
+> which exits nonzero). The gate results below remain internally valid; they are
+> results for a 3.657 kg plant. Do not quote them as hardware numbers.
+
 ## Selected policy
 
 **`v4_robust` (Run B)** — PPO, RSL-RL, checkpoint
