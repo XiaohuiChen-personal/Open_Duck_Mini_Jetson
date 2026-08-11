@@ -28,6 +28,11 @@ Each task is also marked **AI-agent suitable: YES / NO / PARTIAL**. Take this
 seriously — several tasks in Phase S cannot be done by an agent at all, because
 they require physically holding the robot.
 
+One exception to the five-part rule: a task whose heading ends in **MOVED** is a
+redirect, not a task. It keeps its id so that an implementer told "do S.0" can
+find it and be sent to the right place, and it deliberately has no
+implementation plan. There is exactly one today (Task S.0 → Phase R).
+
 ### Rules that apply to every task
 
 1. **Do not trust `tests/` as a safety net.** 5 of 7 seeded regressions pass the
@@ -45,7 +50,15 @@ they require physically holding the robot.
 5. **Never commit or push unless the owner explicitly asks.**
 6. **RL training runs always pass `--video`.** Aggregate metrics have passed a
    crawling policy before; the video caught it when the numbers did not.
-7. **Never quote a number you have not run.** This plan cites measurements; if
+7. **Line numbers in this repo go stale, so locate things by heading, symbol or
+   `grep`, never by line number.** Some references below still carry a
+   `file.py:NNN` form because that is the only practical way to point at a spot
+   inside a long function — treat the number as a hint and the surrounding quote
+   as the truth. If they disagree, the quote wins. (References into
+   `task_plan.md` and `known_issues.md` had their line numbers removed entirely
+   for exactly this reason: both files were edited after this plan was drafted
+   and every number in them shifted.)
+8. **Never quote a number you have not run.** This plan cites measurements; if
    you need a new one, produce it and say what command produced it.
 
 ---
@@ -91,7 +104,7 @@ nothing downstream should be trusted until it is done.**
   Phase M — mass model, CAD, USD          ← changes the plant
         │
         ├── M1 print-process decision  (HUMAN: this is a spend decision)
-        │        └── gates M4 (shelling) and the final mass numbers
+        │        └── gates M5 (shelling) and the final mass numbers
         │
   Phase R — re-gate and retrain           ← must follow every plant change
         │
@@ -209,7 +222,7 @@ change what the *hardware* will receive:
 ### Task M0 — Assemble the batched plant-fix changeset
 
 **AI-agent suitable: YES** (except the PLANT-7 latency *value*, which needs a
-hardware measurement from Task S3 — use a literature default and mark it).
+hardware measurement from Task S.6 — use a literature default and mark it).
 
 **1. Context for the implementing agent**
 
@@ -283,7 +296,7 @@ corrupt the others.
    term exists only in `DuckContactRewards` (v5a/v5b). If you are not reviving
    that arm, record it as won't-fix instead of editing it.
 9. **PLANT-7, latency.** Add a latency/delay event term. Use a literature
-   default now and mark the value as provisional; Task S3 measures the real
+   default now and mark the value as provisional; Task S.6 measures the real
    loop and replaces it.
 10. **PLANT-10.** Covered by Task M2 — do not duplicate it here.
 
@@ -375,7 +388,7 @@ print('antenna in tracked set:', 'antenna' in leg)"
 | | (a) Keep joints, exclude from action/obs | (b) Remove the joints from the MJCF |
 |---|---|---|
 | Action dim | 16 → 14 | 16 → 14 |
-| Obs dim | 59 → 55 | 59 → 55 |
+| Obs dim | 59 → 53 | 59 → 53 |
 | Antennas in sim | still present, unactuated — must be held | gone |
 | MJCF / USD change | none | yes, plus USD regen and a new `audit_plant_mass` run |
 | Mass change | none | −8.4 g (two 4.216 g links) — changes the plant again |
@@ -401,13 +414,20 @@ the antennas physically deleted from the design.
    order is not the MJCF order (see `AGENTS.md` "Joint Orders" — Isaac Lab's
    order is interleaved and differs from both the MJCF and the Playground order).
 3. `isaac_lab_env/open_duck_mini_v2/env_cfg.py` — restrict the `joint_pos_rel`
-   and `joint_vel_rel` observation terms the same way, so obs goes 59 → 55.
+   and `joint_vel_rel` observation terms the same way. **Note the `actions`
+   observation term is `isaaclab.envs.mdp.observations:last_action` called with
+   `params: {}`, i.e. `action_name=None`, which returns the ENTIRE action tensor
+   — so that block shrinks 16 → 14 by itself.** Total observation therefore goes
+   **59 → 53** (`3 + 3 + 3 + 14 + 14 + 14 + 2`), and the critic group, which
+   adds `base_lin_vel(3)`, goes 62 → 56. Do not write 55; that is the figure you
+   get by subtracting only the four antenna joint dims and forgetting
+   `last_action`.
 4. Hold the antennas at their default: either a constant position target on the
    new actuator group, or `q_default` for those joints. State which you chose in
    a comment; the hardware runtime must do the same thing.
 5. `AGENTS.md` — update the observation-layout table (the canonical one; there
    are two further copies that are pointers to it) and the deployment contract
-   from 59 to 55 dims, and the action dim from 16 to 14.
+   from 59 to 53 dims, and the action dim from 16 to 14.
 6. `docs/jetson-mod/known_issues.md` — mark DEPLOY-3 and PLANT-4 FIXED with
    evidence; retire the PLANT-4 check in `scripts/verify_known_issues.py`.
 
@@ -430,7 +450,7 @@ from the config:
 
 ```python
 obs, _ = env.reset()
-assert obs["policy"].shape[-1] == 55
+assert obs["policy"].shape[-1] == 53
 assert env.action_manager.total_action_dim == 14
 ```
 
@@ -440,14 +460,14 @@ interface, not the physics.
 
 **5. Done when**
 
-- [ ] A freshly built env reports obs 55 and action 14, read from the env
+- [ ] A freshly built env reports obs **53** and action 14, read from the env
 - [ ] `python3 scripts/verify_known_issues.py PLANT-4` reports REFUTED
 - [ ] `docs/jetson-mod/known_issues.md` marks DEPLOY-3 and PLANT-4 FIXED, with
       the measured evidence, and the retired check is deleted
 - [ ] `./isaaclab.sh -p scripts/audit_plant_mass.py --headless` still exits 0
       (option (a) must not move the mass at all)
 - [ ] `python3 -m pytest tests/ -q` passes including the new assertions
-- [ ] The observation layout in `AGENTS.md` says 55, and no stale 59 remains:
+- [ ] The observation layout in `AGENTS.md` says 53, and no stale 59 remains:
       `grep -rn "59" AGENTS.md docs/jetson-mod/known_issues.md | grep -i obs`
 - [ ] **No training has been run yet** — the retrain is Task R2, and it must
       pick up this change together with every other Phase-M change
@@ -1168,7 +1188,7 @@ The gate itself is the smoke test. Specific observables, all from `docs/jetson-m
 
 # Phase R — Re-gate and retrain on the corrected plant
 
-> **Where this block goes.** Insert it at the `<!--PHASE_BLOCKS-->` marker in
+> **Where this block goes.** Insert it at the the end of the Phase R section marker in
 > `docs/jetson-mod/task_plan_v2.md`. That document already names two of these
 > tasks in its cross-references — "R1 re-gate v5d on the corrected plant" in
 > *Phase order, and what gates what*, and "the retrain is Task R2" in the
@@ -1211,7 +1231,7 @@ R4   journal backfill (CPU-only; may be done in any GPU gap)
 Two hard reasons, both verified:
 
 1. **After Phase M's Task M0b the v5d and v4_robust checkpoints stop loading.**
-   M0b takes the observation space from 59 → **55** dims and the action space
+   M0b takes the observation space from 59 → **53** dims and the action space
    from 16 → **14**. `OnPolicyRunner.load()` will fail on the shape mismatch, so
    R1 and R1b become *impossible* the moment M0b lands. R1 is a few GPU-hours
    and it is the only chance to answer "did fixing the phantom kilogram alone
@@ -1511,7 +1531,7 @@ Depends on: nothing. This is the first task of the phase.
      `simulated_total_mass_kg = 2.657067`, `root_body = "trunk_assembly"`,
      `num_bodies = 21`, `obs_dim = 59`, `action_dim = 16`,
      `usd_asset_hash = "10ab887fe4d412b22d3d7c857a9d7f12"`. **After Phase M's
-     M0b these become `obs_dim = 55`, `action_dim = 14`** — that is expected and
+     M0b these become `obs_dim = 53`, `action_dim = 14`** — that is expected and
      is exactly why the field exists.
 
 3. **`scripts/evaluate_policies.py` — make the generated header honest (EVAL-2).**
@@ -2161,6 +2181,7 @@ Read first:
   `Isaac-Velocity-Rough-OpenDuck-Robust-v0`, dynamics DR (pushes ±0.3 m/s on
   8-14 s, trunk mass (−0.10,+0.15) kg, CoM ±10/±5 mm, friction 0.4-1.0/0.3-0.8,
   joint-reset scale 0.9-1.1), asymmetric obs (actor 59 / critic 62 **before**
+  M0b; actor 53 / critic 56 **after**)  (the line below restates this)
   M0b; 55 / 58 after), `velocity_limit_sim = 8.94 rad/s`.
 - `isaac_lab_env/open_duck_mini_v2/env_cfg.py` `OpenDuckRobustEnvCfg`
   (class at line 324, `__post_init__` at 342, DR block at 355-393).
@@ -2205,7 +2226,7 @@ Traps:
 1. Confirm the GPU is idle: `pgrep -f train_ppo.py; pgrep -f evaluate_policies`
    must both print nothing.
 2. Preflight `audit_plant_mass.py` (exit 0) and
-   `verify_action_contract.py --expect_obs_dim <55|59> --expect_action_dim <14|16>`
+   `verify_action_contract.py --expect_obs_dim <53|59> --expect_action_dim <14|16>`
    (exit 0) — use the dims Phase M actually produced, read back from
    `task_plan_v2.md` Task M0b's done-when evidence.
 3. **Create the results directory for this model before anything else.**
@@ -2572,7 +2593,7 @@ Traps:
   regex. Do not "fix" the yaml.
 - The batch dimension is hard-fixed at 1 (`dynamic_axes={}`); batch 2/4 raise
   `InvalidArgument`. Do not "fix" it — record it.
-- **The obs/action dims depend on Phase M.** If M0b landed they are 55/14, not
+- **The obs/action dims depend on Phase M.** If M0b landed they are 53/14, not
   59/16, and the obs layout has 14-element joint blocks. Read them from the
   produced eval JSON's `plant` block; do not hardcode.
 
@@ -2621,7 +2642,7 @@ Traps:
    ```
    **If Phase M's Task M0b landed, `unmeasurable_obs_dims` must become an empty
    object with a note that DEPLOY-3 was closed by removing the antennas** — and
-   `obs_dim`/`action_dim`/`obs_layout` become 55/14. Getting this wrong is the
+   `obs_dim`/`action_dim`/`obs_layout` become 53/14. Getting this wrong is the
    exact class of stale-documentation error the register exists to prevent.
    (The index arithmetic for the 59-dim case, for reference: antenna joints are
    at indices 13 and 14 of `joint_order`; the joint_pos block starts at obs
@@ -2710,7 +2731,7 @@ script exits **0**.
 
 ---
 
-### Task R4 — Backfill the experiment journal and write `v5_contact_results.md`
+### Task R4 — Backfill the experiment journal (`v5_contact_results.md` already exists)
 
 **AI-agent suitable:** YES
 
@@ -2813,7 +2834,7 @@ Traps:
      reward reads) were both live in v5d, so the "one lever" description of the
      wrench arm overstates what the lever did.
 4. **Update `docs/jetson-mod/task_plan_v2.md`**, not `task_plan.md`. Add Phase R
-   with its per-task status at the `<!--PHASE_BLOCKS-->` marker and keep the
+   with its per-task status at the the end of the Phase R section marker and keep the
    status line current. (`task_plan.md`'s Task 2.8 was already corrected to
    COMPLETE by the DOC-4 fix on 2026-08-11 — leave it alone except to add a
    pointer to `v5_contact_results.md` at line ~1448.)
@@ -2977,8 +2998,8 @@ Corrections to the original graph, and why:
   cannot run until a Jetson and a powered servo bus exist. The owner must choose
   between (a) waiting for hardware so a single campaign bundles PLANT-1 re-gate +
   antennas + actuator fidelity + latency, or (b) running an interim campaign now
-  and a second one later. Record the choice in `S0_regate.md`; do not pick it
-  silently.
+  and a second one later. Record the choice in `docs/jetson-mod/m2657_regate.md`
+  (Task R1c's verdict document); do not pick it silently.
 
 **AI-agent suitability at a glance**
 
@@ -3000,194 +3021,38 @@ Corrections to the original graph, and why:
 
 ---
 
-### Task S.0 — Re-gate the shipped policy on the mass-fixed plant
+### Task S.0 — Re-gate the shipped policy on the mass-fixed plant — **MOVED**
 
-**1. Context for the implementing agent**
+**AI-agent suitable:** N/A — this task no longer exists here.
 
-Every gate number published for `v5d_contact_wrench` — fall rate, gait duty,
-tracking error, the whole `docs/jetson-mod/v5_comparison.md` table — was measured
-while PhysX simulated **3.657067 kg**, one full kilogram more than the robot
-weighs, because the massless MJCF root `base` got PhysX's 1.000 kg default.
-PLANT-1 was fixed 2026-08-11 (`base` merged into `trunk_assembly`), so the
-simulator now runs 2.657067 kg. **The policy has never been evaluated on the
-plant it will be deployed against.** If you skip this, a bring-up failure cannot
-be attributed: you will not know whether it is a sim-to-real gap or a
-sim-to-sim gap you introduced yourself.
-
-Read first:
-- `docs/jetson-mod/known_issues.md` § PLANT-1, especially the subsection
-  "**FIXED 2026-08-11 — option 1**" (`:285`) — it tells you what changed and that
-  obs/action stay 59/16 so the checkpoint still loads.
-- `AGENTS.md:43` § "Locomotion Policy Evaluation Protocol (mandatory, all future
-  policies)" — the three steps, and the rule that when metrics and video
-  disagree, **the video wins**.
-- `scripts/evaluate_policies.py` module docstring and `build_arg_parser()` (`:781`).
-
-Depends on: nothing.
-
-Traps:
-- The protocol says "evaluate on the SAME robot model the policy was trained
-  on". This task deliberately violates that, which is the point — so the results
-  **must go into a new directory**, never into `eval_results_v5/`.
-- **EVAL-1**: `--report-only` injects *every* JSON found in `--output_dir` into
-  the comparison table. A stale JSON in the directory silently becomes a row.
-- **The published v5d numbers were measured with SIX conditions, not the
-  five-condition default.** `DEFAULT_CONDITIONS_STR` (`evaluate_policies.py:136`)
-  is `"0.2,0,0;-0.1,0,0;0,0.1,0;0,0,0.3;0.15,0.05,0.2"`, but
-  `docs/jetson-mod/eval_results_v5/v5d_contact_wrench.json` records
-  `protocol.conditions` with a sixth entry `[0.0, 0.0, 0.5]`. If you run the
-  default five you cannot compare to the published table. Read the six from the
-  old JSON; do not retype them.
-- **There is no `gates` key in the eval JSON.** The fields you need are
-  `aggregate.gait_valid_conditions`, `aggregate.conditions`,
-  `aggregate.fall_rate_pct`, and per-condition `per_condition[<key>].gait_valid`.
-- `evaluate_policies.py` already sets `env_cfg.observations.policy.enable_corruption
-  = False` (`:1343`) and already disables the heading servo per condition
-  (`apply_condition`, `:1386-1416`, sets `heading_command=False` and
-  `rel_standing_envs=0.0`). Do not "fix" either.
-- **Do not put `~` inside a `--policies` value.** The tilde only expands at the
-  start of a shell word, and `parse_policy_spec` (`:203`) does not call
-  `expanduser`. Use `$HOME` or a full absolute path, on ONE line — a backslash
-  line-continuation inside the value splits it into two shell words and the
-  command fails with a spec-parse error.
-- Rule 7: one Isaac job at a time.
-
-**2. Low-level implementation plan**
-
-1. `mkdir -p docs/jetson-mod/eval_results_v6_massfix docs/jetson-mod/sim2real`
-2. Confirm the checkpoint is the one you think it is:
-   ```bash
-   md5sum $HOME/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt
-   # must print 0333e68a4cd9ed3817310ed80f6715e4
-   # (same value recorded in that directory's README.md)
-   ```
-3. Confirm the plant is actually fixed before spending GPU time:
-   ```bash
-   cd $HOME/IsaacLab && ./isaaclab.sh -p $HOME/Projects/Open_Duck_Mini_Jetson/scripts/audit_plant_mass.py --headless
-   echo "exit=$?"   # must be 0, and the report must show MJCF 2.657067 / PhysX 2.657067
-   ```
-   (`audit_plant_mass.py` deliberately ends with `os._exit(code)` after flushing,
-   because `simulation_app.close()` never returns and would pin the status to 0.
-   `isaaclab.sh` collapses any nonzero status to 1.)
-4. Read the six conditions out of the old JSON and build the `--conditions`
-   string from them, so it cannot drift:
-   ```bash
-   python3 -c "
-   import json
-   d=json.load(open('docs/jetson-mod/eval_results_v5/v5d_contact_wrench.json'))
-   print(';'.join(','.join(str(x) for x in c) for c in d['protocol']['conditions']))"
-   ```
-5. Run the quantitative protocol (one GPU job, nothing else running). Put the
-   whole `--policies` value on one line:
-   ```bash
-   cd $HOME/IsaacLab && PYTHONPATH=$HOME/Projects/Open_Duck_Mini_Jetson:$PYTHONPATH \
-   ./isaaclab.sh -p $HOME/Projects/Open_Duck_Mini_Jetson/scripts/evaluate_policies.py \
-     --policies "v5d_massfix=Isaac-Velocity-Rough-OpenDuck-ContactWrench-Play-v0:rsl_rl:$HOME/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt" \
-     --conditions "<the six from step 4>" \
-     --episodes 10 --episode_length 30 --num_envs 64 --seed 42 \
-     --output_dir $HOME/Projects/Open_Duck_Mini_Jetson/docs/jetson-mod/eval_results_v6_massfix \
-     --comparison_md $HOME/Projects/Open_Duck_Mini_Jetson/docs/jetson-mod/v6_massfix_comparison.md \
-     --headless
-   ```
-   (`--headless` is not in `build_arg_parser`; it is added by
-   `AppLauncher.add_app_launcher_args(parser)` at `:1158`. The parser uses
-   `allow_abbrev=False`, so flags must be spelled in full.)
-6. **Render the two mandatory video conditions.** `scripts/play_policy.py` execs
-   Isaac Lab's own `rsl_rl/play.py`, which accepts `--task --num_envs
-   --checkpoint --video --video_length --headless --seed` but has **no command
-   override**. `OpenDuckContactWrenchEnvCfg_PLAY` (`env_cfg.py:789`) pins
-   `lin_vel_x=(0.2,0.2)` and, unlike its sibling PLAY twins at `:904-905` and
-   `:931-932`, **does not disable the heading servo** — with
-   `heading_command: true` and `rel_heading_envs: 1.0` (`env.yaml:984,987`,
-   PLANT-8) the yaw channel is overwritten every step and the "vx=0.2" video is
-   not a straight-line video. So:
-   - Add two new config classes to `isaac_lab_env/open_duck_mini_v2/env_cfg.py`,
-     both subclassing `OpenDuckContactWrenchEnvCfg_PLAY`, each setting in
-     `__post_init__`: `self.commands.base_velocity.heading_command = False`,
-     `self.commands.base_velocity.rel_standing_envs = 0.0`, and its own
-     degenerate ranges:
-     - `OpenDuckContactWrenchEnvCfg_PLAY_FWD` → `lin_vel_x=(0.2,0.2)`,
-       `lin_vel_y=(0.0,0.0)`, `ang_vel_z=(0.0,0.0)`
-     - `OpenDuckContactWrenchEnvCfg_PLAY_TURN` → `lin_vel_x=(0.0,0.0)`,
-       `lin_vel_y=(0.0,0.0)`, `ang_vel_z=(0.3,0.3)`
-   - Register `Isaac-Velocity-Rough-OpenDuck-ContactWrench-PlayFwd-v0` and
-     `...-PlayTurn-v0` by adding two rows to the `(task_id, cfg_class)` list at
-     `isaac_lab_env/open_duck_mini_v2/__init__.py:105-115`, reusing the same
-     `rsl_rl_cfg_entry_point` as the existing ContactWrench rows.
-   - Leave `OpenDuckContactWrenchEnvCfg_PLAY` itself untouched — it is what
-     `evaluate_policies.py` loads.
-   - Then, one at a time:
-     ```bash
-     cd $HOME/IsaacLab && PYTHONPATH=$HOME/Projects/Open_Duck_Mini_Jetson:$PYTHONPATH \
-     ./isaaclab.sh -p $HOME/Projects/Open_Duck_Mini_Jetson/scripts/play_policy.py \
-       --task Isaac-Velocity-Rough-OpenDuck-ContactWrench-PlayFwd-v0 \
-       --num_envs 4 --seed 42 \
-       --checkpoint $HOME/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt \
-       --headless --video --video_length 500
-     ```
-     then the same with `-PlayTurn-v0`. Videos land in the run's log dir under
-     `videos/play/`; note the exact path printed by the script.
-   - Filmstrip: `ffmpeg -i <mp4> -vf fps=2 filmstrip_%03d.png`.
-7. Write `docs/jetson-mod/sim2real/S0_regate.md` with: the old v5 numbers (cited
-   from `docs/jetson-mod/eval_results_v5/v5d_contact_wrench.json` by field, not
-   from the markdown table), the new numbers (same fields, new JSON), the
-   per-metric delta, the video checklist result, and a verdict.
-8. Add the entry in `docs/jetson-mod/experiment_journal.md`. There is no training
-   run here, so it is an *evaluation* entry: journal-protocol rule 4 still
-   applies — every number names its JSON path and field, plus the file mtime.
-9. Record the decision at the top of `S0_regate.md`:
-   - **PASS** (`aggregate.gait_valid_conditions >= 5` of 6, i.e. the same 80 %
-     bar as the protocol's "≥ 4/5"; `aggregate.fall_rate_pct < 1.0`; video clean)
-     → `v5d_contact_wrench` is the bring-up policy; continue.
-   - **FAIL** → a retrain on the fixed plant is a hard prerequisite for S.11.
-     Record which of the two sequencing options from "Ordering / dependencies"
-     the owner chose.
-   For reference, v5d's *old-plant* result was `gait_valid_conditions: 6` of 6
-   and `fall_rate_pct: 0.0`, so any drop is visible without interpretation.
-
-**3. Unit tests**
-
-- `python3 scripts/evaluate_policies.py --self-test` must exit 0 (pure-numpy
-  metric unit tests, no Isaac — the short-circuit is at `:1123`). This guards the
-  metric code you are trusting.
-- Add `tests/test_eval_results_dirs.py::test_massfix_dir_has_exactly_one_json`:
-  `glob` `docs/jetson-mod/eval_results_v6_massfix/*.json`, assert exactly one,
-  `json.load` it, and assert it has `aggregate.gait_valid_conditions`,
-  `aggregate.conditions` and `aggregate.fall_rate_pct`. This is the EVAL-1 guard
-  and it executes rather than greps. (Note `eval_results_v4/` also contains
-  `.mp4` files; only `*.json` is read by the reporter.)
-
-**4. Smoke test**
-
-```bash
-jq '.aggregate | {gait_valid_conditions, conditions, fall_rate_pct}' \
-  docs/jetson-mod/eval_results_v6_massfix/v5d_massfix.json
-```
-Observable: `gait_valid_conditions` out of `conditions`, and a `fall_rate_pct`
-float. PASS needs `gait_valid_conditions >= 5` when `conditions == 6`.
-
-**5. Done when**
-
-- [ ] `audit_plant_mass.py --headless` exits 0 and reports PhysX total 2.657067 kg.
-- [ ] `md5sum model_5998.pt` == `0333e68a4cd9ed3817310ed80f6715e4`.
-- [ ] Exactly one JSON exists in `docs/jetson-mod/eval_results_v6_massfix/`.
-- [ ] That JSON's `protocol.conditions` equals the six in
-      `eval_results_v5/v5d_contact_wrench.json`.
-- [ ] `docs/jetson-mod/v6_massfix_comparison.md` exists and has exactly one data row.
-- [ ] Two mp4s (`PlayFwd`, `PlayTurn`) exist under their run's `videos/play/`,
-      with the paths written into `S0_regate.md`.
-- [ ] `docs/jetson-mod/sim2real/S0_regate.md` states PASS or FAIL and names the
-      JSON field behind each number.
-- [ ] An evaluation entry is appended to `experiment_journal.md`.
-- [ ] `pytest tests/` still passes (baseline 103, +1 new test).
-
-**AI-agent suitable:** PARTIAL — the agent runs the eval, adds the two video
-tasks, renders, extracts the filmstrip and writes the analysis. **A human must
-sign off on the video verdict**: the protocol exists because run 12 (`amp_v4`)
-passed every aggregate metric while crawling, and only a human watching the video
-caught it.
-
----
+> **This work is Phase R, Tasks R0 → R1 → R1b → R1c. Do not run a second
+> re-gate campaign.**
+>
+> An earlier draft of this phase specified its own re-gate of the same pinned
+> checkpoint (`exported_policies/v5d_contact_wrench_ppo/model_5998.pt`) on the
+> same task, the same six conditions and the same protocol as Task R1. Running
+> both would fork the engineering record into two directories that disagree.
+>
+> **Where the outputs live** — use these paths, and do **not** create
+> `eval_results_v6_massfix/`, `v6_massfix_comparison.md` or
+> `sim2real/S0_regate.md`:
+>
+> | Output | Path |
+> |---|---|
+> | Result JSONs | `docs/jetson-mod/eval_results_m2657/` |
+> | Comparison table | `docs/jetson-mod/m2657_comparison.md` |
+> | Verdict | `docs/jetson-mod/m2657_regate.md` |
+>
+> **Anywhere later in Phase S that says "S.0's verdict", read it as R1c's
+> verdict in `m2657_regate.md`.**
+>
+> **Ordering, which matters more here than anywhere else in the plan:** R1 must
+> run **before** Phase M's Task M0b. M0b changes the observation and action
+> shapes (59/16 → 53/14), after which `OnPolicyRunner.load()` fails on the v5d
+> checkpoint and re-gating it becomes impossible. If you are reading this after
+> Phase M has landed and R1 was never run, **stop and report** — the measurement
+> is no longer available, and that is a finding, not something to improvise
+> around.
 
 ### Task S.1 — Freeze the deployment contract as a generated artifact
 
@@ -3339,7 +3204,25 @@ Steps:
 
 **3. Unit tests**
 
-New file `tests/test_deployment_contract.py` — all of these import and execute:
+> **File-ownership note — read before creating anything.** Three tasks in this
+> plan touch a "deployment contract", and they are NOT the same artifact:
+>
+> | Task | Owns | Artifact |
+> |---|---|---|
+> | **R3** | the *machine* contract emitted with the ONNX | `exported_policies/<run>/deployment_contract.json` + `scripts/verify_deployment_contract.py` |
+> | **S.1** (this task) | the *human* contract for the hardware runtime | `docs/jetson-mod/sim2real/deployment_contract.md` |
+> | **V.1** | the *command* contract the VLM must respect | `jetson_runtime/command_contract.py` |
+>
+> R3 runs first and produces the JSON. **This task consumes that JSON — it does
+> not re-derive `action_scale` or `q_default` from the graph.** If R3 has not
+> run, stop and run it.
+>
+> Both R3 and this task declare `tests/test_deployment_contract.py`. **R3
+> creates it; this task extends it.** Do not overwrite R3's tests — add yours
+> and keep the total passing. If the file already exists, append.
+
+New file (or **extend R3's**) `tests/test_deployment_contract.py` — all of these
+import and execute:
 
 - `test_slices_tile_the_vector`: the 7 slices are contiguous, start at 0, end at
   59, and no two overlap.
@@ -3548,162 +3431,80 @@ squared norms are 1.0 to floating-point precision.
 
 ---
 
-### Task S.3 — Decide DEPLOY-3: what feeds the four unmeasurable observation dimensions
+### Task S.3 — Confirm DEPLOY-3 is closed (or execute the fallback)
+
+**AI-agent suitable:** YES for the confirmation path. PARTIAL for the fallback
+(the choice is the owner's; the measurement and the code are the agent's).
 
 **1. Context for the implementing agent**
 
-**This is a design decision, not an implementation task, and it must be closed
-before S.4 is written.** Four of the 59 observation inputs cannot be measured on
-the physical robot:
+Four of the observation inputs cannot be measured on the physical robot: the two
+antenna joints (indices 13, 14) drive open-loop SG90 servos with **no position
+feedback**, and they occupy `joint_pos_rel[22, 23]` and `joint_vel_rel[38, 39]`
+in the 59-dim vector. Feeding zeros is distribution shift; feeding the commanded
+angle is also distribution shift. There is no correct value to supply. That is
+`known_issues.md` DEPLOY-3, a Phase-4 blocker.
 
-| Obs index | Meaning |
-|---|---|
-| `obs[22]` | `joint_pos_rel[13]` = `left_antenna` position − 0.0 |
-| `obs[23]` | `joint_pos_rel[14]` = `right_antenna` position − 0.0 |
-| `obs[38]` | `joint_vel_rel[13]` = `left_antenna` velocity |
-| `obs[39]` | `joint_vel_rel[14]` = `right_antenna` velocity |
+**In this plan that decision is already made, in Phase M.** Task M0b removes the
+antennas from the action and observation spaces entirely (59/16 → 53/14), which
+deletes the four dims rather than filling them, and closes PLANT-4 in the same
+change. M0b runs long before Phase S. **This task is therefore a verification,
+not a decision** — do not re-open it and do not offer the owner a menu of
+options they have already been past.
 
-(Indices 13/14 are the antennas in the Isaac/USD joint order — verified from
-`scripts/duck_init_pos.json`; the joint-position block starts at 9 and the
-joint-velocity block at 25, so 9+13=22, 9+14=23, 25+13=38, 25+14=39. The same
-arithmetic is done mechanically by `scripts/verify_known_issues.py:451-462`.)
-The antennas are **SG90 micro servos driven open-loop over PWM on Jetson header
-pins 32/33 — they have no position feedback of any kind.** `q_default` for both
-is 0.0, so `joint_pos_rel` is just the raw angle.
-
-Two more facts make this worse than a missing sensor:
-- **PLANT-4**: those two joints were trained as full STS3250s. `robot_cfg.py:103`
-  puts `.*_antenna` in the `head` actuator group, giving them
-  `effort_limit_sim = 8.716 N·m` against an SG90's ~0.18 N·m stall (≈48×), and
-  `armature = 0.040 kg·m²` against a largest antenna principal inertia of
-  3.87e-06 kg·m² (≈10,336×). The policy learned to move a flywheel, and the real
-  part is a plastic ear.
-- The policy also *outputs* antenna commands at action indices 13 and 14, which
-  feed back into `obs[54]` and `obs[55]` (the `last_action` block). Those two are
-  self-produced and therefore always available — **only the four listed above are
-  the problem.**
-
-Read first: `docs/jetson-mod/known_issues.md` § DEPLOY-3 (`:939`) and § PLANT-4
-(`:404`); `AGENTS.md:635` GPIO table (antenna PWM pins);
-`scripts/duck_init_pos.json` (indices 13/14).
-
-Depends on: S.2 (you need the traces to measure the options).
-
-Traps:
-- "Just feed zeros" is not a neutral choice. Zeros mean "the antennas are exactly
-  at the standing pose and perfectly still", which is a *claim*, and it is false
-  whenever the policy commands antenna motion. Neither zeros nor the commanded
-  angle is free; both are distribution shift. The only question is which shift is
-  cheapest, and that is measurable.
-- **DEPLOY-4**: the ONNX has a literal batch dimension of 1. Feeding a `(N, 59)`
-  batch raises `onnxruntime.InvalidArgument` (verified by running it). Loop.
-- `policy.onnx` needs `policy.onnx.data` in the same directory or it will not
-  load (ART-1).
+Read first:
+- `docs/jetson-mod/known_issues.md`, entry DEPLOY-3 (locate by heading, not line
+  number)
+- Task M0b in this document
+- `docs/jetson-mod/task_plan_v2.md` Phase R, Task R1c's verdict document
 
 **2. Low-level implementation plan**
 
-The options, stated honestly:
-
-- **A — Zeros.** `obs[22,23,38,39] = 0`. Antenna actions discarded. Cheapest;
-  maximal shift when the policy wants antenna motion.
-- **B — Open-loop first-order model (recommended interim).** Assume the SG90
-  tracks its command with a first-order lag:
-  `q̂_t = q̂_{t-1} + α(u_{t-1} − q̂_{t-1})` where `u = 0.25·a_antenna` and
-  `α = 1 − exp(−Δt/τ)` with `Δt = 0.02 s`. **τ is not derivable from this repo** —
-  there is no SG90 datasheet here. If the owner supplies τ = 0.1 s then
-  α = 0.181. Treat τ as an owner input and record it in the document; do not
-  invent it. Velocity is the finite difference `(q̂_t − q̂_{t-1})/0.02`.
-  Requires no hardware change.
-- **C — Perfect-tracking estimate.** `q̂_t = 0.25·a_{t-1}`, velocity by finite
-  difference. This is B with α = 1.
-- **D — Add sensing.** Tap the SG90's internal potentiometer wiper to an ADC, or
-  replace the two SG90s with feedback-capable micro serial-bus servos. Costs
-  money and soldering, and adds two channels to the loop budget. Note the Jetson
-  Orin Nano dev kit has **no built-in analog input** on the 40-pin header, so
-  this option also requires an external ADC (e.g. I²C ADS1115) — price that in.
-- **E — Retrain without the antennas (recommended endgame).** Drop `.*_antenna`
-  from the action space and from the joint observation blocks: action becomes
-  **14**-dim and observation `3+3+3+14+14+14+2 = 53`-dim. This deletes DEPLOY-3
-  and PLANT-4 in one change, and shrinks `q_default` and `JOINT_ORDER` to 14
-  entries. It costs a training campaign — which S.0 may have already made
-  mandatory, and which S.7 and S.8 may make mandatory anyway.
-
-Steps:
-
-1. Write `scripts/measure_deploy3_cost.py` (pure numpy + `onnxruntime`, no Isaac):
-   loads a trace from S.2 and `policy.onnx`; for each option A/B/C, rebuilds the
-   observation with only dims 22/23/38/39 substituted, re-runs the ONNX **one row
-   at a time** (DEPLOY-4), and reports against the recorded action:
-   - `max |Δaction|` and `mean |Δaction|` in **radians at the joint**
-     (i.e. multiply the action delta by `action_scale = 0.25`)
-   - the same restricted to the 10 **leg** joints (every name matching
-     `.*_hip_.*|.*_knee|.*_ankle`), which are the ones that decide whether the
-     robot falls
-   - the number of steps where any leg-joint target moves more than 0.01 rad
-   Run it as an open-loop substitution (recorded obs, one-step effect) and note
-   in the document that this **underestimates** the closed-loop cost, because the
-   substituted action would feed back into the next step's `last_action` block.
-2. Run it over all three traces. Put the table in
-   `docs/jetson-mod/sim2real/S3_deploy3_decision.md`.
-3. Write the decision section of that document with: the measured table, the
-   cost of option D in money and assembly time, the cost of option E in GPU hours
-   (cite the v5d run's wall clock from its log dir
-   `~/IsaacLab/logs/rsl_rl/open_duck_ppo_v5/2026-07-29_08-59-25/`, first-to-last
-   event timestamps per journal rule 2 — the journal itself has **zero v5
-   entries**, DOC-2, so you must measure it rather than quote it), and a one-line
-   recommendation.
-4. **Stop and ask the owner to choose.** Record the chosen option, the date, and
-   who chose it at the top of the document.
-5. Once chosen, add the choice to `jetson_runtime/policy_contract.json` as
-   `"deploy3_option": "<A|B|C|D|E>"` (plus `"deploy3_alpha"` for option B) by
-   editing **S.1's generator**, then regenerating, so the runtime reads it rather
-   than hardcoding it. Re-run `--check` to confirm the JSON matches the generator.
+1. Confirm M0b landed. Build any env and read the shapes back from the running
+   env, not from a config file:
+   ```python
+   obs, _ = env.reset()
+   print(obs["policy"].shape[-1], env.action_manager.total_action_dim)
+   ```
+   Expect `53 14`.
+2. Confirm the register agrees: DEPLOY-3 and PLANT-4 are marked FIXED in
+   `docs/jetson-mod/known_issues.md`, and `python3 scripts/verify_known_issues.py
+   PLANT-4` reports REFUTED.
+3. Confirm no antenna dim survives anywhere in the runtime contract produced by
+   Task S.1 — the contract's `obs_layout` must contain no antenna entry.
+4. **If and only if M0b was NOT taken** (the owner chose to keep the antennas in
+   the policy), this becomes a real decision and it is the owner's, not yours.
+   The options, worst to best, are: feed zeros; feed the last commanded angle;
+   add position feedback to the antennas in hardware; or drop them from the
+   spaces after all, which is M0b. Measure the cost of the first two before
+   proposing either — substitute each candidate into the Task S.2 reference
+   traces and report the resulting action delta in radians. **Do not pick
+   silently, and do not proceed to S.4 until it is written down** in
+   `docs/jetson-mod/m2657_regate.md` alongside the rest of the campaign record.
 
 **3. Unit tests**
 
-- `tests/test_deploy3_estimator.py::test_option_b_converges`: drive the
-  first-order estimator with a constant command for 50 steps; assert `q̂` is
-  within 1% of the command and the finite-difference velocity has decayed below
-  0.01 rad/s.
-- `::test_option_b_matches_c_at_alpha_one`: with α = 1 the option-B estimator
-  equals option C exactly.
-- `::test_substitution_touches_only_four_dims`: rebuild an observation under each
-  option and assert `np.flatnonzero(obs_new != obs_orig)` is a subset of
-  `{22, 23, 38, 39}`. This catches an off-by-one in the slice arithmetic, which
-  is the realistic failure mode here.
-- None applicable for options D and E — D is a hardware change and E is a
-  training campaign; neither is unit-testable at this stage.
+None applicable on the confirmation path — it asserts against a running env,
+which is the smoke test below. On the fallback path, add a test that the
+contract's `obs_layout` length equals the env's reported observation dimension.
 
 **4. Smoke test**
 
 ```bash
-cd $HOME/Projects/Open_Duck_Mini_Jetson && python3 scripts/measure_deploy3_cost.py \
-  --trace docs/jetson-mod/sim2real/reference_trace_v5d_fwd.npz \
-  --onnx exported_policies/v5d_contact_wrench_ppo/policy.onnx
+cd ~/IsaacLab && ./isaaclab.sh -p /home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/scripts/audit_plant_mass.py --headless
+python3 scripts/verify_known_issues.py PLANT-4
 ```
-Observable: a 3-row table. The decision-relevant column is
-`max |Δleg target| (rad)` — a value below ~0.01 rad for any option means the
-decision is low-stakes and option B is fine; a value above ~0.05 rad means the
-antennas are materially coupled to the gait and option E moves up the priority
-list.
+
+Observable: the audit exits 0, and PLANT-4 reports **REFUTED** (meaning fixed).
 
 **5. Done when**
 
-- [ ] `docs/jetson-mod/sim2real/S3_deploy3_decision.md` exists with the measured
-      table for all three traces, and states the open-loop caveat.
-- [ ] The document names one chosen option, with a date and the owner's name, and
-      records τ if option B was chosen.
-- [ ] `policy_contract.json` carries `deploy3_option`, written by the generator,
-      and `--check` exits 0.
-- [ ] `pytest tests/test_deploy3_estimator.py -v` → 3 passed.
-- [ ] If option E was chosen: the document states the new dims (act 14, obs 53)
-      and a task entry exists in the S.7 retrain plan folding the antenna removal
-      into that campaign.
-
-**AI-agent suitable:** PARTIAL — the agent can do all the measurement, write the
-options analysis and recommend. **The owner must make the call**, because options
-D and E cost money and GPU time respectively, and because the agent cannot know
-whether the owner cares about the antennas moving at all.
+- [ ] A freshly built env reports observation 53 and action 14
+- [ ] `known_issues.md` marks DEPLOY-3 and PLANT-4 FIXED
+- [ ] `scripts/verify_known_issues.py PLANT-4` reports REFUTED
+- [ ] No antenna entry appears in the Task S.1 deployment contract
+- [ ] If M0b was not taken: the chosen fallback is written down with its
+      measured action-delta cost, and the owner has signed off
 
 ---
 
@@ -4051,7 +3852,7 @@ offset gets shipped. This task converts the engine and proves it produces the
 same actions as the ONNX on the recorded traces before anything is connected to
 a servo.
 
-Read first: `docs/jetson-mod/task_plan.md:2016-2056` (Task 4.4 Steps 1–2 — the
+Read first: `docs/jetson-mod/task_plan.md` (locate by heading) (Task 4.4 Steps 1–2 — the
 `trtexec` command and the `TRTInfer` sketch; note its buffer sizes already say
 59/16); `docs/jetson-mod/known_issues.md` § DEPLOY-4 (`:955`) and § ART-1
 (`:865`).
@@ -4344,8 +4145,9 @@ If the decision is **model**:
    ```
    Monitor with `tail -f .training_runs/<run_name>.log`.
 6. Gate the result with the full evaluation protocol into
-   `docs/jetson-mod/eval_results_v6_massfix/` using the **same six conditions**
-   S.0 used, and journal it with last-100 TensorBoard means
+   `docs/jetson-mod/eval_results_rebuild/` (Phase R's post-Phase-M results dir —
+   do **not** invent a new one) using the **same six conditions** Task R1 used,
+   and journal it with last-100 TensorBoard means
    (`EventAccumulator`, `size_guidance={'scalars': 0}`).
 
 **3. Unit tests**
@@ -4726,12 +4528,12 @@ holding a robot and watching it go limp.
 > all the analysis afterwards, but it must not execute a rung.
 
 The purpose of a ladder is that each rung has a **stated abort criterion decided
-in advance**. The existing plan (`task_plan.md:2162`, Task 4.5) says "place robot
+in advance**. The existing plan (`task_plan.md (locate by heading)`, Task 4.5) says "place robot
 on flat surface with safety support... robot should balance and stand", which has
 no abort criterion at all and therefore permits an operator to keep trying while
 the servos cook.
 
-Read first: `docs/jetson-mod/task_plan.md:2162` Task 4.5; all of
+Read first: `docs/jetson-mod/task_plan.md` (locate by heading) Task 4.5; all of
 `docs/jetson-mod/sim2real/` produced by S.6, S.8, S.9, S.10;
 `docs/jetson-mod/sim2real/reference_trace_stats.json` (S.2 — rung 2's abort
 criterion is defined against its action-rate p95); `AGENTS.md:371` § Termination
@@ -4949,9 +4751,9 @@ agent should do all of it.
 
 # Phase V — VLM / Cosmos Reason2 integration
 
-> **This block replaces Tasks 5.1–5.5 in `docs/jetson-mod/task_plan.md:2396-3012`.**
+> **This block replaces Tasks V.1–V.5 in `docs/jetson-mod/task_plan.md` (locate by heading).**
 > The old block is kept for reference but its `RobotCommand` clamp values
-> (`task_plan.md:2566-2575`: `forward [-0.2, 0.3]`, `lateral [-0.2, 0.2]`, `turn [-0.3, 0.3]`)
+> (`task_plan.md (locate by heading)`: `forward [-0.2, 0.3]`, `lateral [-0.2, 0.2]`, `turn [-0.3, 0.3]`)
 > are **outside the trained hull on two of three axes** and must not be copied. Every number
 > below was re-derived from the repo on 2026-08-11 by reading or running the named source.
 >
@@ -4994,20 +4796,20 @@ agent should do all of it.
 | Open-loop yaw is survivable | `wz = +0.50` for 30 s: **640 episodes, 0 falls**, `gait_valid: true`, duty 69.14/73.69%, `ang_vel_z_error 0.0947` rad/s. `wz = +0.30`: 640 episodes, 0 falls, duty 74.09/72.36%, err 0.1018. Aggregate over all 6 conditions: **3,840 episodes, 0 falls, 6/6 gait-valid** | `docs/jetson-mod/eval_results_v5/v5d_contact_wrench.json`, keys `per_condition["vx+0.00_vy+0.00_wz+0.50"]` / `["…wz+0.30"]` and `aggregate`. `evaluate_policies.py:1412` sets `term.cfg.heading_command = False`, so these rollouts *were* open-loop yaw |
 | **Those numbers are stale** | measured on the 3.657 kg plant, before the PLANT-1 fix (commit `11b1690`, 2026-08-11) merged `base` into `trunk_assembly`; PhysX now simulates 2.657067 kg | `known_issues.md` PLANT-1 |
 | VLM decode rate (claimed) | ~16–17 tok/s on Orin Nano Super | `AGENTS.md:296` |
-| Memory budget (claimed) | Cosmos 5.8 + TRT 0.1 + camera 0.3 + OS 1.5 = 7.7 GB of 8 GB | `AGENTS.md:188-196` |
+| Memory budget (claimed) | Cosmos V.8 + TRT 0.1 + camera 0.3 + OS 1.5 = 7.7 GB of 8 GB | `AGENTS.md:188-196` |
 | Serve command (claimed) | `vllm serve "embedl/Cosmos-Reason2-2B-W4A16-Edge2" --max-model-len 2048 --gpu-memory-utilization 0.70 --max-num-seqs 1` inside `ghcr.io/nvidia-ai-iot/vllm:latest-jetson-orin` | `AGENTS.md:671-682` |
-| Camera | **IMX219 CSI module**, 1 unit, ~$15, 30 cm CSI ribbon; Phase-4 acceptance is `nvgstcapture-1.0` showing a live preview. `AGENTS.md` never names the sensor — only `task_plan.md` does | `task_plan.md:1922-1923, 1935, 1990`; mounted in head, ~3 g (`task_plan.md:128`) |
+| Camera | **IMX219 CSI module**, 1 unit, ~$15, 30 cm CSI ribbon; Phase-4 acceptance is `nvgstcapture-1.0` showing a live preview. `AGENTS.md` never names the sensor — only `task_plan.md` does | `task_plan.md (locate by heading), 1935, 1990`; mounted in head, ~3 g (`task_plan.md (locate by heading)`) |
 | GPIO | eye LEDs BCM 23/24 (pins 16/18); antenna PWM BCM 12/13 (pins 32/33); foot switches BCM 22 (pin 15) / BCM 27 (pin 13); IMU SDA BCM 2 (pin 3), SCL BCM 3 (pin 5) | `AGENTS.md:635-649` |
 | Fall / tilt termination | `bad_orientation` at `limit_angle = radians(60.0)`, and `root_height_below_minimum` at 0.09 m | `env_cfg.py:591-596` |
 | Current test baseline | `python3 -m pytest tests/ -q` → **103 passed in ~2.4 s** (`known_issues.md` still says "101 passed"; that count is stale) | measured 2026-08-11 |
 | Current defect-register baseline | `python3 scripts/verify_known_issues.py` → **CONFIRMED 28 / 29**, `DEPLOY-1` INCONCLUSIVE, **exit code 2** (the register header claiming "33 / 34" is stale) | measured 2026-08-11 |
 
 **The arithmetic nobody has done yet.** The repo makes **three mutually inconsistent** claims
-about VLM speed: `AGENTS.md:128` and `AGENTS.md:629` and `task_plan.md:2396` say **2–3 Hz**;
+about VLM speed: `AGENTS.md:128` and `AGENTS.md:629` and `task_plan.md (locate by heading)` say **2–3 Hz**;
 `AGENTS.md:633` says "**Cosmos takes ~300-500 ms**"; `AGENTS.md:296` says **~16–17 tok/s**.
 At 16–17 tok/s, 2–3 Hz is 5–8 output tokens per cycle and 300–500 ms is 5–8 tokens too — so
 the token-rate figure and the *latency* figures are only compatible if the model emits almost
-nothing. The old Task 5.2 asks for `max_tokens: 256` plus chain-of-thought, which decodes in
+nothing. The old Task V.2 asks for `max_tokens: 256` plus chain-of-thought, which decodes in
 **~15 s** at that rate, before image prefill. **Every design decision below assumes the VLM
 cycle is 0.2–1 Hz (1–5 s per decision), and Task V.2 measures the truth. The VLM is not a
 reflex layer and must never be placed in a reflex path.**
@@ -5020,7 +4822,7 @@ Read these once; they are not repeated in full under each task.
 
 1. **`.gitignore:18` is `*.txt`.** Any `.txt` file you create — prompt files, captured model
    transcripts — is **silently untracked**. `git check-ignore -v jetson_runtime/prompts/navigate.txt`
-   → `.gitignore:18:*.txt`. Tasks 5.4 and 5.7 depend on committing such files. Resolution is
+   → `.gitignore:18:*.txt`. Tasks V.4 and V.7 depend on committing such files. Resolution is
    specified in Task V.4 step 0. `.gitignore:19` is `*.onnx` (that is `known_issues.md`
    **ART-1**, already filed).
 2. **`env.yaml` contains `!!python/tuple` tags.** `yaml.safe_load()` **raises** on it. Use the
@@ -5039,7 +4841,7 @@ Read these once; they are not repeated in full under each task.
    `ls jetson_runtime` errors. You are creating it. `jetson_runtime/thermal_manager.py`
    (`AGENTS.md:815`, Task 4.6) and `jetson_runtime/trt_infer.py` (`AGENTS.md:657`) are
    Phase-4 outputs that also do not exist yet.
-5. **`mini_bdx_runtime.hwi`, imported by the old skeleton at `task_plan.md:2146, 2741`, is
+5. **`mini_bdx_runtime.hwi`, imported by the old skeleton at `task_plan.md (locate by heading), 2741`, is
    not in this repo.** `mini_bdx/mini_bdx/` contains only `old_walk_engine`,
    `placo_walk_engine`, `utils`. Do not import it.
 6. **`tests/conftest.py` does `import mujoco` at module scope.** Collecting *anything* under
@@ -5065,7 +4867,7 @@ Read these once; they are not repeated in full under each task.
     policy's `env.yaml` and update `jetson_runtime/command_contract.py` — that is the one
     file that changes, which is the whole point of Task V.1.
 12. **Do not commit or push** unless the owner explicitly asks. (The one exception is Task
-    5.7's protocol file, whose value depends on being committed before the trials — ask.)
+    V.7's protocol file, whose value depends on being committed before the trials — ask.)
 
 ---
 
@@ -5155,7 +4957,7 @@ already drifted (`AGENTS.md`, `task_plan.md`'s Phase-5 code skeleton, `env_cfg.p
 exported `env.yaml`), and the drift already produced a filed defect — `known_issues.md`
 **DEPLOY-5**, "documented velocity clamp exceeds the trained command hull". DEPLOY-5's *text*
 was fixed on 2026-08-11, but the fix left `AGENTS.md:686` as a malformed instruction rather
-than a rule (see step 6), and `task_plan.md:2566-2575` still carries the bad numbers in code.
+than a rule (see step 6), and `task_plan.md (locate by heading)` still carries the bad numbers in code.
 If you skip this task, the VLM safety layer gets written against a lateral clamp that is
 **1.80×** the trained hull, and the robot is commanded into a region the policy has never seen.
 
@@ -5169,7 +4971,7 @@ Read first:
 - `AGENTS.md:421-448` (§ Observation Space, incl. the deployment trap) and `AGENTS.md:618-689`
   (§ Jetson Deployment).
 
-Depends on: Task V.0. Everything else in Phase 5 depends on this.
+Depends on: Task V.0. Everything else in Phase V depends on this.
 
 Traps: all twelve in the cross-cutting list, especially **2** (`!!python/tuple`), **3** (two
 command configs in `env_cfg.py`), **4** (`jetson_runtime/` does not exist), **9** (no grep
@@ -5238,7 +5040,7 @@ tests).
    instruction to an agent ("Apply the same line edit … but ONLY as part of a three-file
    change"), embeds the clamp numbers inline, and cites stale line numbers
    (`known_issues.md` "789-798", `verify_known_issues.py` "EVAL-3 at 344-358"). Both of those
-   have moved — DEPLOY-5 now lives at `known_issues.md:963-980` and the check was retired at
+   have moved — DEPLOY-5 now lives at `known_issues.md (locate by heading)` and the check was retired at
    `verify_known_issues.py:328-332`. Replace the whole bullet with:
    *"All velocity commands from any autonomy layer MUST be clamped by
    `jetson_runtime/command_contract.clamp_command()`, which carries the trained hull. Do not
@@ -5338,7 +5140,7 @@ before your change and compare against that instead.
 
 **AI-agent suitable:** PARTIAL — an agent can write every script and parse every log, but
 the run itself requires the **physical Jetson Orin Nano Super with the IMX219 CSI camera
-attached** (Phase 4 hardware, `task_plan.md:1922, 1977, 1990`). A human must have the board
+attached** (Phase 4 hardware, `task_plan.md (locate by heading), 1977, 1990`). A human must have the board
 powered, the camera ribbon seated, and the board reachable. All numbers in this task are
 *measurements*; none may be guessed.
 
@@ -5352,27 +5154,27 @@ symptom will be the OOM killer terminating whichever process the kernel likes le
 walking biped that process might be the 50 Hz control loop.
 
 Read first:
-- `AGENTS.md:188-196` — the claimed budget (5.8 / 0.1 / 0.3 / 1.5 = 7.7 GB).
+- `AGENTS.md:188-196` — the claimed budget (V.8 / 0.1 / 0.3 / 1.5 = 7.7 GB).
 - `AGENTS.md:669-682` — the serve command, verbatim, and the query shape.
 - `AGENTS.md:291-299` — the model id and the ~16–17 tok/s figure.
 - `AGENTS.md:626-633` — the two-thread picture *and* its "~300-500 ms" claim, which is the
   third of three inconsistent speed claims you are here to resolve.
-- `docs/jetson-mod/task_plan.md:2446-2545` (old Task 5.1) — the container pull and the smoke
+- `docs/jetson-mod/task_plan.md` (locate by heading) (old Task V.1) — the container pull and the smoke
   queries; keep those, replace the acceptance criteria.
-- `docs/jetson-mod/task_plan.md:2185-2395` (Task 4.6, `thermal_manager.py`) — the
+- `docs/jetson-mod/task_plan.md` (locate by heading) (Task 4.6, `thermal_manager.py`) — the
   `request_boost()` / `release_boost()` contract (`:2334-2355`) you must exercise here.
   **`jetson_runtime/thermal_manager.py` does not exist yet**; it is a Phase-4 deliverable
   (`AGENTS.md:815`). If it is absent, do step 7 with a direct `nvpmodel` call and say so.
 
 Depends on: Phase 4 complete (robot walks on the Jetson) and Task V.0. It does **not** depend
-on 5.1, and can run in parallel with 5.1, 5.3 and 5.4's offline half.
+on V.1, and can run in parallel with V.1, V.3 and V.4's offline half.
 
 Traps:
 - **Start the locomotion process first, the VLM second.** vLLM pre-allocates its pool at
   startup; TensorRT allocates lazily. If vLLM claims memory first, the control loop's
   allocation failure happens *later*, at an arbitrary moment, possibly mid-stride. In the
   other order, the failure happens at VLM startup, where it is harmless and visible.
-- The claimed ~5.8 GB and the flag `--gpu-memory-utilization 0.70` are two different
+- The claimed ~V.8 GB and the flag `--gpu-memory-utilization 0.70` are two different
   quantities (weights+activations vs. a reservation fraction including the KV cache). Report
   both: resident RSS *and* what vLLM logs as its KV-cache size.
 - A desktop session on Orin costs several hundred MB. Measure with the GUI both on and off.
@@ -5505,10 +5307,10 @@ Read first:
   could cause mid-stride fall)". Treat this as a **hypothesis, not a fact**: `env.yaml:986`
   shows 2% of training envs held a zero command, so *standing* is in distribution; what is
   uncharacterised is the *transition* to zero mid-stride. Task V.5 measures it. Implement
-  both behaviours behind a flag and let 5.5 pick.
+  both behaviours behind a flag and let V.5 pick.
 
-Depends on: Tasks 5.0 and 5.1. It does **not** depend on V.2 — but its `HOLD_S` / `STALE_S`
-defaults must later be reconciled against 5.2's measured p95 (see step 5).
+Depends on: Tasks V.0 and V.1. It does **not** depend on V.2 — but its `HOLD_S` / `STALE_S`
+defaults must later be reconciled against V.2's measured p95 (see step 5).
 
 Traps:
 - Training resampled linear commands **once per 10 s** (`env.yaml:979-981`). A VLM at 1 Hz is
@@ -5574,18 +5376,18 @@ Traps:
    | `> STALE_S` | hard zero, latched | `LOST` |
    Recovery out of `LOST` requires **two consecutive accepted submissions** before motion
    resumes (anti-flap on a thrashing server). Size the defaults against Task V.2's measured
-   p95 latency: `HOLD_S ≥ 2 × p95`. If 5.2 has not run yet, keep 2.0/3.0 and write
-   `# TODO(5.2): resize against docs/jetson-mod/cosmos_serving_measurements.md` on the line.
+   p95 latency: `HOLD_S ≥ 2 × p95`. If V.2 has not run yet, keep 2.0/3.0 and write
+   `# TODO(V.2): resize against docs/jetson-mod/cosmos_serving_measurements.md` on the line.
 6. **Application shape.** `apply_mode ∈ {"step", "slew"}`, default `"step"` (a step is the
    shape training used at every resample); `"slew"` ramps at `SLEW_MPS2` (default 0.4 m/s²,
    which crosses the 0.370 m/s vx span in ~0.93 s). Task V.5 chooses the shipped default;
    both must exist first.
 7. `status()` returns: `state`, `age_s`, `command`, `clamp_count` per axis, `reject_count` by
    stage, `dwell_deferrals`, `watchdog_trips`, `yaw_budget_trips`, `heading_err_rad`. Tasks
-   5.6 and 5.7 consume exactly this dict — do not rename keys later.
+   V.6 and V.7 consume exactly this dict — do not rename keys later.
 8. Structured logging: one JSON line per accepted command and one per state transition, to
    `~/duck_logs/arbiter_<iso8601>.jsonl` (create the directory if absent). This file is the
-   evidence base for 5.5 and 5.7, and its schema is the trace format 5.5 replays.
+   evidence base for V.5 and V.7, and its schema is the trace format V.5 replays.
 
 **3. Unit tests**
 
@@ -5650,7 +5452,7 @@ real time (the fake clock means it must not actually take 60 s).
 - [ ] A `.jsonl` log file is produced by the demo under `~/duck_logs/` and every line parses
       as JSON (`python3 -c "import json,sys;[json.loads(l) for l in open(p)]"`).
 - [ ] `HOLD_S` and `STALE_S` defaults are annotated in the source with the p95 latency from
-      Task V.2 — or, if 5.2 has not run, with a `TODO(5.2)` naming
+      Task V.2 — or, if V.2 has not run, with a `TODO(V.2)` naming
       `docs/jetson-mod/cosmos_serving_measurements.md`.
 - [ ] `python3 -m pytest tests/ -q` still shows the pre-existing count passing.
 
@@ -5674,7 +5476,7 @@ and will sometimes emit prose where JSON was requested.
 
 Read first:
 - `jetson_runtime/command_contract.py` and `jetson_runtime/command_arbiter.py`.
-- `docs/jetson-mod/task_plan.md:2546-2703` — the old parser. Keep its "take the **last** JSON
+- `docs/jetson-mod/task_plan.md` (locate by heading) — the old parser. Keep its "take the **last** JSON
   object" idea; discard its clamp values (`:2566-2575`, wrong hull) and its regex `\{[^}]+\}`
   (fails on any nested object).
 - `AGENTS.md:678-682` — the HTTP request shape (`POST http://localhost:8000/v1/chat/completions`,
@@ -5682,7 +5484,7 @@ Read first:
 - `docs/jetson-mod/known_issues.md` **PLANT-8** — this is why the prompt asks for a *bearing*,
   not a turn rate.
 
-Depends on: Tasks 5.0, 5.1 and 5.3. Transcript capture (step 4) additionally depends on 5.2.
+Depends on: Tasks V.0, V.1 and V.3. Transcript capture (step 4) additionally depends on V.2.
 
 Traps:
 - **`.gitignore:18` is `*.txt`.** Prompt files and transcripts named `*.txt` will never be
@@ -5715,7 +5517,7 @@ Traps:
    - `class CosmosCommander(server_url, model_id, timeout_s, max_tokens)`. `timeout_s`
      defaults to `2 × p95` from Task V.2's table — name
      `docs/jetson-mod/cosmos_serving_measurements.md` in the comment, and use 4.0 s with a
-     `TODO(5.2)` if that file does not exist yet.
+     `TODO(V.2)` if that file does not exist yet.
    - `query(frame_jpeg: bytes, instruction: str) -> VlmCommand | None` — one blocking POST to
      `/v1/chat/completions`; returns `None` on any transport failure, timeout, or non-200.
      Returning `None` is correct: the arbiter's watchdog, not this class, decides what a
@@ -5727,7 +5529,7 @@ Traps:
    - No clamping here. Clamping lives in exactly one place (`clamp_command`). This class hands
      the dict to `CommandArbiter.submit()` untouched.
 2. Create `jetson_runtime/prompts/` with one template per behaviour, mirroring the behaviour
-   list at `task_plan.md:2860-2900`: `navigate`, `follow`, `avoid`, `explore`, `interact`,
+   list at `task_plan.md (locate by heading)`: `navigate`, `follow`, `avoid`, `explore`, `interact`,
    `patrol`. Author each as `<name>.txt.tmpl` and render to `<name>.txt`. Every rendered file
    must contain, in the same wording:
    - the robot's physical facts: ~42 cm tall bipedal robot, forward camera in a **moving**
@@ -5753,7 +5555,7 @@ Traps:
    Document in `jetson_runtime/prompts/_schema.md` that the numeric bounds are **generated,
    not typed** — this is how the prompts cannot drift from the hull. Commit both templates and
    rendered output.
-4. Capture fixtures on the Jetson (needs 5.2): run 30 real queries across 6 scenes, save every
+4. Capture fixtures on the Jetson (needs V.2): run 30 real queries across 6 scenes, save every
    raw `content` string to `tests/fixtures/cosmos_transcripts/`. Include, and name accordingly,
    at least one of each observed failure: prose with no JSON, JSON with a trailing comment,
    two JSON objects, a value out of range, a missing key, a truncated reply (hit `max_tokens`).
@@ -5833,7 +5635,7 @@ Observable: prints 10 parsed commands and a summary line
 ### Task V.5 — Sim replay gate: prove the command *shape* is safe before the robot sees it
 
 **AI-agent suitable:** YES — runs entirely on the DGX Spark in Isaac Lab. No hardware, no
-purchases. This is the cheapest place to answer the three open design questions from 5.3.
+purchases. This is the cheapest place to answer the three open design questions from V.3.
 
 **1. Context for the implementing agent**
 
@@ -5841,7 +5643,7 @@ Three defaults in Task V.3 are currently guesses: `apply_mode` (step vs slew), t
 zero-vs-hold fallback, and `MIN_DWELL_S`. Guessing them on a physical robot costs servos.
 Guessing them in Isaac Lab costs GPU time. This task replays **real recorded VLM command
 traces** through the shipped policy in simulation and measures fall rate and tracking, so
-5.3's defaults become measured rather than asserted. It also produces the only pre-hardware
+V.3's defaults become measured rather than asserted. It also produces the only pre-hardware
 evidence that the VLM layer is not actively harmful.
 
 Read first:
@@ -5862,9 +5664,9 @@ Read first:
   rendered its turn video at `wz = 0.5` where `AGENTS.md` says 0.3. Neither is wrong; they are
   different. **State explicitly which one you ran.**
 
-Depends on: Tasks 5.0, 5.1, 5.3. It needs at least one command trace; if Task V.4's on-Jetson
-capture has not happened, synthesize traces using the *timing* from 5.2's latency table (or,
-if 5.2 has not run either, a declared assumed cadence) and label the results **timing-only**
+Depends on: Tasks V.0, V.1, V.3. It needs at least one command trace; if Task V.4's on-Jetson
+capture has not happened, synthesize traces using the *timing* from V.2's latency table (or,
+if V.2 has not run either, a declared assumed cadence) and label the results **timing-only**
 in the results doc.
 
 Traps:
@@ -5900,7 +5702,7 @@ Traps:
    `--trace <file.jsonl>`, `--num_envs 64`, `--episodes 10` (windows per trace),
    `--episode_length 30.0`, `--apply-mode {step,slew}`, `--fallback {zero,hold}`,
    `--min-dwell 1.0`, `--seed 42`, `--output_dir docs/jetson-mod/eval_results_vlm`.
-2. Trace format — one JSON object per line, **the same schema `CommandArbiter` logs in 5.3**:
+2. Trace format — one JSON object per line, **the same schema `CommandArbiter` logs in V.3**:
    `{"t": <float seconds>, "forward": .., "lateral": .., "heading_deg": .., "behavior": ..}`.
    A line whose payload is `null` means "the VLM produced nothing at this slot" (dropout).
 3. Each control step: advance a `CommandArbiter` (**imported from `jetson_runtime`, not
@@ -5922,7 +5724,7 @@ Traps:
    | `step_1s` | step | zero | 1.0 | the proposed default |
    | `slew_1s` | slew | zero | 1.0 | does ramping help or hurt? |
    | `step_hold` | step | hold | 1.0 | tests `AGENTS.md:687`'s "not zero" claim |
-   | `step_5s` | step | zero | 5.0 | closer to the 10 s training dwell |
+   | `step_5s` | step | zero | V.0 | closer to the 10 s training dwell |
    | `step_02s` | step | zero | 0.2 | deliberately too fast — the negative control |
 6. Generate the two mandated videos per surviving arm (forward `vx = 0.2` and turning) per
    `AGENTS.md:59-69`, and do the filmstrip check. Use `wz = 0.3` (the documented value) and
@@ -6020,7 +5822,7 @@ placing an object, yawing the head, and judging the resulting motion.
 **1. Context for the implementing agent**
 
 This is where the pieces meet the hardware. The most important decision in the task is
-structural and is a **deliberate departure from `task_plan.md:2704-2800`**, which puts Cosmos,
+structural and is a **deliberate departure from `task_plan.md (locate by heading)`**, which puts Cosmos,
 locomotion and an optional behaviour-effects loop in **three threads of one Python process**
 (`:2714`, `:2720`, `:2727`, started at `:2787-2788`). Do not do that. One process means a vLLM
 client exception, a `requests` bug, a camera driver hang or an OOM kill takes the 50 Hz control
@@ -6030,7 +5832,7 @@ Read first:
 - `jetson_runtime/command_arbiter.py`, `cosmos_commander.py`, `command_contract.py`.
 - `docs/jetson-mod/cosmos_serving_measurements.md` (Task V.2) — timeout and watchdog constants
   and the power-mode verdict.
-- `docs/jetson-mod/task_plan.md:2185-2395` — `ThermalManager` and its
+- `docs/jetson-mod/task_plan.md` (locate by heading) — `ThermalManager` and its
   `request_boost()` / `release_boost()` contract (`:2334-2355`). **The file
   `jetson_runtime/thermal_manager.py` is a Phase-4 deliverable and may not exist yet.**
 - `AGENTS.md:635-649` — the GPIO map. `AGENTS.md:649` warns: **verify against the actual Orin
@@ -6041,7 +5843,7 @@ Read first:
 - `AGENTS.md:441-446` — the deployment trap: the obs joint block is `joint_pos_rel`
   (`q − q_default`), not raw encoder angles.
 
-Depends on: Tasks 5.0–5.5 and Phase 4 (a robot that walks under teleop).
+Depends on: Tasks V.0–V.5 and Phase 4 (a robot that walks under teleop).
 
 Traps:
 - **The antennas are contested.** The locomotion policy already emits antenna targets on
@@ -6069,7 +5871,7 @@ Traps:
    Writer: `seq += 1` (now odd) → write payload → `seq += 1` (now even). Reader: read `seq`,
    read payload, re-read `seq`; retry if it changed or is odd. Never blocks the reader.
 2. Create `jetson_runtime/vlm_node.py` — its own process. Loop: capture a frame from the
-   IMX219 (GStreamer `nvarguscamerasrc`, 640×480, JPEG, longest side capped per 5.2), read the
+   IMX219 (GStreamer `nvarguscamerasrc`, 640×480, JPEG, longest side capped per V.2), read the
    standing instruction from `~/duck_logs/instruction.txt` (so a human can change it live),
    call `CosmosCommander.query()`, and on success write to the bus. On failure write nothing —
    silence is the signal, and the watchdog already understands it.
@@ -6107,8 +5909,8 @@ Traps:
 8. LED status on BCM 23/24 (pins 16/18): solid = `FRESH`, 2 Hz blink = `STALE`, off = `LOST`,
    fast double-blink = e-stop. This makes the watchdog observable from across the room during
    the Task V.7 trials. Use `Jetson.GPIO` (`AGENTS.md:649`).
-9. Thermal: if 5.2's verdict was "duty-cycle", wrap each `query()` in
-   `request_boost()` / `release_boost()` per `task_plan.md:2343-2355`; the boost request lives
+9. Thermal: if V.2's verdict was "duty-cycle", wrap each `query()` in
+   `request_boost()` / `release_boost()` per `task_plan.md (locate by heading)`; the boost request lives
    in `vlm_node`, **never** in `locomotion_node`.
 
 **3. Unit tests**
@@ -6204,7 +6006,7 @@ Read first:
   with.
 - `jetson_runtime/command_arbiter.py` `status()` — the telemetry dict this task consumes.
 
-Depends on: Tasks 5.5 and 5.6.
+Depends on: Tasks V.5 and V.6.
 
 Trap: pre-register the criterion **before** the first trial, in the results file, and commit it
 (this is the one place in Phase 5 where committing is the point — ask the owner for permission
@@ -6251,7 +6053,7 @@ threshold.
    taxonomy (how many failures were perception, how many latency, how many locomotion), and
    links to the videos.
 5. Update `docs/jetson-mod/prompt_engineering_results.md` with per-prompt success rates out of
-   10, as `task_plan.md:2891-2897` already asks.
+   10, as `task_plan.md (locate by heading)` already asks.
 6. Add an entry to `docs/jetson-mod/experiment_journal.md`. Every number names its source
    (rule 4). Note the journal has zero v5 entries (`known_issues.md` **DOC-2**) — you may be
    the first to add a post-v4 entry; follow the structure at `AGENTS.md:754-758`.
