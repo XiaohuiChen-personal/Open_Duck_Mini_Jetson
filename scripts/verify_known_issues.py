@@ -556,14 +556,20 @@ def _():
 
 
 # -------------------------------------------------------------------- DOC
-@issue("DOC-2", "experiment_journal.md has zero v5 entries; v5_contact_results.md absent")
+@issue("DOC-2", "experiment_journal.md has zero v5 entries")
 def _():
+    # The results-doc half was discharged on 2026-08-11 (v5_contact_results.md
+    # now exists). The JOURNAL half is still open, so the predicate is now the
+    # journal alone -- otherwise half a fix turns the check green, which is the
+    # failure mode this register exists to prevent.
     j = R("docs/jetson-mod/experiment_journal.md")
     hits = {k: j.count(k) for k in ("v5a_gated_ft", "v5b_ungated_ft", "v5c_contact_only",
                                     "v5d_contact_wrench", "v5_smoke")}
     ex = os.path.exists(P("docs/jetson-mod/v5_contact_results.md"))
-    return ("CONFIRMED" if sum(hits.values()) == 0 and not ex else "REFUTED"), [
-        f"v5 run names in the journal: {hits}", f"v5_contact_results.md exists: {ex}",
+    return ("CONFIRMED" if sum(hits.values()) == 0 else "REFUTED"), [
+        f"v5 run names in the journal: {hits}",
+        f"v5_contact_results.md exists: {ex}  (results-doc half DONE 2026-08-11)",
+        "AGENTS.md requires an entry per training run; five runs have none.",
     ]
 
 

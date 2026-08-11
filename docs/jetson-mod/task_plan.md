@@ -1,5 +1,16 @@
 # Jetson Orin Nano Dev Kit Modification — Task Plan
 
+> **Superseded in part, 2026-08-11.** The rebuild triggered by the PLANT-1 fix
+> (the phantom 1.000 kg on the articulation root) has its own plan:
+> **[`task_plan_v2.md`](task_plan_v2.md)** — Phase M (mass / CAD / USD), Phase R
+> (re-gate and retrain), Phase S (sim-to-real), Phase V (VLM). It is written to
+> be executed one task at a time by an implementing agent.
+>
+> **Where the two disagree, v2 wins.** This document remains authoritative for
+> everything v2 does not cover: the Phase 3/4 design intent, the thermal-zoning
+> rationale, the risk register, the timeline, and the record of what was
+> originally planned.
+
 ## Overview
 
 This document describes the full plan to replace the Raspberry Pi Zero 2W onboard computer with an NVIDIA Jetson Orin Nano Super Developer Kit on the Open Duck Mini v2 bipedal robot. The Jetson will be relocated from the head (where the Pi currently lives) to the trunk/body cavity.

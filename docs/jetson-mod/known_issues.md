@@ -111,7 +111,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [TEST-3](#test-3) | `requires_isaac_sim` is documented but applied to zero tests | LOW | false assurance |
 | [REF-1](#ref-1) | Reference library has no `vy=0` and no `wz=0` cell; contact dims are constant | MEDIUM | v3–v5d |
 | [REF-2](#ref-2) | 33.6% of reachable knee references are clamped; velocity targets are not | MEDIUM | v3–v5d |
-| [DOC-2](#doc-2) | The experiment journal has zero v5 entries | MEDIUM | engineering record |
+| [DOC-2](#doc-2) | The experiment journal has zero v5 entries | MEDIUM | engineering record; **results-doc half done 2026-08-11** |
 | [DOC-3](#doc-3) | Task 2.7 docs still assert a 2.657 kg plant | HIGH | **RESOLVED 2026-08-11** — the plant IS 2.657 kg now |
 | [DOC-4](#doc-4) | `task_plan.md` is stale on four axes | MEDIUM | **FIXED 2026-08-11** (all four) |
 | [DOC-5](#doc-5) | `AGENTS.md` says the USD came from URDF; it came from MJCF | LOW | **FIXED 2026-08-09** |
@@ -1132,6 +1132,16 @@ docs/jetson-mod/v5_contact_results.md exists: False
 `AGENTS.md` makes a journal entry mandatory per run and `v5_retrain_plan.md`
 mandates the results doc. Five executed runs — including the one that produced
 the shipped policy — exist only inside a file titled "Execution Plan".
+
+
+> **Half discharged 2026-08-11.** `docs/jetson-mod/v5_contact_results.md` now
+> exists, built by extracting the run records from `v5_retrain_plan.md` §§14-25
+> and the JSONs in `eval_results_v5/`, and mirroring `v4_retrain_results.md` so
+> the two generations are comparable. **The journal half is still open** — all
+> five v5 run names still appear zero times in `experiment_journal.md`, and
+> `AGENTS.md` requires an entry per training run. The verifier check has been
+> narrowed to the journal alone, so half a fix can no longer turn it green.
+> Task R4 in `task_plan_v2.md` closes the remainder.
 
 <a id="doc-3"></a>
 ## DOC-3 · Task 2.7 docs still assert a 2.657 kg plant — HIGH

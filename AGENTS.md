@@ -19,7 +19,7 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
 - **RL framework:** NVIDIA Isaac Lab with RSL-RL (PPO). (SKRL was used only for the archived PPO-vs-AMP course study — see `open-duck-ppo-vs-amp`; Isaac Lab ships no off-policy skrl task configs, only PPO/AMP plus multi-agent MAPPO/IPPO)
 - **On-device AI:** Cosmos Reason2-2B (W4A16 quantized) for physical AI reasoning + TensorRT locomotion policy
-- **Task plan:** See `docs/jetson-mod/task_plan.md` for the full 5-phase, 32-task implementation plan
+- **Task plan:** `docs/jetson-mod/task_plan_v2.md` is the **active plan** for the current rebuild (Phase M mass/CAD/USD, Phase R re-gate+retrain, Phase S sim-to-real, Phase V VLM). `docs/jetson-mod/task_plan.md` remains the original 5-phase, 32-task plan and the only record of the Phase 3/4 design intent, thermal rationale and risk register — **where the two disagree, v2 wins**
 - **Experiment journal:** EVERY training run gets an entry in `docs/jetson-mod/experiment_journal.md`. Data-sourcing protocol in the [Experiment Journal Protocol](#experiment-journal-protocol) section below — last-100 TensorBoard means (never single-iteration log samples), measured gate rollouts, every number names its source. **Note (2026-07-26): the EN.665.645 course-paper record is FROZEN in the archive repo `open-duck-ppo-vs-amp` (tag `course-study-freeze` marks the freeze commit); from here on this journal is the robot project's engineering record, and study runs 1-16 in it are historical.**
 
 ## Build & Test
@@ -775,7 +775,7 @@ ONNX, videos, log dir). Update the run-index table at the top of the journal.
 
 _Task plan summary — 5 phases, 32 tasks, dependencies, and output files reference_
 
-The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lines, 32 tasks).
+The detailed implementation plan is in `docs/jetson-mod/task_plan.md` (2800+ lines, 32 tasks). For the rebuild triggered by the 2026-08-11 PLANT-1 fix, use `docs/jetson-mod/task_plan_v2.md` instead — it is written task-at-a-time for an implementing agent and supersedes v1 wherever they overlap.
 
 ### Phase Summary
 

@@ -19,55 +19,109 @@ A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork migrates th
 | Phase | Description | Status |
 |---|---|---|
 | Phase 1 | Simulation model update (Jetson mass/inertia in trunk) | ✅ Complete |
-| Phase 2 | Isaac Lab environment + PPO locomotion training on DGX Spark | ✅ Complete (PPO baseline + v4_robust DR retrain shipped, push-recovery gate passed; ONNX export remaining) |
-| Phase 3 | CAD redesign of trunk / body / battery for Jetson cavity | 🟠 In progress (layout v2.1 + corrected inertials merged 2026-07-26; remaining 3.x tasks pending) |
+| Phase 2 | Isaac Lab environment + PPO locomotion training on DGX Spark | ✅ Complete (v5d_contact_wrench shipped with ONNX export; **gates must be re-measured — the plant changed on 2026-08-11**) |
+| Phase 3 | CAD redesign of trunk / body / battery for Jetson cavity | 🟠 In progress (layout v2.1 + corrected inertials merged 2026-07-26; mass model being rebuilt — see [task_plan_v2.md](docs/jetson-mod/task_plan_v2.md) Phase M) |
 | Phase 4 | Hardware build, TensorRT deployment, real-robot walking | 🟡 Planned |
 | Phase 5 | Cosmos Reason2 VLM for vision-language-action control | 🟡 Planned |
 
-Full task breakdown (5 phases, 31 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
+Full task breakdown (5 phases, 32 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
+
+**The rebuild currently in progress has its own plan:**
+**[docs/jetson-mod/task_plan_v2.md](docs/jetson-mod/task_plan_v2.md)** — 33 tasks
+across Phase M (mass/CAD/USD), Phase R (re-gate and retrain), Phase S
+(sim-to-real) and Phase V (VLM). Where the two plans disagree, v2 wins.
 
 ---
 
 ## What's Working Today
 
-A trained PPO locomotion policy in Isaac Lab using a **BDX-style composite imitation reward**, based on the Disney BDX paper *"Design and Control of a Bipedal Robotic Character"* (Jan 2025) and the Open Duck Playground reward structure. Three reward iterations shipped (v1, v2, and the current v3, which fixed the v2 gait-phase bug and passes the G1 gait gate), plus a 16-run PPO-vs-AMP comparison study (archived in [open-duck-ppo-vs-amp](https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp)). After the CAD-driven model correction, the deployment candidate is **v4_robust** — PPO retrained on the corrected layout-v2.1 model with dynamics domain randomization and a hardware-realizable 59-dim observation (`docs/jetson-mod/v4_retrain_results.md`, `validation_results.md`).
+The shipped locomotion policy is **v5d_contact_wrench** — PPO trained in Isaac
+Lab against a **BDX-style composite imitation reward** (Disney's *"Design and
+Control of a Bipedal Robotic Character"*, Jan 2025, plus the Open Duck
+Playground reward structure), then fine-tuned under a contact-rich curriculum:
+trunk contact is no longer instant death (the robot terminates on *falling* —
+tilt > 60° or height < 0.09 m, the deployment's own definition), an obstacle
+stands in 25% of training episodes, and a sustained 2-6 s torso wrench presses
+the robot while it tracks a turn command. Checkpoint, configs and ONNX export
+are archived in
+[`exported_policies/v5d_contact_wrench_ppo/`](exported_policies/v5d_contact_wrench_ppo/).
+
+Lineage: v1 → v2 → v3 (gait-phase fix; the 16-run PPO-vs-AMP course study's
+winner, archived in
+[open-duck-ppo-vs-amp](https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp))
+→ **v4_robust** (retrained on the corrected layout-v2.1 model, with dynamics
+domain randomization and a hardware-realizable 59-dim observation) → **v5d**
+(contact-rich fine-tune of v4_robust).
 
 **Training setup:**
 - NVIDIA Isaac Lab + RSL-RL PPO on DGX Spark (Grace Blackwell)
-- 4096 parallel environments, 50 Hz policy / 200 Hz physics
+- 4096 parallel environments, 50 Hz policy / 200 Hz physics, ~20 s episodes
 - MLP [512, 256, 128] with ELU, observation normalization enabled
-- 3000 iterations, ~20s episodes
+- Asymmetric observations: 59-dim actor (no `base_lin_vel` — not measurable on
+  hardware), 62-dim privileged critic, 16 actions
+- v4_robust: 3000 iterations from scratch · v5d: +3000 fine-tune iterations
+  (final checkpoint `model_5998.pt`)
 
-**Imitation reward design** (`isaac_lab_env/open_duck_mini_v2/imitation_reward.py`):
-- Polynomial gait library: 240 reference motions × 40 dimensions × 16 polynomial coefficients
+**Imitation reward design**
+(`isaac_lab_env/open_duck_mini_v2/imitation_reward.py`):
+- Polynomial gait library: 240 reference motions × 40 dimensions × 16 polynomial
+  coefficients
 - Joint position tracking (raw quadratic, BDX weight 15.0)
 - Joint velocity tracking (raw quadratic, BDX weight 0.001)
 - Base velocity tracking (exponential, BDX weight 1.0)
 - Foot contact matching (binary, BDX weight 1.0)
 
-**v2 final results (iteration 3000):**
+**v5d vs v4_robust** — gated evaluation, 6 velocity conditions × 10 windows ×
+64 envs × 30 s = 3,840 episodes per policy per row
+([`docs/jetson-mod/v5_contact_results.md`](docs/jetson-mod/v5_contact_results.md),
+[`v5_comparison.md`](docs/jetson-mod/v5_comparison.md), JSONs in
+`docs/jetson-mod/eval_results_v5/`):
 
-| Metric | Value |
-|---|---|
-| Mean reward | ~239 |
-| Fall rate | **0.0%** at final iteration (down from 99.9% at iter 31) |
-| Reference tracking | **3.80° RMS** error across 6 leg joints |
-| Mean episode length | 1000 steps (full 20s, no early termination) |
-| Action std | 0.07 (precise, confident policy) |
+| | v4_robust | **v5d_contact_wrench** |
+|---|---|---|
+| Gait-validity gate (open field) | 6/6 | **6/6** |
+| Fall rate, open field | 0.00 % | **0.00 %** |
+| Reference tracking RMS | 4.478° | 4.669° |
+| Stance duty L/R | 68.7 / 63.7 % | 71.5 / 73.9 % |
+| Energy proxy | 20.85 W | 20.33 W |
+| Mean squared jerk | 0.0720 | 0.0836 |
+| **Falls — obstacle graze** | 32.60 % | **0.31 %** |
+| **Falls — sustained press** | 100.00 % | **47.11 %** |
+| **Falls — push (tilt/height rule)** | 11.12 % | **0.00 %** |
+| **Falls — push (v4 trunk-contact rule)** | 6.35 % | **1.07 %** |
 
-**v1 → v2 reward design improvements:**
+The open-field numbers are a tie by design — v4_robust already walks cleanly
+there, so v5 could only match it. The win is in the contact columns, which is
+where the robot actually failed: in a 12-trial LLM-driven apartment benchmark
+v4_robust fell 10 times, 7 of them while rotating in contact with furniture.
+Re-running that benchmark with v5d gave **zero falls in 12 trials**, plus zero
+falls in a 4-trial companion batch for the fourth model — measured in the
+sibling [duck-embody](https://github.com/XiaohuiChen-personal) project, not in
+this repo.
 
-| Metric | v1 | v2 | Improvement |
-|---|---|---|---|
-| Mean reward | 235 | 239 | +2% |
-| Fall rate | 1.3% | **0.0%** | Eliminated |
-| Flat orientation | -0.05 | **-0.008** | 6× less tilt |
-| Action std | 0.48 | **0.07** | 7× more precise |
-| Convergence | ~500 iter to plateau | ~200 iter to plateau | 2.5× faster |
+**Not done yet, and load-bearing:**
+- **Every simulation number above was measured on a plant 1.000 kg heavier than
+  the design.** PhysX gave the massless articulation root a 1.000 kg default;
+  the bug was fixed on 2026-08-11 (2.657067 kg now simulated, `base` merged into
+  `trunk_assembly`), so the winning recipe must be retrained and re-gated on the
+  corrected plant before hardware.
+- The exported ONNX is the policy graph **only**: it omits `action_scale`
+  (0.25) and the default joint positions, so any consumer must apply
+  `q_target = q_default + 0.25·a` itself. The `.onnx` graph file is also
+  currently gitignored while its weight sidecar is tracked — a fresh clone gets
+  the weights without the graph.
+- **4 of the 59 observation dims cannot be measured on the real robot** (the two
+  antenna joints' position and velocity — open-loop SG90s with no feedback).
+  This must be designed around before the on-robot observation builder is
+  written.
+- No hardware has been built; `jetson_runtime/` does not exist yet. TensorRT
+  deployment is Phase 4.
 
-**Full training report:** [`exported_policies/v2_bdx_imitation_ppo/README.md`](exported_policies/v2_bdx_imitation_ppo/README.md)
+Every known defect in the simulation, tooling and deployment path is tracked in
+one register: [`docs/jetson-mod/known_issues.md`](docs/jetson-mod/known_issues.md).
 
-**Showcase videos** (training progression, untrained → iter 2999): [`showcase_videos/`](showcase_videos/)
+**Showcase videos** (training progression, untrained → iter 2999):
+[`showcase_videos/`](showcase_videos/)
 
 ---
 
