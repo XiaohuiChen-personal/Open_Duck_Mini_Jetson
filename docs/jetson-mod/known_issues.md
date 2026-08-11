@@ -100,6 +100,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [ART-1](#art-1) | `policy.onnx` is gitignored while its weight sidecar is committed | HIGH | reproducibility |
 | [ART-2](#art-2) | `exported_policies/v4_robust/` was never created | MEDIUM | provenance |
 | [ART-3](#art-3) | `usd/config.yaml` records a deleted worktree as the asset source | LOW | **FIXED 2026-08-11** by the USD regen |
+| [ART-4](#art-4) | `.gitignore` ignores `*.txt` repo-wide — any future prompt library or fixture is silently untracked | MEDIUM | Phase 4/5 |
 | [DEPLOY-1](#deploy-1) | The ONNX omits `action_scale` and `q_default` entirely | HIGH | Phase 4 |
 | [DEPLOY-2](#deploy-2) | The normalizer epsilon is in the graph but not in the checkpoint | MEDIUM | Phase 4 |
 | [DEPLOY-3](#deploy-3) | 4 of the 59 observation dims cannot be measured on hardware | HIGH | Phase 4 blocker |
@@ -893,6 +894,39 @@ a worktree that no longer exists. The staleness guard still passes because
 `tests/test_usd_conversion.py` pops the path keys before hashing — so the asset
 is fine and only its recorded provenance is unverifiable.
 
+<a id="art-4"></a>
+## ART-4 · `.gitignore` swallows every `.txt` in the repo — MEDIUM
+
+`.gitignore:18` is a bare `*.txt`, with no negation anywhere. It applies to the
+whole tree, not just to the training-queue files it was presumably written for.
+
+```
+$ sed -n '18p' .gitignore
+*.txt
+$ git check-ignore -v jetson_runtime/prompts/navigate.txt
+.gitignore:18:*.txt	jetson_runtime/prompts/navigate.txt
+```
+
+Only **one** `.txt` file is tracked today
+(`experiments/RL/new/bdx_walk_in_place.txt`), so nothing is lost yet. The defect
+is latent and fires in Phase 5: the planned Cosmos prompt library, any recorded
+VLM transcript fixture, and any plain-text golden file would be created,
+apparently succeed, and never be committed. `git status` stays clean, which is
+exactly what makes it dangerous — the loss is silent and is only discovered on a
+fresh clone.
+
+**Fix:** narrow the rule to where it is needed (`.training_runs/*.txt`), or add
+an explicit negation for the directories that must be tracked, e.g.
+
+```
+*.txt
+!jetson_runtime/**/*.txt
+!tests/fixtures/**/*.txt
+```
+
+Verify with `git check-ignore -v <path>` — a clean `git status` is not evidence
+the file is tracked.
+
 ---
 
 # DEPLOY — the Phase-4 contract
@@ -920,6 +954,15 @@ wrong by a **4× gain and a standing-pose offset up to 1.379 rad** — total, si
 failure. Related trap: the observation's joint block is `joint_pos_rel`
 (`q − q_default`), not raw encoder angles; feeding absolute angles puts the knees
 13–14 σ outside the training distribution.
+
+> **The values already exist in this repo — do not re-type them.**
+> `scripts/duck_init_pos.json` carries the canonical `joint_order` (16 names) and
+> `init_pos_rad` (16 values), which is exactly the `q_default` the graph omits.
+> A hardware runtime should load that file rather than transcribe angles, and
+> should key by joint NAME, not by index: Isaac Lab's joint order is interleaved
+> and differs from both the MJCF order and the Playground polynomial order (see
+> `AGENTS.md` "Joint Orders", which also warns against a legacy 15-joint table).
+> `action_scale` is 0.25 and is not in the file — it is in the env config.
 
 <a id="deploy-2"></a>
 ## DEPLOY-2 · The normalizer epsilon is not in the checkpoint — MEDIUM
@@ -1014,8 +1057,14 @@ statement*, not the bare tuple — which is why it caught the `ang_vel_z` mutati
 ## TEST-2 · A bare `pytest` from the repo root fails at collection — LOW
 
 `pytest.ini` sets no `testpaths`, so pytest walks into `experiments/RL/old_test.py`
-→ `ModuleNotFoundError: No module named 'gymnasium'`. Only `pytest tests/` works
-(101 passed). Any "101 passed" claim implicitly means `pytest tests/`.
+→ `ModuleNotFoundError: No module named 'gymnasium'`. Only `pytest tests/` works.
+Any bare pass-count claim in this register implicitly means `python3 -m pytest tests/`.
+
+> **Baseline moved 2026-08-11: it is now `103 passed`**, not 101. The PLANT-1 fix
+> added two regression tests to `tests/test_mass_inertia.py`. The mutation table
+> in [TEST-1](#test-1) records `101 passed` because that was the baseline when
+> those mutations were run; the conclusion is unchanged, but re-running them
+> today should compare against 103.
 
 <a id="test-3"></a>
 ## TEST-3 · `requires_isaac_sim` is documented but applied to zero tests — LOW
