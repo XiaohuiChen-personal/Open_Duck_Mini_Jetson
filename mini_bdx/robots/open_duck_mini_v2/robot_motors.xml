@@ -66,9 +66,8 @@
         <exclude name="exclude10" body1="head_pitch_to_yaw" body2="head_assembly" />
     </contact>
     <worldbody>
-        <body name="base" pos="0 0 0.17">
+        <body name="trunk_assembly" pos="0 0 0.17">
             <freejoint />
-            <body name="trunk_assembly">
                 <inertial pos="-0.0635850 0.0000875 0.0339683" mass="1.089544" fullinertia="0.00221458 0.00542614 0.00481788 -2.19953810e-05 -1.17035388e-04 -6.88783258e-06" />
                 <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front" />
                 <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front" contype="0" conaffinity="0" />
@@ -409,7 +408,6 @@
                         </body>
                     </body>
                 </body>
-            </body>
         </body>
     </worldbody>
     <actuator>

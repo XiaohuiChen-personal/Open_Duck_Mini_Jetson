@@ -56,22 +56,11 @@ def mjcf_bodies():
 
 
 # ------------------------------------------------------------------ PLANT
-@issue("PLANT-1", "Phantom 1.000 kg: `base` is the only body with no <inertial>")
-def _():
-    root = mjcf_bodies()
-    none_, masses = [], []
-    for b in root.iter("body"):
-        i = b.find("inertial")
-        (none_ if i is None else masses).append(b.get("name") if i is None else float(i.get("mass")))
-    seg = re.search(r'<body name="base".*?>(.*?)<body name="trunk_assembly"',
-                    R("mini_bdx/robots/open_duck_mini_v2/robot_motors.xml"), re.S).group(1)
-    ok = none_ == ["base"] and abs(sum(masses) - 2.657067284) < 1e-6 and "<geom" not in seg
-    return ("CONFIRMED" if ok else "REFUTED"), [
-        f"bodies with NO <inertial>: {none_}   (of {len(masses) + len(none_)} total)",
-        f"authored total mass: {sum(masses):.9f} kg",
-        f"`base` also has no <geom>, so link_density auto-compute cannot fire: {'<geom' not in seg}",
-        "runtime confirmation: scripts/audit_plant_mass.py exits 1 with TOTAL 2.657067 -> 3.657067",
-    ]
+# PLANT-1 FIXED 2026-08-11: `base` was merged into `trunk_assembly`, which now
+# carries the <freejoint/> and is the articulation root. audit_plant_mass.py
+# exits 0 (MJCF 2.657067 == PhysX 2.657067) and the PhysX invalid-inertia
+# warning is gone. The regression guard promised in the register now lives in
+# tests/ as an "every MJCF body declares <inertial>" assertion. Check retired.
 
 
 @issue("PLANT-1b", "The other massless frames DO carry a 1e-09 placeholder inertial")
@@ -80,21 +69,16 @@ def _():
                       R("mini_bdx/robots/open_duck_mini_v2/robot_motors.xml"))
     return ("CONFIRMED" if len(hits) >= 4 else "REFUTED"), [
         f"frames with a 1e-09 placeholder: {hits}",
-        "-> the fix pattern already exists in the file; `base` is the sole exception",
+        "-> measured on GPU 2026-08-11: PhysX substitutes (4.000e-12, 4.000e-12,"
+        " 4.000e-12) for each, i.e. 0.4*m*r^2 with r=0.1 m -- NOT the infinite"
+        " inertia its docs warn about, so these frames are benign",
     ]
 
 
-@issue("PLANT-2", "add_base_mass randomizes `trunk_assembly`, not `base`")
-def _():
-    blk = re.search(r"self\.events\.add_base_mass = EventTerm\((.*?)\n        \)",
-                    R("isaac_lab_env/open_duck_mini_v2/env_cfg.py"), re.S).group(1)
-    body = re.search(r'body_names="(\w+)"', blk).group(1)
-    rng = re.search(r'"mass_distribution_params": \(([-\d., ]+)\)', blk).group(1)
-    hi = float(rng.split(",")[1])
-    return ("CONFIRMED" if body == "trunk_assembly" else "REFUTED"), [
-        f"add_base_mass body_names = {body!r}; the phantom mass is on 'base'",
-        f"range = ({rng}) -> upper bound {hi} kg vs a 1.000 kg constant offset = {1.0/hi:.1f}x too small",
-    ]
+# PLANT-2 RESOLVED 2026-08-11 by the PLANT-1 fix: `trunk_assembly` IS the
+# articulation root now, so add_base_mass/base_com perturb the body their names
+# claim, and there is no 1.000 kg constant offset left for the range to be
+# "too small" against. Check retired.
 
 
 @issue("PLANT-3", "61.7% of training resets start inside the ground plane")
@@ -434,15 +418,9 @@ def _():
     ]
 
 
-@issue("ART-3", "usd/config.yaml records a deleted worktree as the asset source")
-def _():
-    cfg = R("mini_bdx/robots/open_duck_mini_v2/usd/config.yaml")
-    stale = "Open_Duck_Mini_Jetson-cad" in cfg
-    return ("CONFIRMED" if stale else "REFUTED"), [
-        f"config.yaml names the -cad worktree: {stale}; that path exists: "
-        f"{os.path.exists('/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson-cad')}",
-        "the staleness guard still passes because the test pops the path keys before hashing",
-    ]
+# ART-3 FIXED 2026-08-11: regenerating the USD from this repo rewrote
+# usd/config.yaml, whose asset_path now names the live checkout instead of the
+# deleted Open_Duck_Mini_Jetson-cad worktree. Check retired.
 
 
 # ----------------------------------------------------------------- DEPLOY

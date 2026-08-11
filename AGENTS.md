@@ -13,7 +13,7 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 
 ## Quick Reference
 
-- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod). **Isaac simulates 3.66 kg, not 2.66 kg** — a PhysX default on the massless MJCF root frame. Known, unfixed, affects every Isaac-trained policy: `docs/jetson-mod/known_issues.md`
+- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod). Isaac now simulates 2.66 kg too — the PhysX phantom kilogram on the massless MJCF root was **fixed 2026-08-11** (PLANT-1). **Every policy through v5d was trained on the old 3.66 kg plant and its gate numbers are stale:** `docs/jetson-mod/known_issues.md`
 - **Onboard computer:** NVIDIA Jetson Orin Nano Super (8 GB, 67 TOPS) — relocated from head to trunk
 - **Training hardware:** NVIDIA DGX Spark (Grace Blackwell)
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
@@ -162,8 +162,8 @@ _Hardware specifications for the robot, Jetson Orin Nano, servos, batteries, and
 | Parameter | Value |
 |---|---|
 | Total height | ~420 mm (legs extended) |
-| Total mass (after mod) | ~2,657 g declared; **PhysX simulates 3,657 g** ([PLANT-1](docs/jetson-mod/known_issues.md#plant-1)) and the true build is ~2,810 g once the Part-2 CAD delta is measured rather than assumed ([PLANT-10](docs/jetson-mod/known_issues.md#plant-10)) and the 4 booked-but-unmodelled 18650 cells are counted |
-| **Mass Isaac actually simulates** | **3,657 g** — the row above **plus a 1,000 g PhysX default** on the massless MJCF root frame `base`. Real robot = 2,657 g; simulated plant = 3,657 g. Use the right one for the question you are asking, and see `docs/jetson-mod/known_issues.md` |
+| Total mass (after mod) | ~2,657 g declared **and now simulated** — [PLANT-1](docs/jetson-mod/known_issues.md#plant-1) fixed 2026-08-11, `audit_plant_mass.py` exits 0. The true *build* is heavier: ~2,810 g once the Part-2 CAD delta is measured rather than assumed ([PLANT-10](docs/jetson-mod/known_issues.md#plant-10)) and the 4 booked-but-unmodelled 18650 cells are counted. Every policy through v5d was trained on the old 3,657 g plant and needs re-gating. |
+| **Mass Isaac actually simulates** | **2,657 g** — matches the authored mass since the PLANT-1 fix (2026-08-11) merged the massless root frame `base` into `trunk_assembly`. It was 3,657 g for every run up to and including v5d, because PhysX substituted a 1,000 g default for the unauthored root; see `docs/jetson-mod/known_issues.md#plant-1` |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
 | Servos | 14x Feetech STS3250 (12V, 50 kg.cm stall, 74.5g each) |
 | Ear servos | 2x SG90 micro servos (in head) |
@@ -486,16 +486,9 @@ names (as `imitation_reward.py` does) or assert against the model file
 ```
 
 **Playground polynomial order** (used in polynomial_coefficients.pkl):
-```
-0: left_hip_yaw      8: head_roll
-1: left_hip_roll     9: left_antenna
-2: left_hip_pitch   10: right_antenna
-3: left_knee        11: right_hip_yaw
-4: left_ankle       12: right_hip_roll
-5: neck_pitch       13: right_hip_pitch
-6: head_pitch       14: right_knee
-7: head_yaw         15: right_ankle
-```
+**identical to the MuJoCo / MJCF order above** — verified byte-for-byte, which is
+why only one listing is kept here. Read it from the MJCF block above rather than
+from a second copy that can drift out of sync with it.
 
 `mini_bdx/mini_bdx/utils/rl_utils.py` contains MuJoCo↔IsaacGym conversion tables for the LEGACY 15-joint BDX robot (no head_roll) — do not reuse them for this 16-joint model. The Isaac Lab imitation reward (`imitation_reward.py`) builds the Playground↔Isaac Lab mapping dynamically from joint names.
 
@@ -584,16 +577,10 @@ as historical record.
 
 ### Actuator Configuration (STS3250)
 
-```python
-stiffness = 45.53     # kp from BAM (STS3250 id008)
-damping = 1.346       # kd from BAM (STS3250 id008)
-armature = 0.040      # From BAM id008
-friction = 0.200      # frictionloss from BAM id008
-effort_limit_sim = 8.716  # Torque limit in Nm (BAM forcerange). NOTE the _sim
-                          # suffix: robot_cfg.py sets effort_limit_sim and leaves
-                          # effort_limit at None. Pasting `effort_limit=` sets a
-                          # different, currently-unused field.
-```
+See [Actuator Configuration](#actuator-configuration) above — the snippet was
+duplicated verbatim here and is now kept in one place so the two copies cannot
+drift. The torque ceiling it sets carries a caveat: see
+[known_issues.md PLANT-5](docs/jetson-mod/known_issues.md#plant-5).
 
 ### Policy Network Architecture
 

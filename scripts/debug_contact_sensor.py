@@ -35,7 +35,7 @@ robot = Articulation(robot_cfg)
 
 # Create contact sensor matching our env config
 contact_cfg = ContactSensorCfg(
-    prim_path="/World/Robot/base/.*",
+    prim_path="/World/Robot/trunk_assembly/.*",
     history_length=3,
     track_air_time=True,
 )

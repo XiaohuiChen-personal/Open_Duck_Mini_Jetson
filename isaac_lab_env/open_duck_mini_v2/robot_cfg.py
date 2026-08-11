@@ -69,9 +69,14 @@ OPEN_DUCK_MINI_V2_CFG = ArticulationCfg(
         joint_vel={".*": 0.0},
     ),
     # The MJCF converter creates two articulation roots in the USD:
-    # /robot_motors/worldBody (empty) and /robot_motors/base/base (the robot).
+    # /robot_motors/worldBody (empty) and
+    # /robot_motors/trunk_assembly/trunk_assembly (the robot).
     # Point to the correct one to avoid ambiguity.
-    articulation_root_prim_path="/base/base",
+    #
+    # This was "/base/base" until the PLANT-1 fix (2026-08-11) merged the
+    # massless `base` wrapper into `trunk_assembly`, which is now the
+    # articulation root. See docs/jetson-mod/known_issues.md#plant-1.
+    articulation_root_prim_path="/trunk_assembly/trunk_assembly",
     # Use 90% of joint limits as soft limits for the joint_pos_limits reward
     soft_joint_pos_limit_factor=0.9,
     # Actuator model using BAM-identified Feetech STS3250 servo parameters.

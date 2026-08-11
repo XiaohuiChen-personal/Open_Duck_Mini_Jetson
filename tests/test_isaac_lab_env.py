@@ -221,13 +221,19 @@ class TestEnvCfgModule:
         assert '"std": 0.5' in content, "Lin vel tracking std should be 0.5"
 
     def test_env_cfg_contact_sensor_path(self):
-        """Contact sensor must use Robot/base/* path for MJCF-converted USD."""
+        """Contact sensor must target the articulation root subtree.
+
+        Was Robot/base/* until the PLANT-1 fix merged the massless `base`
+        wrapper into `trunk_assembly`, which is now the USD articulation root.
+        """
         path = os.path.join(
             REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "env_cfg.py"
         )
         with open(path) as f:
             content = f.read()
-        assert "Robot/base/.*" in content, "Contact sensor path must target Robot/base/*"
+        assert (
+            "Robot/trunk_assembly/.*" in content
+        ), "Contact sensor path must target Robot/trunk_assembly/*"
 
 
 @pytest.mark.phase2

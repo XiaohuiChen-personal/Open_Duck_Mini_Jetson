@@ -23,6 +23,13 @@ policy: v1-v3 PPO and all AMP runs) + the Part-2 CAD mesh cuts
 > `<inertial>` and gets a 1.000 kg default. Both v4 runs below trained on the
 > heavier plant. See `known_issues.md` PLANT-1.
 
+> **Update 2026-08-11: PLANT-1 is fixed.** `base` was merged into
+> `trunk_assembly` and the USD regenerated; `audit_plant_mass.py` now exits 0
+> with PhysX simulating 2.657067 kg. The caveat above still applies to the
+> numbers on this page, which were produced on the old 3.657 kg plant and are
+> kept as the historical record. **They must be re-measured on the corrected
+> plant before any of them is quoted again.**
+
 ## Run A — `v4_inertials` (model-correction isolation)
 
 **Config**: task `Isaac-Velocity-Rough-OpenDuck-v0`, UNCHANGED v3 recipe

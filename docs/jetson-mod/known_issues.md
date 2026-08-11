@@ -75,8 +75,8 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 
 | ID | Issue | Sev | Scope |
 |---|---|---|---|
-| [PLANT-1](#plant-1) | Phantom 1.000 kg on the articulation root `base` | CRITICAL | every Isaac policy, v1–v5d |
-| [PLANT-2](#plant-2) | The one DR term that could cover PLANT-1 misses on both axes | CRITICAL | v4_robust, v5a–v5d |
+| [PLANT-1](#plant-1) | Phantom 1.000 kg on the articulation root `base` | CRITICAL | **FIXED 2026-08-11**; every policy v1–v5d was trained with it |
+| [PLANT-2](#plant-2) | The one DR term that could cover PLANT-1 misses on both axes | CRITICAL | **RESOLVED 2026-08-11** by the PLANT-1 fix |
 | [PLANT-3](#plant-3) | 61.7% of training resets start inside the ground plane | MEDIUM | training only |
 | [PLANT-4](#plant-4) | Antennas simulated with STS3250 parameters (~48× torque, ~10⁴× armature) | MEDIUM | all |
 | [PLANT-5](#plant-5) | Torque ceiling is 1.78× datasheet stall, pinned to 12.1 V, never randomized | MEDIUM | all |
@@ -99,7 +99,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [SHELL-5](#shell-5) | Training watchdog fails open on a parse error | MEDIUM | future runs |
 | [ART-1](#art-1) | `policy.onnx` is gitignored while its weight sidecar is committed | HIGH | reproducibility |
 | [ART-2](#art-2) | `exported_policies/v4_robust/` was never created | MEDIUM | provenance |
-| [ART-3](#art-3) | `usd/config.yaml` records a deleted worktree as the asset source | LOW | provenance |
+| [ART-3](#art-3) | `usd/config.yaml` records a deleted worktree as the asset source | LOW | **FIXED 2026-08-11** by the USD regen |
 | [DEPLOY-1](#deploy-1) | The ONNX omits `action_scale` and `q_default` entirely | HIGH | Phase 4 |
 | [DEPLOY-2](#deploy-2) | The normalizer epsilon is in the graph but not in the checkpoint | MEDIUM | Phase 4 |
 | [DEPLOY-3](#deploy-3) | 4 of the 59 observation dims cannot be measured on hardware | HIGH | Phase 4 blocker |
@@ -111,7 +111,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [REF-1](#ref-1) | Reference library has no `vy=0` and no `wz=0` cell; contact dims are constant | MEDIUM | v3–v5d |
 | [REF-2](#ref-2) | 33.6% of reachable knee references are clamped; velocity targets are not | MEDIUM | v3–v5d |
 | [DOC-2](#doc-2) | The experiment journal has zero v5 entries | MEDIUM | engineering record |
-| [DOC-3](#doc-3) | Task 2.7 docs still assert a 2.657 kg plant | HIGH | **caveated 2026-08-09** |
+| [DOC-3](#doc-3) | Task 2.7 docs still assert a 2.657 kg plant | HIGH | **RESOLVED 2026-08-11** — the plant IS 2.657 kg now |
 | [DOC-4](#doc-4) | `task_plan.md` is stale on four axes | MEDIUM | **FIXED 2026-08-11** (all four) |
 | [DOC-5](#doc-5) | `AGENTS.md` says the USD came from URDF; it came from MJCF | LOW | **FIXED 2026-08-09** |
 | [DOC-6](#doc-6) | `AGENTS.md` actuator snippet sets a field the code does not use | LOW | **FIXED 2026-08-09** |
@@ -282,6 +282,54 @@ it in the same change that fixes the asset. Until then `audit_plant_mass.py` is
 the check, and it is a real gate — it exits nonzero on FAIL, verified in both
 directions.
 
+### FIXED 2026-08-11 — option 1 (merge `base` into `trunk_assembly`)
+
+`robot_motors.xml` now carries the `<freejoint/>` and `pos="0 0 0.17"` on
+`trunk_assembly` directly; the `base` wrapper is gone. The merge is a pure
+structural rename because `trunk_assembly` had **no `pos` and no `quat`** — an
+identity transform. Verified against the pre-fix model at a randomized state:
+
+```
+                     OLD (base wrapper)   NEW (merged)
+nbody                                24             23
+nq / nv                         23 / 22        23 / 22
+total mass (kg)             2.657067284    2.657067284
+root body                          base   trunk_assembly
+
+max |M_old - M_new|       = 0.000e+00   (mass matrix, 22x22)
+max |qacc_old - qacc_new| = 0.000e+00
+max |CoM_old - CoM_new|   = 5.551e-17 m
+```
+
+USD regenerated from the merged MJCF. `audit_plant_mass.py` now **exits 0**:
+
+```
+TOTAL     MJCF 2.657067    PhysX 2.657067    -0.000000
+VERDICT: PASS — simulated total is -0.000000 kg (-0.0%)
+```
+
+The PhysX `possibly invalid inertia tensor` warning no longer appears (grep
+count 0 across the run), and the articulation has **21 rigid bodies instead of
+22**. Runtime smoke test on `ContactWrench-v0`, 16 envs × 60 steps: root body
+`trunk_assembly`, contact sensor resolves all 21 bodies, feet register
+152.5 N / 87.7 N, and **obs/action stay 59/16** so exported checkpoints remain
+loadable.
+
+Downstream sites updated in the same change:
+`robot_cfg.py` `articulation_root_prim_path` `/base/base` →
+`/trunk_assembly/trunk_assembly`; `env_cfg.py` contact-sensor `prim_path`
+`Robot/base/.*` → `Robot/trunk_assembly/.*`; `scripts/debug_contact_sensor.py`;
+and the `tests/test_isaac_lab_env.py` assertion.
+
+The wrench curriculum leak closed with it — `ContactRegimeEvent` now reports
+`measured robot weight 26.07 N (2.657 kg)` where it previously reported
+35.88 N (3.657 kg).
+
+> **Every policy through v5d was trained on the 3.657 kg plant and none has been
+> retrained on the corrected one.** Existing checkpoints load, but their gate
+> numbers describe a robot that no longer exists in the simulator. Re-running the
+> gates on the corrected plant is the first task of the rebuild.
+
 <a id="plant-2"></a>
 ## PLANT-2 · The DR term that could cover PLANT-1 misses on both axes — CRITICAL
 
@@ -306,6 +354,21 @@ add_base_mass  body_names=['trunk_assembly'] -> resolved ids=[1]
 for the *concept* "base mass" but bound to the *body* `trunk_assembly`. Any term
 that names a body by string should be checked against the body that actually
 carries the uncertainty.
+
+### RESOLVED 2026-08-11 by the PLANT-1 fix
+
+Both halves dissolve once `base` is merged away:
+
+1. **Wrong body — no longer wrong.** `trunk_assembly` *is* the articulation root
+   now, so `add_base_mass` and `base_com` perturb exactly the body their names
+   claim. The concept and the binding agree.
+2. **Wrong magnitude — no longer wrong.** There is no 1.000 kg constant offset
+   left to cover, so a ±(−0.10, +0.15) kg range is a reasonable mass DR band on a
+   1.09 kg link rather than a 6.7×-too-small correction for a systematic error.
+
+Nothing in the config changed; the defect was in the plant the config pointed at.
+The naming-families lesson still stands and is why the entry is kept rather than
+deleted.
 
 <a id="plant-3"></a>
 ## PLANT-3 · 61.7% of training resets start inside the ground plane — MEDIUM

@@ -242,7 +242,7 @@ class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.observations.policy.gait_phase = ObsTerm(func=gait_phase_observation)
 
         self.scene.contact_forces = ContactSensorCfg(
-            prim_path="{ENV_REGEX_NS}/Robot/base/.*",
+            prim_path="{ENV_REGEX_NS}/Robot/trunk_assembly/.*",
             history_length=3,
             track_air_time=True,
         )
@@ -350,8 +350,9 @@ class OpenDuckRobustEnvCfg(OpenDuckRoughEnvCfg):
         self.observations.critic.gait_phase = ObsTerm(func=gait_phase_observation)
 
         # --- Dynamics domain randomization ---
-        # NOTE: the conversion's root body ("base") is massless — all
-        # body-targeted DR must point at trunk_assembly.
+        # NOTE: `trunk_assembly` IS the articulation root as of the PLANT-1
+        # fix (2026-08-11); the old massless `base` wrapper is gone, so
+        # body-targeted DR now reaches the root it always named.
         self.events.push_robot = EventTerm(
             func=mdp.push_by_setting_velocity,
             mode="interval",

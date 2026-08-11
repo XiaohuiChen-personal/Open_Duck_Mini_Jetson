@@ -46,6 +46,12 @@ remains a mandatory protocol step.
 Aggregate values below are means over the six conditions (640 episodes each,
 3,840 per policy).
 
+> **PLANT-1 was fixed on 2026-08-11** — `base` is merged into `trunk_assembly`,
+> the USD is regenerated, and PhysX now simulates 2.657067 kg. Caveat (1) below
+> therefore describes the plant these rows were measured on, **not** the current
+> one. Every number on this page needs re-measuring on the corrected plant before
+> it is quoted again.
+>
 > **Caveats on every row below.** (1) PhysX simulated a **3.657067 kg** plant,
 > not the 2.657067 kg the MJCF and USD author: the articulation root `base` has
 > no `<inertial>` and takes PhysX's 1.000 kg default (`known_issues.md`

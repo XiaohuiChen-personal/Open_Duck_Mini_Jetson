@@ -70,3 +70,55 @@ class TestMassInertiaCalculations:
         assert -0.15 < com[0] < 0.03, f"trunk CoM X out of bounds: {com[0]}"
         assert -0.06 < com[1] < 0.06, f"trunk CoM Y out of bounds: {com[1]}"
         assert -0.03 < com[2] < 0.10, f"trunk CoM Z out of bounds: {com[2]}"
+
+
+@pytest.mark.phase1
+class TestNoUnauthoredInertials:
+    """Regression guard for PLANT-1 (the phantom 1.000 kg on the root).
+
+    MuJoCo tolerates a body with no ``<inertial>`` and gives it mass 0. USD has
+    no way to express that, so the MJCF->USD converter emits the *unauthored*
+    sentinel and PhysX substitutes its own default: 1.000 kg with an isotropic
+    0.4*m*r^2 (r=0.1 m) tensor. Nothing on disk looks wrong; the plant is simply
+    heavier at load time than the file says.
+
+    That is invisible to every MuJoCo-side check, which is why it survived from
+    v1 to v5d. These tests read the MJCF as text, so they fail the moment a body
+    is added without an ``<inertial>`` -- before it can reach a USD conversion.
+
+    See docs/jetson-mod/known_issues.md#plant-1.
+    """
+
+    def test_every_body_declares_an_inertial(self):
+        """No MJCF body may rely on the converter to invent its mass."""
+        import os
+        import xml.etree.ElementTree as ET
+
+        mjcf = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "mini_bdx", "robots", "open_duck_mini_v2", "robot_motors.xml",
+        )
+        missing = [
+            b.get("name")
+            for b in ET.parse(mjcf).getroot().iter("body")
+            if b.find("inertial") is None
+        ]
+        assert not missing, (
+            f"bodies with no <inertial>: {missing}. PhysX will substitute a "
+            "1.000 kg default for each -- author an <inertial> or merge the "
+            "body into its parent (see known_issues.md PLANT-1)."
+        )
+
+    def test_articulation_root_carries_real_mass(self, updated_model):
+        """The freejoint body must be a real link, not a massless wrapper.
+
+        Body index 1 is the root (0 is ``world``). A near-zero root mass is the
+        exact shape of the PLANT-1 defect and also gives PhysX a pathological
+        root-to-child mass ratio.
+        """
+        root_mass = float(updated_model.body_mass[1])
+        root_name = updated_model.body(1).name
+        assert root_mass > 0.1, (
+            f"articulation root {root_name!r} has mass {root_mass} kg; the root "
+            "must carry real inertia (see known_issues.md PLANT-1)."
+        )
