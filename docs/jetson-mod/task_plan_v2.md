@@ -127,12 +127,24 @@ nothing downstream should be trusted until it is done.**
   Phase V — VLM                           ← needs a working Phase S bring-up
 ```
 
-**Read this ordering caveat carefully.** R1 (re-gate the existing v5d checkpoint
-on the corrected plant) comes *before* Phase M, even though M is listed first.
-The reason: R1 is a few GPU-hours and answers "did fixing the phantom kilogram
-alone break the shipped policy?" — which determines how much of Phase M is
-urgent. Doing M first means you change the plant twice and cannot attribute the
-result to either change.
+**⛔ Read this ordering caveat carefully — it is the one irreversible mistake in
+this plan.** R1 (re-gate the existing v5d checkpoint on the corrected plant)
+comes *before* Phase M, even though M is listed first.
+
+There are two reasons, and the second is the one that matters:
+
+1. R1 is a few GPU-hours and answers "did fixing the phantom kilogram alone
+   break the shipped policy?" — which determines how much of Phase M is urgent.
+   Doing M first means you change the plant twice and cannot attribute the
+   result to either change.
+2. **Task M0b makes R1 permanently impossible.** It changes the observation
+   space 59 → 53 and the action space 16 → 14, after which
+   `OnPolicyRunner.load()` fails on the shape mismatch for every existing
+   checkpoint. There is no way back: the measurement is simply gone.
+
+Reason 1 costs you attribution. **Reason 2 costs you the measurement itself.**
+Before starting any Phase M task, confirm R1 has run:
+`ls docs/jetson-mod/eval_results_m2657/*.json`.
 
 Every plant change invalidates every trained policy's gate numbers. Batch them:
 do **all** of Phase M's plant edits, then retrain **once**. Do not retrain
@@ -369,6 +381,13 @@ change what the *hardware* will receive:
 
 ### Task M0 — Assemble the batched plant-fix changeset
 
+> **⛔ Ordering check before you start.** If your changeset will include
+> [Task M0b](#task-m0b--drop-the-antennas-from-the-action-and-observation-spaces)
+> (dropping the antennas), then **Task R1 must have run first** — M0b changes
+> obs/action to 53/14 and every existing checkpoint stops loading, making the
+> re-gate permanently impossible. Verify with
+> `ls docs/jetson-mod/eval_results_m2657/*.json`; empty means R1 has not run.
+
 **AI-agent suitable: YES** (except the PLANT-7 latency *value*, which needs a
 hardware measurement from Task S.6 — use a literature default and mark it).
 
@@ -475,6 +494,30 @@ exactly the set of issues you intended to fix, and no others.
 - [ ] No training has been run yet — that is Task R2
 
 ### Task M0b — Drop the antennas from the action and observation spaces
+
+> ## ⛔ STOP — this task destroys a measurement you cannot take later
+>
+> **Task R1 (re-gate the shipped v5d on the corrected plant) MUST have run
+> before this task. Check that it has. If it has not, stop and run it first.**
+>
+> This task changes the observation space 59 → 53 and the action space 16 → 14.
+> After it lands, `OnPolicyRunner.load()` fails on the shape mismatch for
+> **every existing checkpoint** — v5d and v4_robust included. Re-gating them on
+> the PLANT-1-corrected plant then becomes **permanently impossible**, and the
+> question "did fixing the phantom kilogram alone break the shipped policy?"
+> can never be answered.
+>
+> R1 costs a few GPU-hours. Losing it costs the only clean before/after
+> measurement of the plant fix.
+>
+> **How to check in one command** — R1's results directory must exist and be
+> non-empty:
+>
+> ```bash
+> ls docs/jetson-mod/eval_results_m2657/*.json 2>/dev/null | head
+> ```
+>
+> Empty or missing → **R1 has not run. Do not proceed.**
 
 **AI-agent suitable: YES.** No hardware needed. This is a config + retrain change.
 
@@ -775,6 +818,15 @@ Observable: exit code 0, and a `TOTAL` line whose piece column reads `52` and wh
 
 **AI-agent suitable:** YES, with one caveat: if M1 chose an FDM process, every step here needs PrusaSlicer on `PATH`, which this machine does not have (M1 Trap 3). On a solid process no slicer is needed and the task is fully local.
 
+> **Ordering note.** This task moves the plant mass, which invalidates every
+> existing policy's gate numbers. It does **not** break checkpoint loading, so
+> it is recoverable — unlike [Task M0b](#task-m0b--drop-the-antennas-from-the-action-and-observation-spaces).
+> But running it before [Task R1](#task-r1--re-gate-the-shipped-v5d-against-the-corrected-plant)
+> means the plant has changed twice and you can no longer attribute a result to
+> the PLANT-1 fix alone. Confirm R1 has run:
+> `ls docs/jetson-mod/eval_results_m2657/*.json`
+
+
 **1. Context for the implementing agent**
 
 `scripts/generate_cad_mods.py` books the Part-2 CAD volume deltas as mass using one constant, `PLA_EFFECTIVE_DENSITY = 1116.0` kg/m³ (line 70). At the FDM profile `print_guide.md` documents, slicing the baseline geometry against the current geometry measures the true delta as **−6.60 g**, not the booked **−88.48 g**. That error propagates into `scripts/cad_mod_deltas.json` → `scripts/compute_trunk_inertial.py` → the `<inertial>` block of `trunk_assembly` in all three model files → the USD → every trained policy. If this is skipped, M4's rebuild inherits a wrong trunk delta and the phase gate passes on a wrong number.
@@ -891,6 +943,14 @@ Observables:
 ### Task M3 — Model the four missing 18650 cells as real geometry
 
 **AI-agent suitable:** PARTIAL. The measurement, the new holder mesh, the interference proof and the MJCF/URDF edits are all scriptable and the agent should do all of them. What needs a human: confirming that a real 6-cell pack plus BMS plus wiring physically goes into the resulting bay (cell diameter varies 18.3–18.6 mm with the wrap, and the wiring loom is not modelled at all), and approving any hump enlargement, which changes the robot's silhouette and its printed cost.
+
+> **Ordering note.** This task moves the plant, which invalidates every existing
+> policy's gate numbers. It does **not** break checkpoint loading, so it is
+> recoverable — unlike [Task M0b](#task-m0b--drop-the-antennas-from-the-action-and-observation-spaces).
+> But running it before [Task R1](#task-r1--re-gate-the-shipped-v5d-against-the-corrected-plant)
+> means the plant has changed twice and you can no longer attribute a result to
+> the PLANT-1 fix alone. Confirm R1 has run:
+> `ls docs/jetson-mod/eval_results_m2657/*.json`
 
 **Skills to use — this task creates NEW geometry, which is the one case the CAD
 skill is exactly right for.**
@@ -1022,6 +1082,15 @@ Observables: fit exit code `0` with a `WORST` line under 5 mm³; the mujoco line
 ### Task M4 — Rebuild every body's mass and inertia bottom-up, per part
 
 **AI-agent suitable:** PARTIAL. Writing the composer, the density table and the golden test is fully suitable for an agent. Accepting the result is not: **this rebuild moves the robot's mass by hundreds of grams** (measured below), and deciding "the composed value is better than the declared one" needs a human. The task is written so the agent stops at a report and a passing composer-verification test, and a human types the acceptance.
+
+> **Ordering note.** This task moves the plant mass, which invalidates every
+> existing policy's gate numbers. It does **not** break checkpoint loading, so
+> it is recoverable — unlike [Task M0b](#task-m0b--drop-the-antennas-from-the-action-and-observation-spaces).
+> But running it before [Task R1](#task-r1--re-gate-the-shipped-v5d-against-the-corrected-plant)
+> means the plant has changed twice and you can no longer attribute a result to
+> the PLANT-1 fix alone. Confirm R1 has run:
+> `ls docs/jetson-mod/eval_results_m2657/*.json`
+
 
 **1. Context for the implementing agent**
 
@@ -1165,6 +1234,14 @@ Observables: `--verify-composer` exits 0 and its four anchor rows show ratios of
 ### Task M5 — Shell the thick parts (solid-process branch only)
 
 **AI-agent suitable:** PARTIAL. The boolean geometry, the drain holes and the mass measurement are scriptable and the agent should do them. What needs a human: judging that a hollowed part is still stiff enough to carry servo loads, and getting a DFM check from the printing bureau. A hollowed shell that cracks under a servo mount is not something either the mass model or the simulator will catch.
+
+> **Ordering note.** This task moves the plant, which invalidates every existing
+> policy's gate numbers. It does **not** break checkpoint loading, so it is
+> recoverable — unlike [Task M0b](#task-m0b--drop-the-antennas-from-the-action-and-observation-spaces).
+> But running it before [Task R1](#task-r1--re-gate-the-shipped-v5d-against-the-corrected-plant)
+> means the plant has changed twice and you can no longer attribute a result to
+> the PLANT-1 fix alone. Confirm R1 has run:
+> `ls docs/jetson-mod/eval_results_m2657/*.json`
 
 **Skills, and the constraint that decides the method — read before coding.**
 
@@ -1321,6 +1398,15 @@ Observable: the `TOTAL` gram column drops relative to the pre-shelling report sa
 ### Task M6 — Regenerate the USD and re-run `audit_plant_mass.py` as the phase gate
 
 **AI-agent suitable:** YES. It needs a GPU and an Isaac Lab install; both are present (`~/IsaacLab/isaaclab.sh` exists, GPU is an NVIDIA GB10). There is no purchase and no physical step.
+
+> **Ordering note.** This task moves the plant mass, which invalidates every
+> existing policy's gate numbers. It does **not** break checkpoint loading, so
+> it is recoverable — unlike [Task M0b](#task-m0b--drop-the-antennas-from-the-action-and-observation-spaces).
+> But running it before [Task R1](#task-r1--re-gate-the-shipped-v5d-against-the-corrected-plant)
+> means the plant has changed twice and you can no longer attribute a result to
+> the PLANT-1 fix alone. Confirm R1 has run:
+> `ls docs/jetson-mod/eval_results_m2657/*.json`
+
 
 **1. Context for the implementing agent**
 
@@ -1485,7 +1571,10 @@ The gate itself is the smoke test. Specific observables, all from `docs/jetson-m
 >
 > The original task text follows, kept as the record of the decision.
 
-### Task M7 (original) — Decide the fate of `robot.urdf`, and either fix it or mark it non-authoritative
+#### M7 — the original task text (SUPERSEDED, kept only as the record of the decision)
+
+> This is not a task. It is what M7 said before it was executed, retained so the
+> reasoning behind branch (A) is auditable. **Do not implement from it.**
 
 **AI-agent suitable:** YES for the whole task. The *decision* in step 1 is the
 owner's if they want the URDF kept as a supported artifact; the agent can make
