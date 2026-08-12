@@ -30,11 +30,16 @@ Two verification passes exist, and both are runnable:
 `numpy` and `mujoco`, the same dependencies `tests/` already uses. Current state:
 
 ```
-CONFIRMED 33 / 34
+CONFIRMED 27 / 28
 INCONCLUSIVE -> could not be evaluated here: ['DEPLOY-1']
    the ONNX checks need an interpreter with `onnx` installed, e.g.
    ~/IsaacLab/_isaac_sim/python.sh scripts/verify_known_issues.py DEPLOY-1
 ```
+
+The denominator falls as issues are fixed: a fixed issue keeps its entry (with a
+`FIXED` block) and **loses its check**, so 34 checks on 2026-08-09 became 29 on
+2026-08-11 (PLANT-1, PLANT-2, DEPLOY-5, ART-3, DOC-4 retired) and 28 on
+2026-08-12 (EVAL-1 retired by Task R0).
 
 Exit codes: **0** all confirmed · **1** a claim was refuted (the issue was fixed,
 or the check has rotted — either way, act on it) · **2** a check could not be
@@ -90,7 +95,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [CFG-3](#cfg-3) | In v5c/v5d the disturbance gate is maintained every step and read by nothing | LOW | v5c, v5d |
 | [CFG-4](#cfg-4) | The `head` half of `ground_contact_penalty` can never fire | MEDIUM | v5a/v5b **only** |
 | [CFG-5](#cfg-5) | ContactSensor history spans 15 ms, not 60 ms | LOW | all consumers of the sensor |
-| [EVAL-1](#eval-1) | `--report-only` injects every JSON in the directory — already fired | HIGH | comparison tables |
+| [EVAL-1](#eval-1) | `--report-only` injects every JSON in the directory — already fired | HIGH | **FIXED 2026-08-12** by the `--include` allowlist (Task R0) |
 | [EVAL-2](#eval-2) | Documented eval protocol is not the protocol that ran | MEDIUM | all v5 results |
 | [SHELL-1](#shell-1) | `v5_pipeline.sh` selects the run directory by mtime, not by run name | MEDIUM | future runs |
 | [SHELL-2](#shell-2) | `v5_chain.sh` deletes the pidfile its own duplicate-run guard depends on | MEDIUM | future runs |
@@ -761,6 +766,34 @@ push-eval rows into a table documented as push-free.
 
 **Fix:** add an allowlist or task-id filter argument; until then, treat
 `v4_comparison.md` as frozen — do not regenerate it.
+
+> **FIXED 2026-08-12** (task_plan_v2.md Task R0).
+> `write_comparison_markdown(md_path, results_dir, include=None)` now takes an
+> allowlist of policy names, exposed as the repeatable CLI flag
+> `--include NAME` (exact match on each JSON's `name` key). `include=None`
+> keeps the old unfiltered behaviour, so `v4_comparison.md` and
+> `v5_comparison.md` regenerate exactly as before and the archived tables are
+> not disturbed.
+>
+> Evidence — the real script, run in a subprocess over a two-JSON directory:
+>
+> ```
+> $ python3 scripts/evaluate_policies.py --report-only \
+>     --output_dir $TMP --comparison_md $TMP/t.md --include keep_me
+> [report-only] regenerated .../t.md
+> keep=1 drop=0          # with --include
+> keep=1 drop=1          # without it
+> ```
+>
+> Guarded by `tests/test_eval_report_filter.py` (7 tests), which executes the
+> script rather than grepping it — TEST-1 is the reason. The check is retired
+> from `scripts/verify_known_issues.py`.
+>
+> `allow_abbrev=False` is set on that parser, so `--incl` will not silently
+> work; always spell `--include` in full.
+>
+> **`eval_results_v4/` is still mixed.** The fix stops new corruption; it does
+> not retroactively clean `v4_comparison.md`, which remains frozen.
 
 <a id="eval-2"></a>
 ## EVAL-2 · The documented protocol is not the protocol that ran — MEDIUM

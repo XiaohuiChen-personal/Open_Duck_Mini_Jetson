@@ -166,6 +166,16 @@ FRAMEWORK_ALIASES = {
 # and tables interpolate it.
 GAIT_DUTY_BAND_PCT = (40.0, 90.0)
 
+# Plant provenance. Every result JSON records WHICH ROBOT it was measured on:
+# the simulated total mass, the articulation root, the body count, the joint
+# order, the obs/action dims, and content hashes of the MJCF and the USD.
+# Not recording this is what let PLANT-1 (a phantom 1.000 kg on the massless
+# MJCF root) survive three policy generations of published gate numbers.
+MJCF_PATH = os.path.join(REPO_ROOT, "mini_bdx", "robots",
+                         "open_duck_mini_v2", "robot_motors.xml")
+USD_ASSET_HASH_PATH = os.path.join(REPO_ROOT, "mini_bdx", "robots",
+                                   "open_duck_mini_v2", "usd", ".asset_hash")
+
 # Scalar metric keys averaged across conditions for the aggregate row.
 SCALAR_METRIC_KEYS = [
     "fall_rate_pct",
@@ -617,6 +627,16 @@ Aggregate values below are means over the five conditions.
 """
 
 
+def _file_sha256(path: str) -> str:
+    """sha256 of a file, streamed so a large USD does not land in memory."""
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def _fmt(value, spec: str = "{:.2f}") -> str:
     """Format a metric value for markdown, mapping None/NaN to 'n/a'."""
     if value is None:
@@ -650,6 +670,28 @@ def render_results_section(entries: list[dict]) -> str:
         "",
         f"_Last regenerated: {datetime.datetime.now().isoformat(timespec='seconds')}_",
         "",
+    ]
+    # Provenance rendered from the entries themselves, not from the script's
+    # defaults (EVAL-2: the hand-written PROTOCOL_HEADER describes the CLI
+    # defaults and has already disagreed with every run below it). If this
+    # line ever shows two masses or two obs/action pairs, the table is mixing
+    # robot models and must be split into one directory per model.
+    plants = sorted({
+        f"{e['plant']['simulated_total_mass_kg']:.6f}"
+        for e in entries if e.get("plant")
+    })
+    dims = sorted({
+        f"{e['plant'].get('obs_dim', '?')}/{e['plant'].get('action_dim', '?')}"
+        for e in entries if e.get("plant")
+    })
+    conds = sorted({len(e.get("protocol", {}).get("conditions", [])) for e in entries})
+    lines += [
+        f"_Plant mass(es) simulated: {', '.join(plants) or 'not recorded'} kg — "
+        f"obs/action dims: {', '.join(dims) or 'not recorded'} — "
+        f"conditions per entry: {sorted(conds) or 'n/a'}_",
+        "",
+    ]
+    lines += [
         "### Aggregate over all conditions",
         "",
         "Rank policies on the quality columns only after they pass the gait"
@@ -737,12 +779,20 @@ def write_policy_json(output_dir: str, result: dict) -> str:
     return path
 
 
-def write_comparison_markdown(md_path: str, results_dir: str) -> str:
-    """(Re)generate the comparison table from ALL JSONs in results_dir.
+def write_comparison_markdown(md_path: str, results_dir: str,
+                              include=None) -> str:
+    """(Re)generate the comparison table from the JSONs in results_dir.
 
     The table lives between AUTO_BEGIN/AUTO_END markers so hand-written
     analysis around it survives regeneration; separate per-policy script
     invocations accumulate into the same table.
+
+    ``include`` is an optional allowlist of policy names (exact match on the
+    JSON's ``name`` key). Without it every ``*.json`` in the directory is
+    injected — the EVAL-1 defect, which already mixed push-eval rows into
+    ``v4_comparison.md``, a table whose own preamble says "no external
+    pushes". Default ``None`` preserves the old behaviour so the archived
+    v4/v5 tables regenerate byte-identically.
     """
     entries = []
     if os.path.isdir(results_dir):
@@ -750,6 +800,9 @@ def write_comparison_markdown(md_path: str, results_dir: str) -> str:
             if fname.endswith(".json"):
                 with open(os.path.join(results_dir, fname)) as f:
                     entries.append(json.load(f))
+    if include:
+        wanted = set(include)
+        entries = [e for e in entries if e.get("name") in wanted]
 
     section = f"{AUTO_BEGIN}\n{render_results_section(entries)}{AUTO_END}"
 
@@ -831,6 +884,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--comparison_md", type=str, default=DEFAULT_COMPARISON_MD,
         help="Markdown comparison table to (re)generate.",
+    )
+    parser.add_argument(
+        "--include", action="append", default=None, metavar="NAME",
+        help=("Only these policy names enter the comparison table "
+              "(repeatable, exact match on the JSON's 'name'). Without it "
+              "EVERY *.json in --output_dir is injected, which mixes "
+              "push/wrench/obstacle rows into a table documented as "
+              "push-free -- see known_issues.md EVAL-1."),
     )
     parser.add_argument(
         "--seed", type=int, default=42, help="Environment seed.",
@@ -1129,7 +1190,8 @@ if __name__ == "__main__" and "--report-only" in sys.argv:
     _args, _unknown = build_arg_parser().parse_known_args()
     if _unknown:
         print(f"[WARN] Ignoring unrecognized arguments: {_unknown}")
-    _path = write_comparison_markdown(_args.comparison_md, _args.output_dir)
+    _path = write_comparison_markdown(_args.comparison_md, _args.output_dir,
+                                      include=_args.include)
     print(f"[report-only] regenerated {_path}")
     sys.exit(0)
 
@@ -1546,6 +1608,23 @@ def evaluate_policy(adapter, conditions: list[tuple[float, float, float]],
         }
         per_condition[key] = metrics
 
+    # Which robot did this measure? Read it off the running articulation, not
+    # off a config file — the USD is what PhysX loaded, and the USD is what
+    # can be stale. body_names[0] is the PhysX articulation root.
+    robot = base_env.scene["robot"]
+    body_names = list(robot.data.body_names)
+    plant = {
+        "simulated_total_mass_kg": float(robot.data.default_mass[0].sum()),
+        "root_body": body_names[0],
+        "num_bodies": len(body_names),
+        "body_names": body_names,
+        "joint_order": list(robot.data.joint_names),
+        "obs_dim": int(base_env.observation_manager.group_obs_dim["policy"][0]),
+        "action_dim": int(base_env.action_manager.total_action_dim),
+        "mjcf_sha256": _file_sha256(MJCF_PATH),
+        "usd_asset_hash": open(USD_ASSET_HASH_PATH).read().strip(),
+    }
+
     return {
         "name": adapter.spec.name,
         "task_id": adapter.spec.task_id,
@@ -1553,6 +1632,7 @@ def evaluate_policy(adapter, conditions: list[tuple[float, float, float]],
         "checkpoint": adapter.spec.checkpoint,
         "agent_cfg": adapter.spec.agent_cfg,
         "evaluated_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "plant": plant,
         "protocol": {
             "windows_per_condition": args_cli.episodes,
             "env_episodes_per_condition": args_cli.episodes * base_env.num_envs,
@@ -1599,7 +1679,8 @@ def main():
         finally:
             gym_env.close()
 
-    md_path = write_comparison_markdown(args_cli.comparison_md, output_dir)
+    md_path = write_comparison_markdown(args_cli.comparison_md, output_dir,
+                                        include=args_cli.include)
     print(f"[INFO] Wrote comparison table to {md_path}")
 
 

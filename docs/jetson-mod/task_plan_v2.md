@@ -1904,7 +1904,55 @@ corrects a 37.6 % error; PLANT-10 is a further ~2 %, and Phase M Task M2 owns it
 
 ---
 
-### Task R0 — Make the evaluation and journaling tooling safe for a second robot model
+### Task R0 — Make the evaluation and journaling tooling safe for a second robot model — ✅ **DONE 2026-08-12**
+
+> **Completed. Do not re-run this task.** All five done-when boxes are ticked
+> below and every number in them was produced by running the command named.
+> What landed:
+>
+> - **EVAL-1 fixed.** `write_comparison_markdown()` takes `include=None`,
+>   exposed as the repeatable `--include NAME` CLI flag. Default unchanged, so
+>   `v4_comparison.md` / `v5_comparison.md` are undisturbed. The check is retired
+>   from `scripts/verify_known_issues.py` and the register entry carries a
+>   `FIXED 2026-08-12` block. Verifier now reads `CONFIRMED 27 / 28`.
+> - **Every eval JSON now records its plant.** `evaluate_policy()` reads
+>   `simulated_total_mass_kg`, `root_body`, `num_bodies`, `body_names`,
+>   `joint_order`, `obs_dim`, `action_dim`, `mjcf_sha256` and `usd_asset_hash`
+>   off the *running articulation* and stamps them into the result under
+>   `"plant"`.
+> - **The generated header renders provenance from the entries** (EVAL-2's
+>   generator half): plant mass(es), obs/action dims and condition counts. Two
+>   masses on that line means the table is mixing robot models.
+> - **`scripts/verify_action_contract.py`** (new GPU probe) and
+>   **`scripts/tb_summary.py`** (new, Isaac interpreter only).
+> - **`docs/jetson-mod/eval_results_m2657/README.md`** — plant identity, frozen
+>   protocol, gate table G-R1…G-R5, plant-coupled effects.
+> - **`tests/test_eval_report_filter.py`** — 7 tests that run the real script in
+>   a subprocess rather than grepping it (TEST-1 is why).
+>
+> **Measured smoke-test output, 2026-08-12:**
+>
+> ```
+> audit_plant_mass.py      TOTAL 2.657067 / 2.657067   VERDICT: PASS   exit 0
+> verify_action_contract   joint order MATCHES duck_init_pos.json (16 joints)
+>                          worst default-pos delta 5.150e-08 rad on 'right_knee'
+>                          obs 59, action 16, root trunk_assembly, 21 bodies
+>                          VERDICT: PASS                              exit 0
+> tb_summary.py            Gait/duty_in_band_frac last-100 mean 0.9836
+>                          (open_duck_ppo_v5/2026-07-29_08-59-25, wall 2:05:02)
+> pytest tests/ -q         120 passed
+> ```
+>
+> **The joint order did NOT move.** That was the open question the probe
+> existed to answer — the PLANT-1 fix removed a body, and nothing had verified
+> that the 16 actuators still come out of the USD in the order
+> `duck_init_pos.json` records. They do, and the default positions agree to
+> 5.15e-08 rad. Phase R may proceed.
+>
+> **Still open on purpose:** step 4 of the plan below (hand-editing the
+> `PROTOCOL_HEADER` preamble of a *new* comparison table) cannot run until R1
+> generates `m2657_comparison.md` for the first time. It is listed in R1's work,
+> not left undone here.
 
 **AI-agent suitable:** YES
 

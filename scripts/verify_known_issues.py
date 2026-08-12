@@ -289,20 +289,11 @@ def _():
 
 
 # ------------------------------------------------------------------- EVAL
-@issue("EVAL-1", "--report-only appends every JSON in the results dir, unfiltered")
-def _():
-    fn = R("scripts/evaluate_policies.py").split(
-        "def write_comparison_markdown(", 1)[1].split("\ndef ", 1)[0]
-    body = fn.split("entries = []", 1)[1].split("section =", 1)[0]
-    enumerates = ("os.listdir" in fn or "glob" in fn) and '.endswith(".json")' in fn
-    filt = any(t in body for t in ("task_id", "exclude", "allow", "skip", "continue"))
-    push = [f for f in os.listdir(P("docs/jetson-mod/eval_results_v4")) if "pusheval" in f]
-    return ("CONFIRMED" if enumerates and not filt else "REFUTED"), [
-        f"enumerates the directory and takes every *.json: {enumerates}; any filter: {filt}",
-        f"pusheval JSONs already present in eval_results_v4/: {push}",
-        f"v4_comparison.md claims 'no external pushes': "
-        f"{'no external pushes' in R('docs/jetson-mod/v4_comparison.md')}",
-    ]
+# EVAL-1 FIXED 2026-08-12 (Task R0): write_comparison_markdown() takes an
+# `include` allowlist, exposed as the repeatable `--include NAME` CLI flag, and
+# tests/test_eval_report_filter.py runs the real script in a subprocess to prove
+# the filter actually filters. Per this script's convention a fixed issue carries
+# no check, so the check is retired rather than inverted.
 
 
 @issue("EVAL-2", "Documented eval protocol is not the protocol that ran")
