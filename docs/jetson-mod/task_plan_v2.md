@@ -60,6 +60,16 @@ implementation plan. There is exactly one today (Task S.0 → Phase R).
    and every number in them shifted.)
 8. **Never quote a number you have not run.** This plan cites measurements; if
    you need a new one, produce it and say what command produced it.
+9. **Use the installed skills for geometry and robot descriptions.** If your
+   task touches a `.step`, `.stl`, `.3mf`, `.glb`, `.urdf`, `.sdf`, `.srdf` or
+   `.dxf` file, or slices a mesh, a skill already owns that workflow — `cad`,
+   `urdf`, `cad-viewer`, `step-parts`, `gcode`, `dxf`, `sendcutsend`. Invoke it
+   instead of writing your own pipeline, and read
+   [CAD and robot-description tooling](#cad-and-robot-description-tooling--read-before-any-geometry-task)
+   first: it records the one constraint that decides how each geometry task must
+   be done (**there is no STEP for any robot part — the STLs have no B-rep, so
+   they cannot be feature-edited**). Both `cad` and `urdf` require handing the
+   changed file to `cad-viewer` and reporting the link.
 
 ---
 
@@ -169,6 +179,77 @@ there are no enclosed voids and therefore no MJF powder traps. The set is
 printable as drawn by any process.
 
 ---
+
+## CAD and robot-description tooling — read before any geometry task
+
+Installed agent skills cover this work. **Use them; do not hand-roll geometry
+code when a skill owns the workflow.** Invoke a skill by name (e.g. the `cad`
+skill, the `urdf` skill).
+
+| Skill | Owns | Use it in |
+|---|---|---|
+| `cad` | STEP-first parametric parts/assemblies in build123d Python; `scripts/gen`, `export`, `inspect`, `snapshot` | **M3** (new battery holder), **M5** (re-authored parts) |
+| `step-parts` | Catalog of purchasable parts — servos, cells, boards, fasteners | **M3** (18650 cell), **M4** (servo envelopes) |
+| `urdf` | `.urdf` authoring + `scripts/validate` + `scripts/snapshot` | **M7** (new — see below) |
+| `cad-viewer` | Live review links for `.step`/`.stl`/`.urdf`/`.3mf` | after **every** geometry change |
+| `gcode` | Slicing meshes to G-code via real slicer CLIs | **M2**, print-mass measurement |
+| `dxf`, `sendcutsend` | 2D cut profiles and service preflight | not needed unless a laser-cut part is added |
+
+### The constraint that decides how every geometry task must be done
+
+**This repo contains no STEP file for any robot part.** The main robot is 48
+STLs in `mini_bdx/robots/open_duck_mini_v2/` and 37 in `print/`. The only
+`.step` files anywhere are in `print/mods/Justins_Park_Head_Mod/`, a
+third-party head mod that is not part of the build. The true parametric source
+is an **Onshape document** that this repo does not contain and cannot reach.
+
+Verified consequence — run it yourself and see:
+
+```
+$ python3 ~/.claude/skills/cad/scripts/inspect refs print/roll_motor_top.stl --facts
+{"ok":false, ... "CAD STEP ref not found for 'print/roll_motor_top.stl'."}
+```
+
+An STL is a triangle soup with **no B-rep**: no faces, edges, sketches or
+features. So:
+
+- You **cannot** shell, fillet, offset a face, or edit a feature on an existing
+  part with the `cad` skill. There is nothing to select.
+- You **can** author a *new* part in build123d, validate it, and export STL —
+  that is the normal `cad` workflow and it is the right tool for M3.
+- To modify an *existing* part you have exactly three options, and the plan must
+  say which one each task takes:
+  1. **Mesh operation** (`trimesh`, `manifold3d`) — boolean, hollow, decimate.
+     Keeps the original surface. No parametric intent. This is what
+     `scripts/generate_cad_mods.py` already does, and it works.
+  2. **Re-author in CAD** from measurements — full parametric control, and you
+     own the result forever. Expensive per part; correct for a part being
+     redesigned anyway.
+  3. **Go back to Onshape** — the real fix, unavailable to an agent.
+
+**Do not attempt option 2 on a part you are only trying to lighten.** Use a mesh
+operation. Re-authoring is justified only where the part is being redesigned
+(the 6-cell battery holder) or where its geometry is wrong.
+
+### Mandatory review handoff
+
+Both the `cad` and `urdf` skills require it: after creating or modifying any
+`.step`, `.stl`, `.3mf`, `.glb` or `.urdf`, hand the explicit path to the
+`cad-viewer` skill and include the returned link. If `cad-viewer` will not
+start, say so — do not silently skip it. Snapshot review is **mandatory** after
+a visible geometry change, not optional because deterministic checks passed.
+
+> **Known setup gap, checked 2026-08-11.** CAD Viewer does not start on this
+> machine: `~/.claude/skills/cad-viewer/scripts/viewer/node_modules` is absent,
+> so `npm run start` dies with `MODULE_NOT_FOUND` and nothing binds port 3245.
+> It needs a one-time `npm --prefix scripts/viewer install` in the skill
+> directory. Do that once before the first geometry task, then the handoff works
+> for every task after it.
+>
+> **The URDF additionally cannot be rendered until Task M7 fixes its mesh
+> URIs.** All 240 are `package:///name.stl` with an empty package name, so no
+> link mesh resolves and both the viewer and the `urdf` skill's `scripts/snapshot`
+> will fail with "No link mesh loaded for robot". Fix M7 first, then review.
 
 ## The single most important decision in this plan
 
@@ -744,6 +825,30 @@ Observables:
 
 **AI-agent suitable:** PARTIAL. The measurement, the new holder mesh, the interference proof and the MJCF/URDF edits are all scriptable and the agent should do all of them. What needs a human: confirming that a real 6-cell pack plus BMS plus wiring physically goes into the resulting bay (cell diameter varies 18.3–18.6 mm with the wrap, and the wiring loom is not modelled at all), and approving any hump enlargement, which changes the robot's silhouette and its printed cost.
 
+**Skills to use — this task creates NEW geometry, which is the one case the CAD
+skill is exactly right for.**
+
+| Step | Skill | Why |
+|---|---|---|
+| Find an 18650 model | `step-parts` | Search the catalog **before** modelling a placeholder cylinder. The skill's own rule: search first, record the miss, only then use a documented envelope. |
+| Author the 6-cell holder | `cad` | Write `battery_holder_6cell.step.py` with `gen_step()` in build123d. Parametric: cell diameter, count, wall, pitch. Keep the `.step.py` and its `.step` in the same directory with the same basename. |
+| Export the printable mesh | `cad` | `scripts/export` → STL. STL is a **secondary** artifact here; the STEP is the source of truth and must be committed with it. |
+| Validate | `cad` | `scripts/inspect refs <step> --facts --planes --positioning`, then `scripts/inspect validate <step>`. Note `refs --facts` only proves refs resolve — an open shell passes it. Run `validate` too. |
+| Review | `cad` + `cad-viewer` | `scripts/snapshot` is **mandatory** after visible geometry change; then hand the path to `cad-viewer` and include the link. |
+
+**Do not** try to edit the existing `holder.stl` with the `cad` skill. It is a
+mesh with no B-rep and `inspect refs` will refuse it (verified). The holder is
+being redesigned from 2 cells to 6, so authoring it fresh in build123d is both
+the correct option and the cheaper one — and it leaves you a parametric source
+the project has never had for any part.
+
+**Cell dimensions to model, measured from the existing mesh:** the `cell` mesh
+is 18.00 × 18.00 × 65.00 mm with its axis of revolution on **Z**, and the two
+existing instances sit at trunk-frame `(-129.6, ±10.5, 32.5)` mm. A real 18650
+is 18.3–18.6 mm across the wrap, so model the *pocket* with clearance, not the
+nominal 18.0. The current `holder` mesh spans 20 × 41 × 76 mm — it fits exactly
+two cells, which is why it must be replaced rather than stretched.
+
 **1. Context for the implementing agent**
 
 The robot is specified as 6× 18650 in 3S2P, and the mass is already booked: `scripts/compute_trunk_inertial.py::TRUNK_COMPONENTS` carries, at line 107,
@@ -994,6 +1099,63 @@ Observables: `--verify-composer` exits 0 and its four anchor rows show ratios of
 
 **AI-agent suitable:** PARTIAL. The boolean geometry, the drain holes and the mass measurement are scriptable and the agent should do them. What needs a human: judging that a hollowed part is still stiff enough to carry servo loads, and getting a DFM check from the printing bureau. A hollowed shell that cracks under a servo mount is not something either the mass model or the simulator will catch.
 
+**Skills, and the constraint that decides the method — read before coding.**
+
+You will be tempted to reach for the `cad` skill and call `shell()` or offset a
+face. **You cannot.** These parts exist only as STLs. An STL is a triangle soup
+with no B-rep: no faces to select, no features to offset. Verified:
+
+```
+$ python3 ~/.claude/skills/cad/scripts/inspect refs print/body_front.stl --facts
+{"ok":false, ... "CAD STEP ref not found for 'print/body_front.stl'."}
+```
+
+**Therefore this task is a MESH operation, not a CAD operation.** Use `trimesh`
++ `manifold3d`, exactly as `scripts/generate_cad_mods.py` already does — that
+script is your worked example for boolean edits on these meshes, including how
+it re-exports to both the sim mesh directory and the mm-scale `print/` copy.
+
+Where the skills still apply:
+
+| Purpose | Skill | Note |
+|---|---|---|
+| Visual review of every shelled part | `cad` `scripts/snapshot`, then `cad-viewer` | snapshot **accepts `.stl`** even though `inspect refs` does not. Review before and after. |
+| Measuring the mass you actually saved | `gcode`, or `scripts/measure_print_mass.py` | for a solid process, mass is volume × density — no slicer needed |
+| If you decide to re-author a part properly | `cad` + `step-parts` | only justified for a part being redesigned anyway. It buys a parametric source the project has never had — but it is a *per-part* cost, and shelling five parts is not a reason to pay it five times. |
+
+**Wall-thickness measurement to target the work.** `T_eff = 2·V/A` is a cheap
+proxy for local wall thickness and is computable directly from the mesh:
+
+```python
+import trimesh
+m = trimesh.load('print/body_front.stl', force='mesh')
+print(2 * m.volume / m.area)   # mm
+```
+
+Measured on this part set, worst first — use it to pick which parts are worth
+shelling at all:
+
+```
+trunk_top           T_eff 7.99 mm   145 cm3   (27.9% of AABB)
+body_front          T_eff 7.52 mm   135 cm3   (86.1% of AABB — a solid slab)
+body_middle_bottom  T_eff 4.99 mm   146 cm3   (10.2% of AABB)
+head                T_eff 3.38 mm   229 cm3   (marginal)
+body_back           T_eff 3.19 mm    95 cm3   (marginal)
+body_middle_top     T_eff 2.83 mm    76 cm3   (already thin — leave it)
+```
+
+**Drain holes are mandatory on powder processes.** Today **no part in this set
+has more than one shell**, i.e. there are no enclosed voids and no powder traps
+— verified across all 37 STLs. Hollowing a part *creates* an enclosed void and
+therefore creates a trap. If you shell it, you must add escape holes in the same
+edit, and the done-when check for this task must re-run the shell-count test:
+
+```python
+import trimesh
+m = trimesh.load(path, force='mesh')
+print(len(m.split(only_watertight=False)))   # >1 after shelling == a sealed void
+```
+
 **1. Context for the implementing agent**
 
 **Run this task only if `scripts/print_process.json`'s `kind` field is `"solid"`.** Test the `kind`, not the name — `mjf-pa12-gb` and `sla-tough` are both solid, and a future FDM entry could be named anything. If `kind` is `"fdm"`, write "N/A — FDM infill already hollows the interior; a 15 % gyroid does what shelling would do" into `docs/jetson-mod/print_process_decision.md` and skip to M6. Nothing else in the phase depends on M5 having run.
@@ -1183,6 +1345,130 @@ The gate itself is the smoke test. Specific observables, all from `docs/jetson-m
 - [ ] The mass quoted in `AGENTS.md`, `known_issues.md`, `component_layout_v2.md`, `tests/fixtures/expected_values.json` and the audit output are the **same number**, checked against all five.
 - [ ] A journal line records the new plant mass and the date.
 - [ ] The staleness of every existing policy's gate numbers is stated in writing.
+
+---
+
+### Task M7 — Decide the fate of `robot.urdf`, and either fix it or mark it non-authoritative
+
+**AI-agent suitable:** YES for the whole task. The *decision* in step 1 is the
+owner's if they want the URDF kept as a supported artifact; the agent can make
+the recommendation and do every edit either way.
+
+**1. Context for the implementing agent**
+
+`mini_bdx/robots/open_duck_mini_v2/robot.urdf` is an Onshape export that sits in
+the repo, is **not used by anything**, and **does not validate**. All three
+claims are checkable:
+
+*Not used.* Every `.urdf` reference in live code points at a **different robot** —
+`mini_bdx/robots/bdx/robot.urdf`, the legacy 15-joint BDX — and all of them are
+under `experiments/`, which `AGENTS.md` labels "Legacy MuJoCo-based experiment
+scripts (reference only)". The Isaac pipeline builds its USD from
+`robot_motors.xml` via `scripts/convert_mjcf_to_usd.py`; the URDF is in no code
+path.
+
+```bash
+grep -rn "\.urdf" --include=*.py --include=*.yaml --include=*.sh . | grep -v experiments/
+```
+
+*Does not validate.* Using the `urdf` skill's validator:
+
+```bash
+cd ~/.claude/skills/urdf
+python3 scripts/validate <repo>/mini_bdx/robots/open_duck_mini_v2/robot.urdf
+```
+
+gives **244 blocking findings** in two classes:
+
+| Count | Code | What it is |
+|---|---|---|
+| 240 | `invalid_mesh_uri` | every mesh is `package:///name.stl` — a `package://` URI with an **empty package name**. Malformed; RViz, MoveIt and Gazebo cannot resolve it. |
+| 4 | `nonpositive_inertia_diagonal` | `trunk`, `left_foot`, `right_foot`, `head` have a zero inertia diagonal |
+| 17 (warn) | `unknown_element` | `<mujoco>` and `<joint_properties>` — **intentional** MuJoCo extensions, not defects. Leave them. |
+
+*The four zero-inertia links are the same four marker frames as in the MJCF*
+(`known_issues.md` PLANT-1b). Both descriptions inherited the defect from the
+same Onshape export. On the PhysX side this turned out to be benign — PhysX
+substitutes `4.000e-12` — but a URDF consumer has no such fallback, and the
+validator is right to block.
+
+**One thing the URDF gets right that the MJCF got wrong.** Its root link is
+`trunk_assembly`, with 21 links and **no `base` wrapper at all** — which is
+exactly what the PLANT-1 fix made the MJCF on 2026-08-11. The URDF was never
+wrong about this; the MJCF's massless `base` was the anomaly. That makes the
+URDF a genuinely useful cross-check, which is the main argument for keeping it.
+
+**Skills:** use the `urdf` skill for every step (it owns `scripts/validate` and
+`scripts/snapshot`), and hand the file to `cad-viewer` afterwards — the `urdf`
+skill requires that handoff.
+
+**2. Low-level implementation plan**
+
+1. **Decide, and write the decision down.** Two defensible options:
+   - **(A) Fix and gate it** — recommended. It is cheap (one URI rewrite plus
+     four inertials), and it buys an independent check on the MJCF that has
+     already proved its worth once.
+   - **(B) Mark it non-authoritative** — add a header comment saying it is an
+     unmaintained Onshape export, not in any code path, and not to be used as a
+     source of truth; then leave it alone. Choose this only if nobody wants a
+     ROS/MoveIt path.
+   Record the choice in `docs/jetson-mod/print_process_decision.md` or a sibling
+   decision doc, with the date.
+2. **(A only) Fix the mesh URIs.** Decide the scheme first — either a real
+   package name (`package://open_duck_mini_v2/meshes/foo.stl`) or plain relative
+   paths (`foo.stl`), which is what actually works given the STLs sit beside the
+   URDF. Relative is simpler and needs no ROS package. Apply to all 240.
+3. **(A only) Fix the four inertials.** `trunk`, `left_foot`, `right_foot` and
+   `head` are pure frame links. Per the `urdf` skill, a frame-only link may
+   omit mass and geometry entirely — that is cleaner than inventing a tiny
+   nonzero tensor, and it removes the finding at the source. If a consumer needs
+   them to be links, give them a small positive diagonal and say why in the
+   ledger.
+4. **(A only) Add the design ledger** the `urdf` skill requires: a comment block
+   at the top of the `.urdf` recording frames, joint axes, units, mesh scale and
+   assumptions.
+5. **Re-validate to clean**, then snapshot and hand to `cad-viewer`.
+6. **(A only) Decide whether it is kept in sync.** A second description that
+   drifts is worse than none. Either add a CI check that the URDF and MJCF agree
+   on link count, joint names, joint types and parent/child topology, or state
+   in the header that it is a point-in-time export. **Do not leave this
+   unstated** — that is exactly how the two descriptions in this repo drifted in
+   the first place.
+
+**3. Unit tests**
+
+If option (A): add `tests/test_urdf_consistency.py` that **parses both files**
+(no source-text grepping — `known_issues.md` TEST-1) and asserts the URDF and
+`robot_motors.xml` agree on: the set of joint names, each joint's type, each
+joint's parent and child link, and the total link count. That test is the thing
+that stops the two descriptions drifting.
+
+If option (B): none applicable — an explicitly unmaintained file needs no test.
+
+**4. Smoke test**
+
+```bash
+cd ~/.claude/skills/urdf
+python3 scripts/validate <repo>/mini_bdx/robots/open_duck_mini_v2/robot.urdf
+```
+
+Observable, option (A): `0 blocking findings` (the 17 `<mujoco>` /
+`<joint_properties>` warnings may remain — they are intentional). Option (B):
+the count is unchanged and the header comment is present.
+
+**5. Done when**
+
+- [ ] The decision is written down with its date and reasoning
+- [ ] **(A)** the validator reports zero *errors*; the remaining warnings are
+      only `unknown_element` for `<mujoco>` / `<joint_properties>`
+- [ ] **(A)** every mesh URI resolves to a file that exists on disk
+- [ ] **(A)** `tests/test_urdf_consistency.py` passes and genuinely fails if a
+      joint is renamed in one file only — verify by mutating one name, running,
+      and reverting
+- [ ] **(B)** the header states plainly that the file is unmaintained, is in no
+      code path, and is not a source of truth
+- [ ] The file was handed to `cad-viewer` and the link reported
+- [ ] `python3 -m pytest tests/ -q` still passes
 
 ---
 

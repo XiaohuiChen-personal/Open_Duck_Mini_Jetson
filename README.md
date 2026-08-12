@@ -27,7 +27,7 @@ A miniature bipedal BDX Droid by Disney, about 42 cm tall. This fork migrates th
 Full task breakdown (5 phases, 32 tasks): **[docs/jetson-mod/task_plan.md](docs/jetson-mod/task_plan.md)**
 
 **The rebuild currently in progress has its own plan:**
-**[docs/jetson-mod/task_plan_v2.md](docs/jetson-mod/task_plan_v2.md)** — 37 tasks
+**[docs/jetson-mod/task_plan_v2.md](docs/jetson-mod/task_plan_v2.md)** — 38 tasks
 across Phase M (mass/CAD/USD), Phase R (re-gate and retrain), Phase S
 (sim-to-real) and Phase V (VLM). Where the two plans disagree, v2 wins.
 
