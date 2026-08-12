@@ -272,6 +272,26 @@ a visible geometry change, not optional because deterministic checks passed.
 > A URL's **path is the absolute directory** to browse and `?file=` selects one
 > artifact inside it, so one server reviews any folder:
 > `http://127.0.0.1:3245/<abs-dir>?file=<relative/path.stl>`.
+
+> **Run every `cad` and `urdf` script with that venv's interpreter, not
+> `python3`.** Verified 2026-08-12: the system Python has `playwright` but no
+> `OCP`, so it renders STL and **fails on STEP** with `No module named 'OCP'`,
+> and `inspect refs` on a STEP dies the same way. The venv has all of it
+> (`cadgen`, `OCP 7.9.3.1`, `build123d 0.11.1`, `playwright`) — the CAD skill's
+> own `requirements.txt` is exactly `cadgen==0.4.5` + `playwright`. Chromium is
+> a separate one-time download:
+>
+> ```bash
+> ~/.venvs/cad-viewer/bin/pip install playwright
+> ~/.venvs/cad-viewer/bin/python3 -m playwright install chromium
+> ```
+>
+> Then always: `~/.venvs/cad-viewer/bin/python3 ~/.claude/skills/cad/scripts/<tool> ...`
+>
+> **An agent can see the geometry, not just link to it.** `scripts/snapshot`
+> writes a PNG (or an orbit GIF with `--mode orbit`) that the agent then reads
+> directly — confirmed working on both `.stl` and `.step`. Use it as the review
+> step in M3 and M5 instead of asking the owner to look at a browser.
 >
 > **The URDF additionally cannot be rendered until Task M7 fixes its mesh
 > URIs.** All 240 are `package:///name.stl` with an empty package name, so no
