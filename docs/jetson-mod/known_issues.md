@@ -333,8 +333,34 @@ The wrench curriculum leak closed with it — `ContactRegimeEvent` now reports
 
 > **Every policy through v5d was trained on the 3.657 kg plant and none has been
 > retrained on the corrected one.** Existing checkpoints load, but their gate
-> numbers describe a robot that no longer exists in the simulator. Re-running the
-> gates on the corrected plant is the first task of the rebuild.
+> numbers describe a robot that no longer exists in the simulator.
+
+> ### Re-gated 2026-08-12 — [`m2657_regate.md`](m2657_regate.md)
+>
+> The re-run this entry called for is done (task_plan_v2.md Tasks R1/R1b/R1c).
+> Ten evaluations, 3,840 episodes each, both policies on the corrected plant
+> under one frozen protocol. **The outcome was not symmetric:**
+>
+> | open-field falls | 3.657 kg | 2.657 kg |
+> |---|---|---|
+> | `v5d_contact_wrench` | 0.000 % | **0.000 %** |
+> | `v4_robust` | 0.000 % | **24.167 %** |
+>
+> **v5d passes every gate on the corrected plant** (`scripts/regate_report.py`
+> exits 0; G-R3 video audit passed frame-by-frame). Its reference tracking moved
+> 4.669 -> 4.676 deg and it beats the same-plant control on all four contact
+> gates. **`v4_robust` no longer walks reliably** and is retired as a control on
+> this plant.
+>
+> The phantom kilogram was therefore not merely a bookkeeping error: it was
+> load-bearing for `v4_robust`, and removing it destroyed that policy. The
+> contact-rich v5 curriculum — fall-only terminations, obstacles, sustained
+> wrench — is what made v5d survive a 27 % plant change, since neither policy
+> had mass DR beyond `add_base_mass (-0.10, +0.15) kg`.
+>
+> **This does not make v5d a hardware candidate.** Phase M changes the plant
+> again and Task M0b takes obs/action to 53/14, after which the v5d checkpoint
+> will not load at all. The retrain is Task R2/R2b.
 
 <a id="plant-2"></a>
 ## PLANT-2 · The DR term that could cover PLANT-1 misses on both axes — CRITICAL

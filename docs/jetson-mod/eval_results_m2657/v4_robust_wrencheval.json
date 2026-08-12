@@ -1,0 +1,350 @@
+{
+  "name": "v4_robust_wrencheval",
+  "task_id": "Isaac-Velocity-Rough-OpenDuck-WrenchEval-v0",
+  "framework": "rsl_rl",
+  "checkpoint": "/home/xiaohui_chen/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt",
+  "agent_cfg": null,
+  "evaluated_at": "2026-08-12T05:43:31",
+  "plant": {
+    "simulated_total_mass_kg": 2.65706729888916,
+    "root_body": "trunk_assembly",
+    "num_bodies": 21,
+    "body_names": [
+      "trunk_assembly",
+      "trunk",
+      "hip_roll_assembly",
+      "neck_pitch_assembly",
+      "hip_roll_assembly_2",
+      "left_roll_to_pitch_assembly",
+      "head_pitch_to_yaw",
+      "right_roll_to_pitch_assembly",
+      "knee_and_ankle_assembly",
+      "neck_yaw_assembly",
+      "knee_and_ankle_assembly_3",
+      "knee_and_ankle_assembly_2",
+      "head_assembly",
+      "knee_and_ankle_assembly_4",
+      "foot_assembly",
+      "head",
+      "left_antenna_holder",
+      "right_antenna_holder",
+      "foot_assembly_2",
+      "left_foot",
+      "right_foot"
+    ],
+    "joint_order": [
+      "left_hip_yaw",
+      "neck_pitch",
+      "right_hip_yaw",
+      "left_hip_roll",
+      "head_pitch",
+      "right_hip_roll",
+      "left_hip_pitch",
+      "head_yaw",
+      "right_hip_pitch",
+      "left_knee",
+      "head_roll",
+      "right_knee",
+      "left_ankle",
+      "left_antenna",
+      "right_antenna",
+      "right_ankle"
+    ],
+    "obs_dim": 59,
+    "action_dim": 16,
+    "mjcf_sha256": "4cd217d32fe5b7affda0b60b2249c3542fb1d06c3a9f783a973fa2dd83e87832",
+    "usd_asset_hash": "10ab887fe4d412b22d3d7c857a9d7f12"
+  },
+  "protocol": {
+    "windows_per_condition": 10,
+    "env_episodes_per_condition": 640,
+    "episode_length_s": 30.0,
+    "num_envs": 64,
+    "step_dt": 0.02,
+    "contact_force_threshold_n": 1.0,
+    "deterministic": true,
+    "obs_corruption": false,
+    "seed": 42,
+    "conditions": [
+      [
+        0.2,
+        0.0,
+        0.0
+      ],
+      [
+        -0.1,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.1,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.3
+      ],
+      [
+        0.15,
+        0.05,
+        0.2
+      ],
+      [
+        0.0,
+        0.0,
+        0.5
+      ]
+    ],
+    "reference_pkl": "/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl"
+  },
+  "per_condition": {
+    "vx+0.20_vy+0.00_wz+0.00": {
+      "episodes": 640,
+      "falls": 640,
+      "fall_rate_pct": 100.0,
+      "mean_episode_length_s": 1.48671875,
+      "reference_tracking_rms_deg": 5.735144997824459,
+      "mean_squared_jerk": 0.09742876887321472,
+      "action_std": 0.33036095192655923,
+      "stance_duty_left_pct": 55.998721636305525,
+      "stance_duty_right_pct": 60.709491850431455,
+      "stance_duty_asymmetry_pp": 4.7107702141259296,
+      "gait_valid": true,
+      "rom_ratio_per_pair": {
+        "hip_yaw": 0.9352948246239482,
+        "hip_roll": 0.9895100766993332,
+        "hip_pitch": 1.0165406331834745,
+        "knee": 1.1076999538970198,
+        "ankle": 1.0789656922292825
+      },
+      "rom_ratio_mean": 1.0256022361266115,
+      "lin_vel_xy_error_mps": 0.27268498861100926,
+      "ang_vel_z_error_radps": 0.6136263608932495,
+      "energy_proxy_w": 28.3356876373291,
+      "command": [
+        0.2,
+        0.0,
+        0.0
+      ],
+      "reference_motion": {
+        "key": "0.222_-0.037_-0.074",
+        "velocity": [
+          0.222,
+          -0.037,
+          -0.074
+        ],
+        "nb_steps_in_period": 27
+      }
+    },
+    "vx-0.10_vy+0.00_wz+0.00": {
+      "episodes": 640,
+      "falls": 640,
+      "fall_rate_pct": 100.0,
+      "mean_episode_length_s": 1.9231875,
+      "reference_tracking_rms_deg": 5.083121804843646,
+      "mean_squared_jerk": 0.06030471250414848,
+      "action_std": 0.23967878660187125,
+      "stance_duty_left_pct": 56.517027355423465,
+      "stance_duty_right_pct": 62.208137663787724,
+      "stance_duty_asymmetry_pp": 5.691110308364259,
+      "gait_valid": true,
+      "rom_ratio_per_pair": {
+        "hip_yaw": 1.206630476963355,
+        "hip_roll": 1.0445384265063768,
+        "hip_pitch": 0.9716096387619702,
+        "knee": 1.2815758757250366,
+        "ankle": 1.0366117336325074
+      },
+      "rom_ratio_mean": 1.1081932303178492,
+      "lin_vel_xy_error_mps": 0.24254892856840995,
+      "ang_vel_z_error_radps": 0.3245999217033386,
+      "energy_proxy_w": 16.44086265563965,
+      "command": [
+        -0.1,
+        0.0,
+        0.0
+      ],
+      "reference_motion": {
+        "key": "-0.074_-0.037_-0.074",
+        "velocity": [
+          -0.074,
+          -0.037,
+          -0.074
+        ],
+        "nb_steps_in_period": 27
+      }
+    },
+    "vx+0.00_vy+0.10_wz+0.00": {
+      "episodes": 640,
+      "falls": 640,
+      "fall_rate_pct": 100.0,
+      "mean_episode_length_s": 2.56059375,
+      "reference_tracking_rms_deg": 4.972427716626328,
+      "mean_squared_jerk": 0.06211935356259346,
+      "action_std": 0.22461148735601455,
+      "stance_duty_left_pct": 55.41396573143581,
+      "stance_duty_right_pct": 65.00817968240692,
+      "stance_duty_asymmetry_pp": 9.59421395097111,
+      "gait_valid": true,
+      "rom_ratio_per_pair": {
+        "hip_yaw": 0.7686150121417984,
+        "hip_roll": 1.2886433452615744,
+        "hip_pitch": 1.0199905889191134,
+        "knee": 0.8549661119749046,
+        "ankle": 0.9435681157388306
+      },
+      "rom_ratio_mean": 0.9751566348072442,
+      "lin_vel_xy_error_mps": 0.21233045227973243,
+      "ang_vel_z_error_radps": 0.3184490501880646,
+      "energy_proxy_w": 15.88915729522705,
+      "command": [
+        0.0,
+        0.1,
+        0.0
+      ],
+      "reference_motion": {
+        "key": "0.0_0.111_-0.074",
+        "velocity": [
+          0.0,
+          0.111,
+          -0.074
+        ],
+        "nb_steps_in_period": 27
+      }
+    },
+    "vx+0.00_vy+0.00_wz+0.30": {
+      "episodes": 640,
+      "falls": 640,
+      "fall_rate_pct": 100.0,
+      "mean_episode_length_s": 2.40571875,
+      "reference_tracking_rms_deg": 5.050674451592673,
+      "mean_squared_jerk": 0.0541844442486763,
+      "action_std": 0.21997507370542735,
+      "stance_duty_left_pct": 56.57100192552035,
+      "stance_duty_right_pct": 60.86609119369163,
+      "stance_duty_asymmetry_pp": 4.295089268171282,
+      "gait_valid": true,
+      "rom_ratio_per_pair": {
+        "hip_yaw": 0.9884535796008783,
+        "hip_roll": 1.0873169539417238,
+        "hip_pitch": 0.7725677237567317,
+        "knee": 1.2373623205013533,
+        "ankle": 1.080931999749626
+      },
+      "rom_ratio_mean": 1.0333265155100626,
+      "lin_vel_xy_error_mps": 0.21090503581846137,
+      "ang_vel_z_error_radps": 0.3481227159500122,
+      "energy_proxy_w": 14.32406234741211,
+      "command": [
+        0.0,
+        0.0,
+        0.3
+      ],
+      "reference_motion": {
+        "key": "0.0_-0.037_0.185",
+        "velocity": [
+          0.0,
+          -0.037,
+          0.185
+        ],
+        "nb_steps_in_period": 27
+      }
+    },
+    "vx+0.15_vy+0.05_wz+0.20": {
+      "episodes": 640,
+      "falls": 640,
+      "fall_rate_pct": 100.0,
+      "mean_episode_length_s": 2.16171875,
+      "reference_tracking_rms_deg": 5.019279648540041,
+      "mean_squared_jerk": 0.08326767385005951,
+      "action_std": 0.2930746905039996,
+      "stance_duty_left_pct": 53.38732034726782,
+      "stance_duty_right_pct": 64.70416575472386,
+      "stance_duty_asymmetry_pp": 11.316845407456043,
+      "gait_valid": true,
+      "rom_ratio_per_pair": {
+        "hip_yaw": 1.0631244065575982,
+        "hip_roll": 1.2218488267140064,
+        "hip_pitch": 1.066260804333135,
+        "knee": 0.7441158646754966,
+        "ankle": 0.8437056876364137
+      },
+      "rom_ratio_mean": 0.9878111179833299,
+      "lin_vel_xy_error_mps": 0.2309304872664599,
+      "ang_vel_z_error_radps": 0.5707144141197205,
+      "energy_proxy_w": 24.01802635192871,
+      "command": [
+        0.15,
+        0.05,
+        0.2
+      ],
+      "reference_motion": {
+        "key": "0.148_0.037_0.185",
+        "velocity": [
+          0.148,
+          0.037,
+          0.185
+        ],
+        "nb_steps_in_period": 27
+      }
+    },
+    "vx+0.00_vy+0.00_wz+0.50": {
+      "episodes": 640,
+      "falls": 640,
+      "fall_rate_pct": 100.0,
+      "mean_episode_length_s": 2.57359375,
+      "reference_tracking_rms_deg": 4.968108188824485,
+      "mean_squared_jerk": 0.05552438646554947,
+      "action_std": 0.23174135799054058,
+      "stance_duty_left_pct": 57.22327602031451,
+      "stance_duty_right_pct": 61.47953252156887,
+      "stance_duty_asymmetry_pp": 4.256256501254363,
+      "gait_valid": true,
+      "rom_ratio_per_pair": {
+        "hip_yaw": 0.9638254654601126,
+        "hip_roll": 1.1096800626444474,
+        "hip_pitch": 0.712321210595431,
+        "knee": 1.1701953879770277,
+        "ankle": 1.103064325762579
+      },
+      "rom_ratio_mean": 1.0118172904879195,
+      "lin_vel_xy_error_mps": 0.21038331223213028,
+      "ang_vel_z_error_radps": 0.3919197916984558,
+      "energy_proxy_w": 15.307244300842285,
+      "command": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "reference_motion": {
+        "key": "0.0_-0.037_0.444",
+        "velocity": [
+          0.0,
+          -0.037,
+          0.444
+        ],
+        "nb_steps_in_period": 27
+      }
+    }
+  },
+  "aggregate": {
+    "fall_rate_pct": 100.0,
+    "mean_episode_length_s": 2.1852552083333334,
+    "reference_tracking_rms_deg": 5.138126134708606,
+    "mean_squared_jerk": 0.06880488991737366,
+    "action_std": 0.2565737246807354,
+    "stance_duty_left_pct": 55.85188550271125,
+    "stance_duty_right_pct": 62.49593311110175,
+    "stance_duty_asymmetry_pp": 6.644047608390498,
+    "rom_ratio_mean": 1.0236511708721696,
+    "lin_vel_xy_error_mps": 0.22996386746270056,
+    "ang_vel_z_error_radps": 0.4279053757588069,
+    "energy_proxy_w": 19.052506764729817,
+    "episodes": 3840,
+    "falls": 3840,
+    "gait_valid_conditions": 6,
+    "conditions": 6
+  }
+}

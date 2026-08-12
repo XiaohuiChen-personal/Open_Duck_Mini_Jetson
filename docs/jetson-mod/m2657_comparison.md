@@ -73,7 +73,7 @@ Aggregate values below are means over the **six** conditions.
 <!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
 ## Results
 
-_Last regenerated: 2026-08-12T03:28:45_
+_Last regenerated: 2026-08-12T06:17:58_
 
 _Plant mass(es) simulated: 2.657067 kg — obs/action dims: 59/16 — conditions per entry: [6]_
 
@@ -83,17 +83,20 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 
 | Policy | Framework | Gait valid | Fall rate (%) | Ep len (s) | Ref RMS (deg) | Jerk | Action std | Duty L (%) | Duty R (%) | Duty asym (pp) | ROM ratio L/R | v_xy err (m/s) | wz err (rad/s) | Energy (W) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| v4_robust_grid6 | rsl_rl | 6/6 | 24.2 | 23.1 | 4.70 | 0.0724 | 0.238 | 64.3 | 62.3 | 5.5 | 1.00 | 0.190 | 0.151 | 19.57 |
 | v5d_contact_wrench | rsl_rl | 6/6 | 0.0 | 30.0 | 4.68 | 0.0845 | 0.243 | 65.7 | 65.4 | 3.2 | 0.99 | 0.156 | 0.104 | 19.86 |
 
 ### Fall rate (%) per condition
 
 | Policy | vx+0.20_vy+0.00_wz+0.00 | vx-0.10_vy+0.00_wz+0.00 | vx+0.00_vy+0.10_wz+0.00 | vx+0.00_vy+0.00_wz+0.30 | vx+0.15_vy+0.05_wz+0.20 | vx+0.00_vy+0.00_wz+0.50 |
 |---|---|---|---|---|---|---|
+| v4_robust_grid6 | 100.0 | 0.0 | 0.0 | 0.0 | 45.0 | 0.0 |
 | v5d_contact_wrench | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 
 ### Gait validity per condition (duty L/R, ok = both in [40, 90]%)
 
 | Policy | vx+0.20_vy+0.00_wz+0.00 | vx-0.10_vy+0.00_wz+0.00 | vx+0.00_vy+0.10_wz+0.00 | vx+0.00_vy+0.00_wz+0.30 | vx+0.15_vy+0.05_wz+0.20 | vx+0.00_vy+0.00_wz+0.50 |
 |---|---|---|---|---|---|---|
+| v4_robust_grid6 | ok (51/61) | ok (68/64) | ok (67/63) | ok (67/63) | ok (63/59) | ok (70/63) |
 | v5d_contact_wrench | ok (64/64) | ok (69/65) | ok (63/69) | ok (68/63) | ok (63/67) | ok (66/65) |
 <!-- END AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->

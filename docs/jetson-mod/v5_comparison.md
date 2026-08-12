@@ -46,6 +46,8 @@ remains a mandatory protocol step.
 Aggregate values below are means over the six conditions (640 episodes each,
 3,840 per policy).
 
+> **Re-gated 2026-08-12 on the corrected 2.657 kg plant — see [`m2657_regate.md`](m2657_regate.md).** v5d passes every gate there; `v4_robust` does not (0.000 % -> 24.167 % open-field falls). The historical numbers on this page are unchanged and remain the 3.657 kg record.
+>
 > **PLANT-1 was fixed on 2026-08-11** — `base` is merged into `trunk_assembly`,
 > the USD is regenerated, and PhysX now simulates 2.657067 kg. Caveat (1) below
 > therefore describes the plant these rows were measured on, **not** the current

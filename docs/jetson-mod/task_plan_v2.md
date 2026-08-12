@@ -2530,7 +2530,32 @@ That row's `gait_valid_conditions` and `fall_rate_pct` are the numbers R1c judge
 
 ---
 
-### Task R1b — Re-measure the v4_robust control battery on the corrected plant
+### Task R1b — Re-measure the v4_robust control battery on the corrected plant — ✅ **DONE 2026-08-12**
+
+> **Completed. Do not re-run this task.** Five `v4_robust` evaluations on the
+> corrected plant, same frozen protocol, into `eval_results_m2657/`. Ten JSONs
+> total; `m2657_comparison.md` shows exactly the two open-field rows and no
+> `*eval*` rows, which is the proof that R0's `--include` allowlist works.
+>
+> **The control did not survive the plant fix.**
+>
+> | | 3.657 kg | 2.657 kg |
+> |---|---|---|
+> | open-field falls | 0.000 % | **24.167 %** |
+> | mean episode length | 30.00 s | 23.06 s |
+> | push, v4 rule | 6.354 % | **93.151 %** |
+> | push, v5 rule | 11.120 % | **93.672 %** |
+> | sustained wrench | 100.000 % | 100.000 % |
+> | obstacle graze | 32.604 % | **46.979 %** |
+>
+> Note `v4_robust` still passes the *gait* gate 6/6 while falling 24 % of the
+> time — a reminder that the gait gate measures contact-pattern validity on the
+> episodes that survive and is not a substitute for the fall rate.
+>
+> **Consequence, recorded in `m2657_regate.md`:** a baseline that falls 24 % of
+> the time in the open field cannot anchor G-R4 or G-R5 for the rebuild
+> campaign. `v4_robust` is retired as a control on this plant, and R2's
+> `v6_robust` becomes the control for R2b.
 
 **AI-agent suitable:** YES
 
@@ -2615,7 +2640,45 @@ present, so every G-R4 pair can be formed.
 
 ---
 
-### Task R1c — Decide whether v5d still passes its gates, and record the verdict
+### Task R1c — Decide whether v5d still passes its gates, and record the verdict — ✅ **DONE 2026-08-12**
+
+> **Completed. VERDICT: v5d PASSES every gate on the corrected plant.**
+> `scripts/regate_report.py` exits **0**. Full write-up in
+> [`m2657_regate.md`](m2657_regate.md) (8 sections, machine report pasted
+> verbatim).
+>
+> ```
+> G-R1  PASS    gait gate 6/6 (bar >=5/6)
+> G-R2  PASS    open-field fall rate 0.000% (also inside the tightened <=0.5% bar)
+> G-R3  PASS    video audit, frame-by-frame — eval_results_m2657/videos/AUDIT.md
+> G-R4  PASS    all four candidate rates <= control (-37.7, -93.3, -57.0, -46.1)
+> G-R5  PASS    ref RMS 4.676 vs control 4.704 (-0.028, bar <= 1.0)
+> OVERALL: PASS
+> ```
+>
+> Under the plan's own decision rule this is the first branch, so **no
+> "NOT VALID ON THE CURRENT PLANT" banner was added** to
+> `exported_policies/v5d_contact_wrench_ppo/README.md`, and no owner sign-off is
+> pending.
+>
+> **The finding that matters more than the verdict.** The contact-rich v5
+> curriculum produced a policy robust to a **27 % change in the plant itself** —
+> v5d 0.000 % -> 0.000 % open-field falls, `v4_robust` 0.000 % -> 24.167 %.
+> Neither had mass DR beyond `add_base_mass (-0.10, +0.15) kg`, so the
+> robustness came from the curriculum (fall-only terminations, obstacles,
+> sustained wrench), not from randomisation. Carry that into R2b's recipe.
+>
+> **Stated weakness:** G-R5 compares v5d's ref RMS against a control that is
+> falling 24 % of the time. The gate passes, but it carries less information
+> than its authors assumed.
+>
+> Delivered: `scripts/regate_report.py` (+ `tests/test_regate_report.py`,
+> 13 tests incl. the mixed-plant and mixed-dims guards),
+> `docs/jetson-mod/m2657_regate.md`, one-line verdict pointers added to
+> `v5_comparison.md` / `validation_results.md` / `v4_retrain_results.md` with
+> their historical numbers untouched, and `known_issues.md` PLANT-1's
+> "re-running the gates is the first task of the rebuild" replaced with the
+> actual outcome.
 
 **AI-agent suitable:** PARTIAL — the arithmetic and the report are fully
 autonomous. **Changing v5d's shipped status is an owner decision**: it changes

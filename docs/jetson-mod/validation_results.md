@@ -19,6 +19,8 @@ layout v2.1, frame-correct inertia, 2.657 kg (see `component_layout_v2.md`).
 > which exits nonzero). The gate results below remain internally valid; they are
 > results for a 3.657 kg plant. Do not quote them as hardware numbers.
 
+> **Re-gated 2026-08-12 on the corrected 2.657 kg plant — see [`m2657_regate.md`](m2657_regate.md).** v5d passes every gate there; `v4_robust` does not (0.000 % -> 24.167 % open-field falls). The historical numbers on this page are unchanged and remain the 3.657 kg record.
+
 > **Update 2026-08-11: PLANT-1 is fixed.** `base` was merged into
 > `trunk_assembly` and the USD regenerated; `audit_plant_mass.py` now exits 0
 > with PhysX simulating 2.657067 kg. The caveat above still applies to the
