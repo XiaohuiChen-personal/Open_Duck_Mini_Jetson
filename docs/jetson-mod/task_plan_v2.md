@@ -239,12 +239,39 @@ Both the `cad` and `urdf` skills require it: after creating or modifying any
 start, say so — do not silently skip it. Snapshot review is **mandatory** after
 a visible geometry change, not optional because deterministic checks passed.
 
-> **Known setup gap, checked 2026-08-11.** CAD Viewer does not start on this
-> machine: `~/.claude/skills/cad-viewer/scripts/viewer/node_modules` is absent,
-> so `npm run start` dies with `MODULE_NOT_FOUND` and nothing binds port 3245.
-> It needs a one-time `npm --prefix scripts/viewer install` in the skill
-> directory. Do that once before the first geometry task, then the handoff works
-> for every task after it.
+> **CAD Viewer setup — resolved 2026-08-12. `npm` is NOT the way in.**
+> The skill documents `npm --prefix scripts/viewer run start`, and that path is
+> broken in build 0.4.5: `package.json`'s `start` runs
+> `node scripts/start-viewer.mjs`, and **that file does not exist anywhere in
+> the skill** — hence `MODULE_NOT_FOUND`. `package.json` also declares **zero
+> dependencies**, so `npm install` installs nothing and fixes nothing. (A
+> relative `--prefix` also resolves against your *current* directory, so running
+> it from `~` fails with a confusing `ENOENT` on `~/scripts/viewer/package.json`
+> — a red herring on top of the real problem.)
+>
+> The viewer is a **Python** backend. Its real dependency is `cadgen==0.4.5`
+> (`scripts/viewer/requirements.txt`), and Ubuntu 24.04 refuses a system-wide
+> pip install under PEP 668, so it needs a venv. One-time setup:
+>
+> ```bash
+> python3 -m venv ~/.venvs/cad-viewer
+> cd ~/.agents/skills/cad-viewer/scripts/viewer
+> ~/.venvs/cad-viewer/bin/pip install -r requirements.txt
+> ```
+>
+> Put the venv **outside** the skill directory as shown — `.agents/skills/` is
+> replaced when skills update, which would wipe a venv kept inside it.
+>
+> To run it:
+>
+> ```bash
+> cd ~/.agents/skills/cad-viewer/scripts/viewer
+> ~/.venvs/cad-viewer/bin/python3 -m server_py.start_viewer --port 3245
+> ```
+>
+> A URL's **path is the absolute directory** to browse and `?file=` selects one
+> artifact inside it, so one server reviews any folder:
+> `http://127.0.0.1:3245/<abs-dir>?file=<relative/path.stl>`.
 >
 > **The URDF additionally cannot be rendered until Task M7 fixes its mesh
 > URIs.** All 240 are `package:///name.stl` with an empty package name, so no
