@@ -2250,7 +2250,64 @@ meaningful until it is resolved.
 
 ---
 
-### Task R1 — Re-gate the shipped v5d against the corrected plant
+### Task R1 — Re-gate the shipped v5d against the corrected plant — ✅ **DONE 2026-08-12**
+
+> **Completed. Do not re-run this task.** All six done-when boxes are ticked.
+> Five JSONs in `eval_results_m2657/`, five mp4s + filmstrips under
+> `eval_results_m2657/videos/`, and a written per-condition video verdict in
+> `eval_results_m2657/videos/AUDIT.md`.
+>
+> **The answer to the question this task exists to ask: the plant fix alone did
+> NOT break the shipped policy's locomotion. It did degrade its disturbance
+> rejection.**
+>
+> | metric | 3.657 kg | 2.657 kg | delta |
+> |---|---|---|---|
+> | gait valid | 6/6 | **6/6** | — |
+> | open-field falls | 0.000 % | **0.000 %** | — |
+> | ref RMS (deg) | 4.6689 | **4.6758** | +0.0068 |
+> | duty L / R (%) | 71.46 / 73.88 | 65.71 / 65.39 | −5.74 / −8.49 |
+> | duty asym (pp) | 3.6049 | 3.2344 | −0.37 |
+> | energy (W) | 20.33 | 19.86 | −0.47 |
+> | push, **v4 rule** | 1.068 % | **55.443 %** | +54.4 |
+> | push, **v5 rule** | 0.000 % | **0.339 %** | +0.34 |
+> | sustained wrench | 47.109 % | **43.047 %** | −4.06 |
+> | obstacle graze | 0.312 % | **0.885 %** | +0.57 |
+>
+> **Read the two push rows together or you will misread this result.** The v4
+> rule counts *any* `trunk_assembly` contact above 1 N as a fall; the v5 rule is
+> the deployment's own definition (tilt > 60°, root height < 0.09 m). v5d still
+> **recovers** from the pushes — 0.339 % by the deployment definition. What
+> changed is that its recovery now involves the trunk touching down, and the
+> legacy rule scores that as death. `env_cfg.py` says why the v4 rule was
+> abandoned: it "taught contact = death and never taught recovery".
+>
+> Ruled out by measurement, not by argument: identical checkpoint
+> (md5 `0333e68a4cd9ed3817310ed80f6715e4` for both the `exported_policies/`
+> and training-log copies), byte-identical `protocol` block, termination still
+> name-bound to `trunk_assembly`, `add_base_mass`/`base_com` both `None` in the
+> PLAY chain, and `push_by_setting_velocity` **sets** root velocity so the push
+> is mass-independent and did not change between plants. (The wrench, being a
+> force, did: 7.18 N → 5.21 N, banner `measured robot weight 26.07 N (2.657 kg)`.)
+>
+> **G-R3 video audit: PASS.** `forward_vx02`, `turn_wz03` and `turn_wz05` all
+> show alternating bipedal gait with real swing clearance, trunk vertical,
+> stance foot loaded, and turn-in-place as a stepping rotation rather than a
+> pivot-scrape. `press_wrench` shows the robot walking ~12 s then toppling and
+> **not self-righting** — v5d has no get-up behaviour, which Phase S bring-up
+> must assume. `obstacle_graze` shows one adverse draw; at 0.885 % aggregate it
+> illustrates the failure mode, not its frequency, and CFG-2 (obstacle placed
+> twice per episode) is still open.
+>
+> **Also fixed here (R0 step 4, which could not run until this table existed):**
+> the hand-written preamble of `m2657_comparison.md` was the generator's
+> `PROTOCOL_HEADER`, which describes the script's *defaults* — it claimed five
+> conditions and "no external pushes". It now states the six conditions
+> actually used, the plant identity, and why the absolute contact numbers must
+> not be compared against `v5_comparison.md`.
+>
+> **Not decided here.** G-R1/G-R2/G-R5 pass and G-R3 passes, but **G-R4 is a
+> relative gate** and its control is Task R1b. The verdict is Task R1c.
 
 **AI-agent suitable:** PARTIAL — steps 1-5 are fully autonomous. The **video
 audit (step 6) requires something that can actually look at images.** A
