@@ -1,3 +1,60 @@
+<?xml version="1.0" ?>
+<!--
+  Open Duck Mini v2 — URDF design ledger
+  ======================================
+  Repaired 2026-08-12 (task_plan_v2.md Task M7, branch A "fix and gate").
+  Originally an onshape-to-robot export; it had never validated.
+
+  STATUS AND AUTHORITY
+    NOT the source of truth for simulation. The Isaac/PhysX pipeline builds its
+    USD from robot_motors.xml (MJCF) via scripts/convert_mjcf_to_usd.py; this
+    file is in no training or evaluation code path. It is kept because it is the
+    standard interchange format (RViz / MoveIt / Gazebo) and because it is an
+    independent cross-check on the MJCF — see CROSS-CHECK below.
+    tests/test_urdf_consistency.py fails if the two descriptions drift.
+
+  UNITS AND FRAMES
+    Lengths metres, angles radians, mass kilograms (URDF convention).
+    Joint <origin> is the child link frame expressed in the parent link frame.
+    Joint <axis> is expressed in the CHILD link frame.
+    <visual>/<collision>/<inertial> origins are expressed in their own link frame.
+    Meshes are authored in metres and referenced with paths RELATIVE to this
+    file; every .stl sits in this directory. Mesh scale is 1.0 (no <scale>).
+
+  TOPOLOGY (verified by the urdf skill validator)
+    root link      trunk_assembly   (carries real mass; there is no massless
+                                     wrapper link, and there never was one here
+                                     — the MJCF's `base` wrapper was the anomaly
+                                     and was merged away on 2026-08-11, PLANT-1)
+    21 links, 20 joints, 16 movable (revolute) + 4 fixed frame joints
+    total mass     2.657 kg
+
+  FRAME-ONLY LINKS
+    trunk, left_foot, right_foot, head carry NO <inertial> and no geometry.
+    They are pure kinematic frames attached by fixed joints. Their previous
+    zero-diagonal inertia tensors were invalid URDF (a zero inertia diagonal is
+    not a legal rigid body) and are removed rather than replaced with an
+    invented epsilon. The equivalent MJCF markers use mass=1e-09; PhysX
+    substitutes 4.0e-12 for them at load, which is benign (known_issues PLANT-1b).
+
+  REPAIRS APPLIED 2026-08-12
+    1. 266 mesh references were `package:///<name>.stl` — a package:// URI with
+       an EMPTY package name, unresolvable by every standard consumer. Rewritten
+       to plain relative paths. All 47 distinct meshes verified present on disk.
+    2. Removed the invalid zero-inertia <inertial> from the four frame links.
+
+  KNOWN, DELIBERATE NON-STANDARD ELEMENTS (validator reports these as warnings)
+    <mujoco><compiler fusestatic="false"/></mujoco> and the per-joint
+    <joint_properties> blocks are MuJoCo compiler hints carried over from the
+    upstream export. They are ignored by URDF consumers. Left in place on
+    purpose; do not "fix" them.
+
+  ASSUMPTIONS NOT INDEPENDENTLY VERIFIED
+    Link inertia tensors and joint limits are inherited from the upstream
+    Onshape export and were NOT re-derived here. The mass model is being rebuilt
+    in task_plan_v2.md Phase M; when it lands, this file's inertials are stale
+    until regenerated. This ledger does not certify them.
+-->
 <robot name="onshape">
     <mujoco>
         <compiler fusestatic="false"/>
@@ -6,7 +63,7 @@
         <visual>
             <origin xyz="-0.019000000000000002998 0 0.06489093881237623096" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_front.stl"/>
+                <mesh filename="body_front.stl"/>
             </geometry>
             <material name="body_front_material">
                 <color rgba="0.91764705882352937127 0.91764705882352937127 0.91764705882352937127 1.0"/>
@@ -15,13 +72,13 @@
         <collision>
             <origin xyz="-0.019000000000000002998 0 0.06489093881237623096" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_front.stl"/>
+                <mesh filename="body_front.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.12630000000000002336 -0.025700000000000007561 0.057607885438805628286" rpy="1.570796326794896558 -1.570796326794896558 0" />
             <geometry>
-                <mesh filename="package:///usb_c_charger.stl"/>
+                <mesh filename="usb_c_charger.stl"/>
             </geometry>
             <material name="usb_c_charger_material">
                 <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
@@ -30,13 +87,13 @@
         <collision>
             <origin xyz="-0.12630000000000002336 -0.025700000000000007561 0.057607885438805628286" rpy="1.570796326794896558 -1.570796326794896558 0" />
             <geometry>
-                <mesh filename="package:///usb_c_charger.stl"/>
+                <mesh filename="usb_c_charger.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.019000000000000030753 3.4694469519536141888e-18 0.064890938812376217082" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_back.stl"/>
+                <mesh filename="body_back.stl"/>
             </geometry>
             <material name="body_back_material">
                 <color rgba="0.91764705882352937127 0.91764705882352937127 0.91764705882352937127 1.0"/>
@@ -45,13 +102,13 @@
         <collision>
             <origin xyz="-0.019000000000000030753 3.4694469519536141888e-18 0.064890938812376217082" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_back.stl"/>
+                <mesh filename="body_back.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.019000000000000002998 -3.4694469519536141888e-18 0.064890938812376217082" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_middle_bottom.stl"/>
+                <mesh filename="body_middle_bottom.stl"/>
             </geometry>
             <material name="body_middle_bottom_material">
                 <color rgba="0.91764705882352937127 0.91764705882352937127 0.91764705882352937127 1.0"/>
@@ -60,13 +117,13 @@
         <collision>
             <origin xyz="-0.019000000000000002998 -3.4694469519536141888e-18 0.064890938812376217082" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_middle_bottom.stl"/>
+                <mesh filename="body_middle_bottom.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.12034034238515370352 -2.7755575615628913511e-17 0.089912605778164178538" rpy="6.6215498863017844842e-16 -0.89605538457133859787 -5.1705617763838667614e-16" />
             <geometry>
-                <mesh filename="package:///power_switch.stl"/>
+                <mesh filename="power_switch.stl"/>
             </geometry>
             <material name="power_switch_material">
                 <color rgba="0.90196078431372550543 0.90196078431372550543 0.90196078431372550543 1.0"/>
@@ -75,13 +132,13 @@
         <collision>
             <origin xyz="-0.12034034238515370352 -2.7755575615628913511e-17 0.089912605778164178538" rpy="6.6215498863017844842e-16 -0.89605538457133859787 -5.1705617763838667614e-16" />
             <geometry>
-                <mesh filename="package:///power_switch.stl"/>
+                <mesh filename="power_switch.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.075202758552571302708 -0.024900000000000005462 0.029489945907002490522" rpy="1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///bms.stl"/>
+                <mesh filename="bms.stl"/>
             </geometry>
             <material name="bms_material">
                 <color rgba="0.2313725490196078538 0.38039215686274507888 0.7058823529411765163 1.0"/>
@@ -90,13 +147,13 @@
         <collision>
             <origin xyz="-0.075202758552571302708 -0.024900000000000005462 0.029489945907002490522" rpy="1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///bms.stl"/>
+                <mesh filename="bms.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.018999999999999683808 0 0.064890938812376189326" rpy="-3.3848262945888805998e-16 -0 0" />
             <geometry>
-                <mesh filename="package:///battery_pack_lid.stl"/>
+                <mesh filename="battery_pack_lid.stl"/>
             </geometry>
             <material name="battery_pack_lid_material">
                 <color rgba="0.2313725490196078538 0.38039215686274507888 0.7058823529411765163 1.0"/>
@@ -105,13 +162,13 @@
         <collision>
             <origin xyz="-0.018999999999999683808 0 0.064890938812376189326" rpy="-3.3848262945888805998e-16 -0 0" />
             <geometry>
-                <mesh filename="package:///battery_pack_lid.stl"/>
+                <mesh filename="battery_pack_lid.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.019000000000000002998 0 0.064890938812376217082" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_middle_top.stl"/>
+                <mesh filename="body_middle_top.stl"/>
             </geometry>
             <material name="body_middle_top_material">
                 <color rgba="0.91764705882352937127 0.91764705882352937127 0.91764705882352937127 1.0"/>
@@ -120,13 +177,13 @@
         <collision>
             <origin xyz="-0.019000000000000002998 0 0.064890938812376217082" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///body_middle_top.stl"/>
+                <mesh filename="body_middle_top.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.100 0 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
             <geometry>
-                <mesh filename="package:///bno055.stl"/>
+                <mesh filename="bno055.stl"/>
             </geometry>
             <material name="bno055_material">
                 <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
@@ -135,13 +192,13 @@
         <collision>
             <origin xyz="-0.100 0 0.041790938812376283995" rpy="-1.4062102177136728734e-16 2.5389959684908792913e-51 7.8060348058444099458e-33" />
             <geometry>
-                <mesh filename="package:///bno055.stl"/>
+                <mesh filename="bno055.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.018999999999999999528 -6.9388939039072283776e-18 0.06489093881237623096" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///roll_bearing.stl"/>
+                <mesh filename="roll_bearing.stl"/>
             </geometry>
             <material name="roll_bearing_material">
                 <color rgba="0.5999999999999999778 0.5999999999999999778 0.5999999999999999778 1.0"/>
@@ -150,13 +207,13 @@
         <collision>
             <origin xyz="-0.018999999999999999528 -6.9388939039072283776e-18 0.06489093881237623096" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///roll_bearing.stl"/>
+                <mesh filename="roll_bearing.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.01899999999999998912 9.1072982488782372457e-18 0.06489093881237623096" rpy="-1.4062102177136726269e-16 7.6230808650822444942e-36 1.0842021724854837303e-19" />
             <geometry>
-                <mesh filename="package:///trunk_bottom.stl"/>
+                <mesh filename="trunk_bottom.stl"/>
             </geometry>
             <material name="trunk_bottom_material">
                 <color rgba="0.18039215686274509554 0.18039215686274509554 0.18039215686274509554 1.0"/>
@@ -165,13 +222,13 @@
         <collision>
             <origin xyz="-0.01899999999999998912 9.1072982488782372457e-18 0.06489093881237623096" rpy="-1.4062102177136726269e-16 7.6230808650822444942e-36 1.0842021724854837303e-19" />
             <geometry>
-                <mesh filename="package:///trunk_bottom.stl"/>
+                <mesh filename="trunk_bottom.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.019000000000000322187 -2.4242760576775879144e-16 0.06489093881237648076" rpy="-4.8355416892852906111e-17 5.5511151231258122844e-17 0" />
             <geometry>
-                <mesh filename="package:///trunk_top.stl"/>
+                <mesh filename="trunk_top.stl"/>
             </geometry>
             <material name="trunk_top_material">
                 <color rgba="0.18039215686274509554 0.18039215686274509554 0.18039215686274509554 1.0"/>
@@ -180,13 +237,13 @@
         <collision>
             <origin xyz="-0.019000000000000322187 -2.4242760576775879144e-16 0.06489093881237648076" rpy="-4.8355416892852906111e-17 5.5511151231258122844e-17 0" />
             <geometry>
-                <mesh filename="package:///trunk_top.stl"/>
+                <mesh filename="trunk_top.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.063490012619999952603 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///board.stl"/>
+                <mesh filename="board.stl"/>
             </geometry>
             <material name="board_material">
                 <color rgba="0 0.50196078431372548323 0 1.0"/>
@@ -195,13 +252,13 @@
         <collision>
             <origin xyz="-0.063490012619999952603 0.016499992339999228208 0.060390938152376505421" rpy="1.406210217713636142e-16 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///board.stl"/>
+                <mesh filename="board.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.018999999999999999528 -0.070000000000000034417 0.06489093881237623096" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///roll_bearing.stl"/>
+                <mesh filename="roll_bearing.stl"/>
             </geometry>
             <material name="roll_bearing_material">
                 <color rgba="0.5999999999999999778 0.5999999999999999778 0.5999999999999999778 1.0"/>
@@ -210,13 +267,13 @@
         <collision>
             <origin xyz="-0.018999999999999999528 -0.070000000000000034417 0.06489093881237623096" rpy="0 -0 0" />
             <geometry>
-                <mesh filename="package:///roll_bearing.stl"/>
+                <mesh filename="roll_bearing.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.12962456815639683549 -0.010499999999999986774 0.065013432174047369738" rpy="-3.141592653589793116 7.1750566777276333942e-17 2.1913059978610238687" />
             <geometry>
-                <mesh filename="package:///cell.stl"/>
+                <mesh filename="cell.stl"/>
             </geometry>
             <material name="cell_material">
                 <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
@@ -225,13 +282,13 @@
         <collision>
             <origin xyz="-0.12962456815639683549 -0.010499999999999986774 0.065013432174047369738" rpy="-3.141592653589793116 7.1750566777276333942e-17 2.1913059978610238687" />
             <geometry>
-                <mesh filename="package:///cell.stl"/>
+                <mesh filename="cell.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.13962456815639684438 -0.063524458557367310951 0.031454953764361824609" rpy="-1.3044563776959597654e-16 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///holder.stl"/>
+                <mesh filename="holder.stl"/>
             </geometry>
             <material name="holder_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -240,13 +297,13 @@
         <collision>
             <origin xyz="-0.13962456815639684438 -0.063524458557367310951 0.031454953764361824609" rpy="-1.3044563776959597654e-16 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///holder.stl"/>
+                <mesh filename="holder.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.12962456815639683549 0.010500000000000004122 1.3432174047381232902e-05" rpy="8.3177805134519239719e-17 2.7557624392889133747e-16 0.75026546877138966529" />
             <geometry>
-                <mesh filename="package:///cell.stl"/>
+                <mesh filename="cell.stl"/>
             </geometry>
             <material name="cell_material">
                 <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
@@ -255,13 +312,13 @@
         <collision>
             <origin xyz="-0.12962456815639683549 0.010500000000000004122 1.3432174047381232902e-05" rpy="8.3177805134519239719e-17 2.7557624392889133747e-16 0.75026546877138966529" />
             <geometry>
-                <mesh filename="package:///cell.stl"/>
+                <mesh filename="cell.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -270,13 +327,13 @@
         <collision>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -285,13 +342,13 @@
         <collision>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -300,13 +357,13 @@
         <collision>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -315,13 +372,13 @@
         <collision>
             <origin xyz="0.00099999999999953077812 0.0097000000000003246819 0.064500938812376201748" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.00099999999999958585559 0.012600000000000624589 0.064500938812376257259" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -330,13 +387,13 @@
         <collision>
             <origin xyz="0.00099999999999958585559 0.012600000000000624589 0.064500938812376257259" rpy="1.0972295724176328418e-22 1.5707963267948743535 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -345,13 +402,13 @@
         <collision>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -360,13 +417,13 @@
         <collision>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -375,13 +432,13 @@
         <collision>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -390,13 +447,13 @@
         <collision>
             <origin xyz="-0.044499999999999630129 -0.035000000000001522948 0.055390938812376840084" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999546862 -0.035000000000001536826 0.052490938812376819467" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -405,13 +462,13 @@
         <collision>
             <origin xyz="-0.044499999999999546862 -0.035000000000001536826 0.052490938812376819467" rpy="-1.570796326794896336 2.2204460492502903617e-14 3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -420,13 +477,13 @@
         <collision>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -435,13 +492,13 @@
         <collision>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -450,13 +507,13 @@
         <collision>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -465,13 +522,13 @@
         <collision>
             <origin xyz="-0.044499999999999921563 0.035000000000001384171 0.055390938812376840084" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.04449999999999981054 0.035000000000001238454 0.052490938812376632117" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -480,14 +537,14 @@
         <collision>
             <origin xyz="-0.04449999999999981054 0.035000000000001238454 0.052490938812376632117" rpy="-1.570796326794896558 2.220446049250285944e-14 -3.141592653589793116" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <!-- Jetson Orin Nano Dev Kit (103x90.5x34.77mm) in compute zone -->
         <visual>
             <origin xyz="-0.03 0 0.006" rpy="0 0 0" />
             <geometry>
-                <mesh filename="package:///jetson_orin_nano.stl"/>
+                <mesh filename="jetson_orin_nano.stl"/>
             </geometry>
             <material name="jetson_material">
                 <color rgba="0.1 0.6 0.1 1.0"/>
@@ -496,14 +553,14 @@
         <collision>
             <origin xyz="-0.03 0 0.006" rpy="0 0 0" />
             <geometry>
-                <mesh filename="package:///jetson_orin_nano.stl"/>
+                <mesh filename="jetson_orin_nano.stl"/>
             </geometry>
         </collision>
         <!-- Thermal partition wall between battery and compute zones -->
         <visual>
             <origin xyz="-0.086 0 0.011" rpy="0 0 0" />
             <geometry>
-                <mesh filename="package:///thermal_partition.stl"/>
+                <mesh filename="thermal_partition.stl"/>
             </geometry>
             <material name="partition_material">
                 <color rgba="0.8 0.2 0.2 0.5"/>
@@ -512,14 +569,14 @@
         <collision>
             <origin xyz="-0.086 0 0.011" rpy="0 0 0" />
             <geometry>
-                <mesh filename="package:///thermal_partition.stl"/>
+                <mesh filename="thermal_partition.stl"/>
             </geometry>
         </collision>
         <!-- DC-DC boost converter in compute zone -->
         <visual>
             <origin xyz="-0.06 0.025 0.0355" rpy="0 0 0" />
             <geometry>
-                <mesh filename="package:///dcdc_converter.stl"/>
+                <mesh filename="dcdc_converter.stl"/>
             </geometry>
             <material name="dcdc_material">
                 <color rgba="0.9 0.8 0.1 1.0"/>
@@ -528,7 +585,7 @@
         <collision>
             <origin xyz="-0.06 0.025 0.0355" rpy="0 0 0" />
             <geometry>
-                <mesh filename="package:///dcdc_converter.stl"/>
+                <mesh filename="dcdc_converter.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -538,11 +595,7 @@
         </inertial>
     </link>
     <link name="trunk">
-        <inertial>
-            <origin xyz="0 0 0" rpy="0 0 0" />
-            <mass value="1e-9" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
-        </inertial>
+        <!-- pure frame: no mass, no geometry -->
     </link>
     <joint name="trunk_frame" type="fixed">
         <origin xyz="-0.024000000000000760308 -2.4112656316077618612e-16 0.088190938812376745704" rpy="-1.4062102177136726269e-16 -9.4252837597218562265e-17 7.8061435390716270015e-33" />
@@ -554,7 +607,7 @@
         <visual>
             <origin xyz="-3.3306690738754696213e-16 -0.034999999999999101274 0.019049999999999983613" rpy="-8.7699839287071152073e-16 7.0914210924513341518e-16 -6.6960326172708786896e-16" />
             <geometry>
-                <mesh filename="package:///roll_motor_bottom.stl"/>
+                <mesh filename="roll_motor_bottom.stl"/>
             </geometry>
             <material name="roll_motor_bottom_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -563,13 +616,13 @@
         <collision>
             <origin xyz="-3.3306690738754696213e-16 -0.034999999999999101274 0.019049999999999983613" rpy="-8.7699839287071152073e-16 7.0914210924513341518e-16 -6.6960326172708786896e-16" />
             <geometry>
-                <mesh filename="package:///roll_motor_bottom.stl"/>
+                <mesh filename="roll_motor_bottom.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0 -0.034999999999999989453 0.019050000000000011369" rpy="-3.2139686811656498914e-33 -1.4298103907199264377e-30 3.250599675800221937e-43" />
             <geometry>
-                <mesh filename="package:///roll_motor_top.stl"/>
+                <mesh filename="roll_motor_top.stl"/>
             </geometry>
             <material name="roll_motor_top_material">
                 <color rgba="0.90196078431372550543 0.90196078431372550543 0.90196078431372550543 1.0"/>
@@ -578,13 +631,13 @@
         <collision>
             <origin xyz="0 -0.034999999999999989453 0.019050000000000011369" rpy="-3.2139686811656498914e-33 -1.4298103907199264377e-30 3.250599675800221937e-43" />
             <geometry>
-                <mesh filename="package:///roll_motor_top.stl"/>
+                <mesh filename="roll_motor_top.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -593,13 +646,13 @@
         <collision>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -608,13 +661,13 @@
         <collision>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -623,13 +676,13 @@
         <collision>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -638,13 +691,13 @@
         <collision>
             <origin xyz="0.0096000000000019836827 7.3691053259494765371e-15 -0.020515000000001309965" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.012500000000002495226 5.9882654390719380899e-15 -0.02051500000000196916" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -653,7 +706,7 @@
         <collision>
             <origin xyz="0.012500000000002495226 5.9882654390719380899e-15 -0.02051500000000196916" rpy="-1.5707963267951907671 -1.5707963267947837593 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -666,7 +719,7 @@
         <visual>
             <origin xyz="-0.03500000000000001027 -0.06500000000000000222 0.019050000000000021777" rpy="1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///left_roll_to_pitch.stl"/>
+                <mesh filename="left_roll_to_pitch.stl"/>
             </geometry>
             <material name="left_roll_to_pitch_material">
                 <color rgba="0.90980392156862743835 0.57254901960784310155 0.16470588235294117418 1.0"/>
@@ -675,13 +728,13 @@
         <collision>
             <origin xyz="-0.03500000000000001027 -0.06500000000000000222 0.019050000000000021777" rpy="1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///left_roll_to_pitch.stl"/>
+                <mesh filename="left_roll_to_pitch.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -690,13 +743,13 @@
         <collision>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -705,13 +758,13 @@
         <collision>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -720,13 +773,13 @@
         <collision>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -735,13 +788,13 @@
         <collision>
             <origin xyz="0.064699999999999840972 -1.4826464708739273135e-17 0.0096099999999999796696" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.067600000000001769784 3.657284978336727832e-16 0.0096099999999997767069" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -750,7 +803,7 @@
         <collision>
             <origin xyz="0.067600000000001769784 3.657284978336727832e-16 0.0096099999999997767069" rpy="1.5707963267948956698 1.5707963267948954478 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -763,7 +816,7 @@
         <visual>
             <origin xyz="0.016059999999998214593 0.065000000000001986744 0.10914999999999977498" rpy="-1.570796326794896336 2.4194302416514655778e-29 0" />
             <geometry>
-                <mesh filename="package:///left_cache.stl"/>
+                <mesh filename="left_cache.stl"/>
             </geometry>
             <material name="left_cache_material">
                 <color rgba="0.91764705882352937127 0.91764705882352937127 0.91764705882352937127 1.0"/>
@@ -772,13 +825,13 @@
         <collision>
             <origin xyz="0.016059999999998214593 0.065000000000001986744 0.10914999999999977498" rpy="-1.570796326794896336 2.4194302416514655778e-29 0" />
             <geometry>
-                <mesh filename="package:///left_cache.stl"/>
+                <mesh filename="left_cache.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016059999999999997888 0.1436499999999999444 0.10924999999999998601" rpy="-1.570796326794896558 5.1567714115613726028e-27 1.6653345369377348106e-16" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
             <material name="leg_spacer_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -787,13 +840,13 @@
         <collision>
             <origin xyz="0.016059999999999997888 0.1436499999999999444 0.10924999999999998601" rpy="-1.570796326794896558 5.1567714115613726028e-27 1.6653345369377348106e-16" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000018705 0.14364999999999997216 0.10914999999999995539" rpy="-1.57079632679489678 -1.8345638269942055852e-28 5.5511151231283095222e-17" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_right_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -802,13 +855,13 @@
         <collision>
             <origin xyz="0.016060000000000018705 0.14364999999999997216 0.10914999999999995539" rpy="-1.57079632679489678 -1.8345638269942055852e-28 5.5511151231283095222e-17" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000001358 0.14365000000000002767 0.10914999999999992764" rpy="-1.57079632679489678 2.4194302416433997039e-29 0" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_left_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -817,13 +870,13 @@
         <collision>
             <origin xyz="0.016060000000000001358 0.14365000000000002767 0.10914999999999992764" rpy="-1.57079632679489678 2.4194302416433997039e-29 0" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -832,13 +885,13 @@
         <collision>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -847,13 +900,13 @@
         <collision>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -862,13 +915,13 @@
         <collision>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -877,13 +930,13 @@
         <collision>
             <origin xyz="4.4408920985006261617e-16 -0.053150000000001439149 0.009549999999999739253" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="7.3552275381416620803e-16 -0.05315000000000136976 0.0066499999999972136955" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -892,7 +945,7 @@
         <collision>
             <origin xyz="7.3552275381416620803e-16 -0.05315000000000136976 0.0066499999999972136955" rpy="-1.570796326794896558 2.6413756779272067634e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -905,7 +958,7 @@
         <visual>
             <origin xyz="0.016059999999998287451 0.14365000000000685554 0.10924999999999794598" rpy="-1.5707963267948970021 2.2013640908009679411e-15 3.571962178840912929e-27" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
             <material name="leg_spacer_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -914,13 +967,13 @@
         <collision>
             <origin xyz="0.016059999999998287451 0.14365000000000685554 0.10924999999999794598" rpy="-1.5707963267948970021 2.2013640908009679411e-15 3.571962178840912929e-27" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000060338 0.14365000000000138769 0.10914999999999996927" rpy="-1.57079632679489678 1.1670253415690752805e-27 -1.0223637331664162331e-27" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_right_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -929,13 +982,13 @@
         <collision>
             <origin xyz="0.016060000000000060338 0.14365000000000138769 0.10914999999999996927" rpy="-1.57079632679489678 1.1670253415690752805e-27 -1.0223637331664162331e-27" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000004827 0.14364999999999999991 0.10914999999999994151" rpy="-1.57079632679489678 5.822089083762987569e-30 0" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_left_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -944,13 +997,13 @@
         <collision>
             <origin xyz="0.016060000000000004827 0.14364999999999999991 0.10914999999999994151" rpy="-1.57079632679489678 5.822089083762987569e-30 0" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -959,13 +1012,13 @@
         <collision>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -974,13 +1027,13 @@
         <collision>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -989,13 +1042,13 @@
         <collision>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1004,13 +1057,13 @@
         <collision>
             <origin xyz="-2.7755575615628913511e-17 -0.053150000000000072187 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-7.0082828429463006614e-16 -0.053150000000000099942 0.0066499999999981157517" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1019,7 +1072,7 @@
         <collision>
             <origin xyz="-7.0082828429463006614e-16 -0.053150000000000099942 0.0066499999999981157517" rpy="-1.570796326794896558 2.6413756771629933241e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1032,7 +1085,7 @@
         <visual>
             <origin xyz="0.016060000000000015236 0.22230000000000008087 0.10905000000000000804" rpy="-1.570796326794896558 -1.5415933572433602064e-29 0" />
             <geometry>
-                <mesh filename="package:///foot_side.stl"/>
+                <mesh filename="foot_side.stl"/>
             </geometry>
             <material name="foot_side_material">
                 <color rgba="0.98039215686274505668 0.71372549019607844922 0.0039215686274509803377 1.0"/>
@@ -1041,13 +1094,13 @@
         <collision>
             <origin xyz="0.016060000000000015236 0.22230000000000008087 0.10905000000000000804" rpy="-1.570796326794896558 -1.5415933572433602064e-29 0" />
             <geometry>
-                <mesh filename="package:///foot_side.stl"/>
+                <mesh filename="foot_side.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016559999999999977516 0.2228000000000002756 0.1095500000000003693" rpy="-1.570796326794896558 4.8789097761693540394e-18 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_tpu.stl"/>
+                <mesh filename="foot_bottom_tpu.stl"/>
             </geometry>
             <material name="foot_bottom_tpu_material">
                 <color rgba="0.3058823529411764941 0.29803921568627450567 0.27843137254901961786 1.0"/>
@@ -1056,13 +1109,13 @@
         <collision>
             <origin xyz="0.016559999999999977516 0.2228000000000002756 0.1095500000000003693" rpy="-1.570796326794896558 4.8789097761693540394e-18 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_tpu.stl"/>
+                <mesh filename="foot_bottom_tpu.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016559999999999963638 0.22280000000000038662 0.1095500000000003693" rpy="-1.570796326794896558 4.8789097761693540394e-18 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_pla.stl"/>
+                <mesh filename="foot_bottom_pla.stl"/>
             </geometry>
             <material name="foot_bottom_pla_material">
                 <color rgba="0.3058823529411764941 0.29803921568627450567 0.27843137254901961786 1.0"/>
@@ -1071,13 +1124,13 @@
         <collision>
             <origin xyz="0.016559999999999963638 0.22280000000000038662 0.1095500000000003693" rpy="-1.570796326794896558 4.8789097761693540394e-18 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_pla.stl"/>
+                <mesh filename="foot_bottom_pla.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000015236 0.22230000000000008087 0.10905000000000000804" rpy="-1.570796326794896558 -1.5415933572433602064e-29 0" />
             <geometry>
-                <mesh filename="package:///foot_top.stl"/>
+                <mesh filename="foot_top.stl"/>
             </geometry>
             <material name="foot_top_material">
                 <color rgba="0.98039215686274505668 0.71372549019607844922 0.0039215686274509803377 1.0"/>
@@ -1086,7 +1139,7 @@
         <collision>
             <origin xyz="0.016060000000000015236 0.22230000000000008087 0.10905000000000000804" rpy="-1.570796326794896558 -1.5415933572433602064e-29 0" />
             <geometry>
-                <mesh filename="package:///foot_top.stl"/>
+                <mesh filename="foot_top.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1096,11 +1149,7 @@
         </inertial>
     </link>
     <link name="left_foot">
-        <inertial>
-            <origin xyz="0 0 0" rpy="0 0 0" />
-            <mass value="1e-9" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
-        </inertial>
+        <!-- pure frame: no mass, no geometry -->
     </link>
     <joint name="left_foot_frame" type="fixed">
         <origin xyz="0.00049999999999996574962 -0.036224999999999729638 0.01955000000000034488" rpy="-1.570796326794896558 4.8789097742003279458e-18 8.5828066488045564267e-28" />
@@ -1152,7 +1201,7 @@
         <visual>
             <origin xyz="-3.6429192995512948983e-16 -0.034999999999999351075 0.019050000000000018308" rpy="4.4170622972759838776e-18 -5.5503510379569914253e-17 -3.0531133177191770349e-16" />
             <geometry>
-                <mesh filename="package:///roll_motor_bottom.stl"/>
+                <mesh filename="roll_motor_bottom.stl"/>
             </geometry>
             <material name="roll_motor_bottom_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -1161,13 +1210,13 @@
         <collision>
             <origin xyz="-3.6429192995512948983e-16 -0.034999999999999351075 0.019050000000000018308" rpy="4.4170622972759838776e-18 -5.5503510379569914253e-17 -3.0531133177191770349e-16" />
             <geometry>
-                <mesh filename="package:///roll_motor_bottom.stl"/>
+                <mesh filename="roll_motor_bottom.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="3.4694469519536141888e-18 -0.035000000000000017208 0.019050000000000018308" rpy="8.064977813604698211e-33 3.2047474275637062212e-31 -1.1957048213566483917e-32" />
             <geometry>
-                <mesh filename="package:///roll_motor_top.stl"/>
+                <mesh filename="roll_motor_top.stl"/>
             </geometry>
             <material name="roll_motor_top_material">
                 <color rgba="0.90196078431372550543 0.90196078431372550543 0.90196078431372550543 1.0"/>
@@ -1176,13 +1225,13 @@
         <collision>
             <origin xyz="3.4694469519536141888e-18 -0.035000000000000017208 0.019050000000000018308" rpy="8.064977813604698211e-33 3.2047474275637062212e-31 -1.1957048213566483917e-32" />
             <geometry>
-                <mesh filename="package:///roll_motor_top.stl"/>
+                <mesh filename="roll_motor_top.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1191,13 +1240,13 @@
         <collision>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1206,13 +1255,13 @@
         <collision>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1221,13 +1270,13 @@
         <collision>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1236,13 +1285,13 @@
         <collision>
             <origin xyz="0.009600000000011033735 3.8517800060589024724e-14 -0.020515000000002000385" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.012500000000016761592 3.9114544936325046365e-14 -0.020515000000002069774" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1251,7 +1300,7 @@
         <collision>
             <origin xyz="0.012500000000016761592 3.9114544936325046365e-14 -0.020515000000002069774" rpy="-1.5707963267951956521 -1.5707963267947591124 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1264,7 +1313,7 @@
         <visual>
             <origin xyz="0.03500000000000001027 -0.065000000000000016098 0.019050000000000021777" rpy="1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///right_roll_to_pitch.stl"/>
+                <mesh filename="right_roll_to_pitch.stl"/>
             </geometry>
             <material name="right_roll_to_pitch_material">
                 <color rgba="0.90980392156862743835 0.57254901960784310155 0.16470588235294117418 1.0"/>
@@ -1273,13 +1322,13 @@
         <collision>
             <origin xyz="0.03500000000000001027 -0.065000000000000016098 0.019050000000000021777" rpy="1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///right_roll_to_pitch.stl"/>
+                <mesh filename="right_roll_to_pitch.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1288,13 +1337,13 @@
         <collision>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1303,13 +1352,13 @@
         <collision>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1318,13 +1367,13 @@
         <collision>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1333,13 +1382,13 @@
         <collision>
             <origin xyz="-0.06469999999999997975 1.0421893383016911372e-17 0.0096099999999999918127" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.067600000000005655565 9.5220055798539426917e-17 0.0096099999999999848738" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1348,7 +1397,7 @@
         <collision>
             <origin xyz="-0.067600000000005655565 9.5220055798539426917e-17 0.0096099999999999848738" rpy="-1.570796326794896558 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1361,7 +1410,7 @@
         <visual>
             <origin xyz="0.016060000000000060338 -0.06500000000000000222 0.10919999999999911722" rpy="1.570796326794896336 -6.0962253877159143412e-26 -5.1246376555419674487e-28" />
             <geometry>
-                <mesh filename="package:///right_cache.stl"/>
+                <mesh filename="right_cache.stl"/>
             </geometry>
             <material name="right_cache_material">
                 <color rgba="0.91764705882352937127 0.91764705882352937127 0.91764705882352937127 1.0"/>
@@ -1370,13 +1419,13 @@
         <collision>
             <origin xyz="0.016060000000000060338 -0.06500000000000000222 0.10919999999999911722" rpy="1.570796326794896336 -6.0962253877159143412e-26 -5.1246376555419674487e-28" />
             <geometry>
-                <mesh filename="package:///right_cache.stl"/>
+                <mesh filename="right_cache.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.0160600000000000534 -0.1436499999999996946 -0.072149999999999658851" rpy="1.570796326794896558 -6.5506092691232114014e-26 -5.1246376555419674487e-28" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
             <material name="leg_spacer_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -1385,13 +1434,13 @@
         <collision>
             <origin xyz="0.0160600000000000534 -0.1436499999999996946 -0.072149999999999658851" rpy="1.570796326794896558 -6.5506092691232114014e-26 -5.1246376555419674487e-28" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000008297 -0.14365000000000002767 -0.072049999999999891909" rpy="1.570796326794896336 -2.4326670647182607238e-29 5.0289882707839502595e-30" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_right_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -1400,13 +1449,13 @@
         <collision>
             <origin xyz="0.016060000000000008297 -0.14365000000000002767 -0.072049999999999891909" rpy="1.570796326794896336 -2.4326670647182607238e-29 5.0289882707839502595e-30" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000015236 -0.14364999999999930602 -0.072049999999999558842" rpy="1.570796326794896336 6.8715723720396827557e-28 5.5511151231262510883e-17" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_left_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -1415,13 +1464,13 @@
         <collision>
             <origin xyz="0.016060000000000015236 -0.14364999999999930602 -0.072049999999999558842" rpy="1.570796326794896336 6.8715723720396827557e-28 5.5511151231262510883e-17" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1430,13 +1479,13 @@
         <collision>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1445,13 +1494,13 @@
         <collision>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1460,13 +1509,13 @@
         <collision>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1475,13 +1524,13 @@
         <collision>
             <origin xyz="-1.3877787807814456755e-17 0.053149999999999530953 0.027549999999999699729" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-3.3306690738754696213e-16 0.053149999999998955025 0.030449999999998561551" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1490,7 +1539,7 @@
         <collision>
             <origin xyz="-3.3306690738754696213e-16 0.053149999999998955025 0.030449999999998561551" rpy="1.570796326794896558 -2.6413756807534671101e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1503,7 +1552,7 @@
         <visual>
             <origin xyz="0.016060000000000192177 0.14364999999999975011 0.10925000000000001377" rpy="-1.570796326794896558 -6.9397465996678598963e-25 -5.5511151231283082896e-17" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
             <material name="leg_spacer_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -1512,13 +1561,13 @@
         <collision>
             <origin xyz="0.016060000000000192177 0.14364999999999975011 0.10925000000000001377" rpy="-1.570796326794896558 -6.9397465996678598963e-25 -5.5511151231283082896e-17" />
             <geometry>
-                <mesh filename="package:///leg_spacer.stl"/>
+                <mesh filename="leg_spacer.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000022174 0.14364999999999811253 0.10914999999999996927" rpy="-1.57079632679489678 -1.69557309379293477e-27 -5.5511151233026009436e-17" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_right_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -1527,13 +1576,13 @@
         <collision>
             <origin xyz="0.016060000000000022174 0.14364999999999811253 0.10914999999999996927" rpy="-1.57079632679489678 -1.69557309379293477e-27 -5.5511151233026009436e-17" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_right_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_right_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000008297 0.14365000000000005542 0.10914999999999994151" rpy="-1.57079632679489678 -2.4848987773340104688e-29 0" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
             <material name="left_knee_to_ankle_left_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -1542,13 +1591,13 @@
         <collision>
             <origin xyz="0.016060000000000008297 0.14365000000000005542 0.10914999999999994151" rpy="-1.57079632679489678 -2.4848987773340104688e-29 0" />
             <geometry>
-                <mesh filename="package:///left_knee_to_ankle_left_sheet.stl"/>
+                <mesh filename="left_knee_to_ankle_left_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1557,13 +1606,13 @@
         <collision>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1572,13 +1621,13 @@
         <collision>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1587,13 +1636,13 @@
         <collision>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1602,13 +1651,13 @@
         <collision>
             <origin xyz="0 -0.053150000000000016676 0.0095499999999999751754" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="2.7061686225238190673e-16 -0.053150000000000099942 0.006650000000000974576" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1617,7 +1666,7 @@
         <collision>
             <origin xyz="2.7061686225238190673e-16 -0.053150000000000099942 0.006650000000000974576" rpy="-1.570796326794896558 2.6413757060755072442e-16 1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1630,7 +1679,7 @@
         <visual>
             <origin xyz="0.016060000000000011766 0.22230000000000005311 0.10905000000000002192" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_side.stl"/>
+                <mesh filename="foot_side.stl"/>
             </geometry>
             <material name="foot_side_material">
                 <color rgba="0.98039215686274505668 0.71372549019607844922 0.0039215686274509803377 1.0"/>
@@ -1639,13 +1688,13 @@
         <collision>
             <origin xyz="0.016060000000000011766 0.22230000000000005311 0.10905000000000002192" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_side.stl"/>
+                <mesh filename="foot_side.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016560000000000230785 0.22280000000000016458 0.10955000000000063298" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_tpu.stl"/>
+                <mesh filename="foot_bottom_tpu.stl"/>
             </geometry>
             <material name="foot_bottom_tpu_material">
                 <color rgba="0.3058823529411764941 0.29803921568627450567 0.27843137254901961786 1.0"/>
@@ -1654,13 +1703,13 @@
         <collision>
             <origin xyz="0.016560000000000230785 0.22280000000000016458 0.10955000000000063298" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_tpu.stl"/>
+                <mesh filename="foot_bottom_tpu.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016560000000000230785 0.22280000000000016458 0.10955000000000063298" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_pla.stl"/>
+                <mesh filename="foot_bottom_pla.stl"/>
             </geometry>
             <material name="foot_bottom_pla_material">
                 <color rgba="0.3058823529411764941 0.29803921568627450567 0.27843137254901961786 1.0"/>
@@ -1669,13 +1718,13 @@
         <collision>
             <origin xyz="0.016560000000000230785 0.22280000000000016458 0.10955000000000063298" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_bottom_pla.stl"/>
+                <mesh filename="foot_bottom_pla.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.016060000000000011766 0.22230000000000005311 0.10905000000000002192" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_top.stl"/>
+                <mesh filename="foot_top.stl"/>
             </geometry>
             <material name="foot_top_material">
                 <color rgba="0.98039215686274505668 0.71372549019607844922 0.0039215686274509803377 1.0"/>
@@ -1684,7 +1733,7 @@
         <collision>
             <origin xyz="0.016060000000000011766 0.22230000000000005311 0.10905000000000002192" rpy="-1.570796326794896558 -6.3235055153876968389e-30 0" />
             <geometry>
-                <mesh filename="package:///foot_top.stl"/>
+                <mesh filename="foot_top.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1694,11 +1743,7 @@
         </inertial>
     </link>
     <link name="right_foot">
-        <inertial>
-            <origin xyz="0 0 0" rpy="0 0 0" />
-            <mass value="1e-9" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
-        </inertial>
+        <!-- pure frame: no mass, no geometry -->
     </link>
     <joint name="right_foot_frame" type="fixed">
         <origin xyz="0.0005000000000002155498 -0.036224999999999840661 0.019550000000000664069" rpy="-1.570796326794896558 9.1691846176123393012e-16 1.3322725304659061714e-15" />
@@ -1750,7 +1795,7 @@
         <visual>
             <origin xyz="-0.020000000000000003886 -0.025110000000000007314 0.019049999999999980144" rpy="-1.57079632679489678 -5.7226758296263346013e-34 0" />
             <geometry>
-                <mesh filename="package:///neck_left_sheet.stl"/>
+                <mesh filename="neck_left_sheet.stl"/>
             </geometry>
             <material name="neck_left_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -1759,13 +1804,13 @@
         <collision>
             <origin xyz="-0.020000000000000003886 -0.025110000000000007314 0.019049999999999980144" rpy="-1.57079632679489678 -5.7226758296263346013e-34 0" />
             <geometry>
-                <mesh filename="package:///neck_left_sheet.stl"/>
+                <mesh filename="neck_left_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.019999999999999983069 -0.025110000000000007314 0.019050000000000018308" rpy="-1.57079632679489678 2.9174024805477541804e-17 0" />
             <geometry>
-                <mesh filename="package:///neck_right_sheet.stl"/>
+                <mesh filename="neck_right_sheet.stl"/>
             </geometry>
             <material name="neck_right_sheet_material">
                 <color rgba="0.22352941176470589313 0.21960784313725489891 0.21960784313725489891 1.0"/>
@@ -1774,13 +1819,13 @@
         <collision>
             <origin xyz="-0.019999999999999983069 -0.025110000000000007314 0.019050000000000018308" rpy="-1.57079632679489678 2.9174024805477541804e-17 0" />
             <geometry>
-                <mesh filename="package:///neck_right_sheet.stl"/>
+                <mesh filename="neck_right_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1789,13 +1834,13 @@
         <collision>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1804,13 +1849,13 @@
         <collision>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1819,13 +1864,13 @@
         <collision>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1834,13 +1879,13 @@
         <collision>
             <origin xyz="-4.6451557877968951971e-15 0.040500000000001076805 0.0094500000000000018013" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-4.6310611595545836394e-15 0.040500000000001187828 0.0065499999999996099537" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1849,7 +1894,7 @@
         <collision>
             <origin xyz="-4.6310611595545836394e-15 0.040500000000001187828 0.0065499999999996099537" rpy="-1.570796326794896558 -1.1963610174028695711e-16 -1.570796326794896558" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1862,7 +1907,7 @@
         <visual>
             <origin xyz="-0.020000000000000017764 -0.091110000000000052056 0.01905000000000000096" rpy="-1.570796326794896558 7.9294345455100184532e-33 -2.5410719686278673872e-30" />
             <geometry>
-                <mesh filename="package:///head_pitch_to_yaw.stl"/>
+                <mesh filename="head_pitch_to_yaw.stl"/>
             </geometry>
             <material name="head_pitch_to_yaw_material">
                 <color rgba="0.4000000000000000222 0.4000000000000000222 0.4000000000000000222 1.0"/>
@@ -1871,7 +1916,7 @@
         <collision>
             <origin xyz="-0.020000000000000017764 -0.091110000000000052056 0.01905000000000000096" rpy="-1.570796326794896558 7.9294345455100184532e-33 -2.5410719686278673872e-30" />
             <geometry>
-                <mesh filename="package:///head_pitch_to_yaw.stl"/>
+                <mesh filename="head_pitch_to_yaw.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1884,7 +1929,7 @@
         <visual>
             <origin xyz="-0.020000000000000399403 -1.7526128118228179176e-16 -0.1482099999999997586" rpy="-1.6401918885578133178e-14 -4.5219687082974091848e-30 -3.1578605360630712105e-29" />
             <geometry>
-                <mesh filename="package:///head_yaw_to_roll.stl"/>
+                <mesh filename="head_yaw_to_roll.stl"/>
             </geometry>
             <material name="head_yaw_to_roll_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -1893,13 +1938,13 @@
         <collision>
             <origin xyz="-0.020000000000000399403 -1.7526128118228179176e-16 -0.1482099999999997586" rpy="-1.6401918885578133178e-14 -4.5219687082974091848e-30 -3.1578605360630712105e-29" />
             <geometry>
-                <mesh filename="package:///head_yaw_to_roll.stl"/>
+                <mesh filename="head_yaw_to_roll.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1908,13 +1953,13 @@
         <collision>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1923,13 +1968,13 @@
         <collision>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1938,13 +1983,13 @@
         <collision>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -1953,13 +1998,13 @@
         <collision>
             <origin xyz="0.025500000000000022649 7.1828393927164668753e-19 -0.0094499999999999861888" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025499999999999817951 1.5802246663976227126e-17 -0.0065500000000004166001" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -1968,7 +2013,7 @@
         <collision>
             <origin xyz="0.025499999999999817951 1.5802246663976227126e-17 -0.0065500000000004166001" rpy="1.570796326794896558 -1.3665250874134194164e-30 -6.3350563935584114029e-30" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -1981,7 +2026,7 @@
         <visual>
             <origin xyz="-0.12905999999999934191 7.8328185951215267835e-16 0.060949999999999997236" rpy="2.2204460492701854731e-16 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///head_bot_sheet.stl"/>
+                <mesh filename="head_bot_sheet.stl"/>
             </geometry>
             <material name="head_bot_sheet_material">
                 <color rgba="0.41176470588235292158 0.41176470588235292158 0.41176470588235292158 1.0"/>
@@ -1990,13 +2035,13 @@
         <collision>
             <origin xyz="-0.12905999999999934191 7.8328185951215267835e-16 0.060949999999999997236" rpy="2.2204460492701854731e-16 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///head_bot_sheet.stl"/>
+                <mesh filename="head_bot_sheet.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.12905999999999934191 7.8578907703602540735e-16 0.060949999999999997236" rpy="2.2204460492704379086e-16 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///head.stl"/>
+                <mesh filename="head.stl"/>
             </geometry>
             <material name="head_material">
                 <color rgba="0.91764705882352937127 0.91764705882352937127 0.91764705882352937127 1.0"/>
@@ -2005,13 +2050,13 @@
         <collision>
             <origin xyz="-0.12905999999999934191 7.8578907703602540735e-16 0.060949999999999997236" rpy="2.2204460492704379086e-16 1.570796326794896336 0" />
             <geometry>
-                <mesh filename="package:///head.stl"/>
+                <mesh filename="head.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.12906000000000428241 2.9835888534085475143e-16 0.060949999999999886213" rpy="7.0798265109979077958e-31 1.5707963267948956698 0" />
             <geometry>
-                <mesh filename="package:///head_roll_mount.stl"/>
+                <mesh filename="head_roll_mount.stl"/>
             </geometry>
             <material name="head_roll_mount_material">
                 <color rgba="0.50196078431372548323 0.50196078431372548323 0.50196078431372548323 1.0"/>
@@ -2020,14 +2065,14 @@
         <collision>
             <origin xyz="-0.12906000000000428241 2.9835888534085475143e-16 0.060949999999999886213" rpy="7.0798265109979077958e-31 1.5707963267948956698 0" />
             <geometry>
-                <mesh filename="package:///head_roll_mount.stl"/>
+                <mesh filename="head_roll_mount.stl"/>
             </geometry>
         </collision>
         <!-- Pi Zero 2W removed (replaced by Jetson in trunk) -->
         <visual>
             <origin xyz="6.3837823915946501074e-16 -0.034999999999999240052 0.1673250000000001958" rpy="2.7755575616297359729e-16 4.8251187118251247395e-27 -2.2204460492471524603e-16" />
             <geometry>
-                <mesh filename="package:///roll_bearing.stl"/>
+                <mesh filename="roll_bearing.stl"/>
             </geometry>
             <material name="roll_bearing_material">
                 <color rgba="0.5999999999999999778 0.5999999999999999778 0.5999999999999999778 1.0"/>
@@ -2036,13 +2081,13 @@
         <collision>
             <origin xyz="6.3837823915946501074e-16 -0.034999999999999240052 0.1673250000000001958" rpy="2.7755575616297359729e-16 4.8251187118251247395e-27 -2.2204460492471524603e-16" />
             <geometry>
-                <mesh filename="package:///roll_bearing.stl"/>
+                <mesh filename="roll_bearing.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.0062459440337521432429 0.033140784271761480895 0.10281206307850690451" rpy="-1.1544526422504834648e-15 -1.3045791727887252609 -1.8181502823667208268" />
             <geometry>
-                <mesh filename="package:///sg90.stl"/>
+                <mesh filename="sg90.stl"/>
             </geometry>
             <material name="sg90_material">
                 <color rgba="0.43529411764705883137 0.67058823529411759612 0.97647058823529409022 1.0"/>
@@ -2051,13 +2096,13 @@
         <collision>
             <origin xyz="-0.0062459440337521432429 0.033140784271761480895 0.10281206307850690451" rpy="-1.1544526422504834648e-15 -1.3045791727887252609 -1.8181502823667208268" />
             <geometry>
-                <mesh filename="package:///sg90.stl"/>
+                <mesh filename="sg90.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="-0.0062459440337521154873 -0.033140784271759933521 0.10281206307850687676" rpy="1.7909863475450052973e-17 -1.3045791727887248168 1.8181502823667212709" />
             <geometry>
-                <mesh filename="package:///sg90.stl"/>
+                <mesh filename="sg90.stl"/>
             </geometry>
             <material name="sg90_material">
                 <color rgba="0.43529411764705883137 0.67058823529411759612 0.97647058823529409022 1.0"/>
@@ -2066,13 +2111,13 @@
         <collision>
             <origin xyz="-0.0062459440337521154873 -0.033140784271759933521 0.10281206307850687676" rpy="1.7909863475450052973e-17 -1.3045791727887248168 1.8181502823667212709" />
             <geometry>
-                <mesh filename="package:///sg90.stl"/>
+                <mesh filename="sg90.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.032050000000000578027 -0.03400001261999926333 -0.0055500126200000027277" rpy="-1.570796326794896558 2.7755575615300298709e-16 -1.570796326794896336" />
             <geometry>
-                <mesh filename="package:///board.stl"/>
+                <mesh filename="board.stl"/>
             </geometry>
             <material name="board_material">
                 <color rgba="0 0.50196078431372548323 0 1.0"/>
@@ -2081,13 +2126,13 @@
         <collision>
             <origin xyz="0.032050000000000578027 -0.03400001261999926333 -0.0055500126200000027277" rpy="-1.570796326794896558 2.7755575615300298709e-16 -1.570796326794896336" />
             <geometry>
-                <mesh filename="package:///board.stl"/>
+                <mesh filename="board.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
             <material name="wj-wk00-0123middlecase_56_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -2096,13 +2141,13 @@
         <collision>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0123middlecase_56.stl"/>
+                <mesh filename="wj-wk00-0123middlecase_56.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
             <material name="drive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -2111,13 +2156,13 @@
         <collision>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///drive_palonier.stl"/>
+                <mesh filename="drive_palonier.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
             <material name="wj-wk00-0124bottomcase_45_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -2126,13 +2171,13 @@
         <collision>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0124bottomcase_45.stl"/>
+                <mesh filename="wj-wk00-0124bottomcase_45.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
             <material name="wj-wk00-0122topcabinetcase_95_material">
                 <color rgba="0.24705882352941177516 0.24313725490196078094 0.24313725490196078094 1.0"/>
@@ -2141,13 +2186,13 @@
         <collision>
             <origin xyz="0.025500000000000050404 7.1828393927164668753e-19 -0.0094500000000000000666" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///wj-wk00-0122topcabinetcase_95.stl"/>
+                <mesh filename="wj-wk00-0122topcabinetcase_95.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.02550000000000032796 3.3392071659837929687e-16 -0.0065499999999983141152" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
             <material name="passive_palonier_material">
                 <color rgba="0.62352941176470588758 0.66666666666666662966 0.70196078431372543882 1.0"/>
@@ -2156,7 +2201,7 @@
         <collision>
             <origin xyz="0.02550000000000032796 3.3392071659837929687e-16 -0.0065499999999983141152" rpy="1.570796326794896558 -0 0" />
             <geometry>
-                <mesh filename="package:///passive_palonier.stl"/>
+                <mesh filename="passive_palonier.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -2166,11 +2211,7 @@
         </inertial>
     </link>
     <link name="head">
-        <inertial>
-            <origin xyz="0 0 0" rpy="0 0 0" />
-            <mass value="1e-9" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
-        </inertial>
+        <!-- pure frame: no mass, no geometry -->
     </link>
     <joint name="head_frame" type="fixed">
         <origin xyz="0.04245000000000057061 7.4178402136026999614e-16 0.035949999999999988909" rpy="2.2204460492701854731e-16 1.570796326794896336 0" />
@@ -2182,7 +2223,7 @@
         <visual>
             <origin xyz="0.07913918595530011757 -0.11097414404234512419 -0.079315037574383365215" rpy="-1.3234423712230722892 -0.26621715400617168568 -3.461928158332506337e-18" />
             <geometry>
-                <mesh filename="package:///antenna.stl"/>
+                <mesh filename="antenna.stl"/>
             </geometry>
             <material name="antenna_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -2191,13 +2232,13 @@
         <collision>
             <origin xyz="0.07913918595530011757 -0.11097414404234512419 -0.079315037574383365215" rpy="-1.3234423712230722892 -0.26621715400617168568 -3.461928158332506337e-18" />
             <geometry>
-                <mesh filename="package:///antenna.stl"/>
+                <mesh filename="antenna.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.029698103650376478368 -0.1109618801559370399 0.1019938543975157097" rpy="-1.8181502823667212709 -0.26621715400617168568 -3.4619281583421190386e-18" />
             <geometry>
-                <mesh filename="package:///left_antenna_holder.stl"/>
+                <mesh filename="left_antenna_holder.stl"/>
             </geometry>
             <material name="left_antenna_holder_material">
                 <color rgba="0.98039215686274505668 0.71372549019607844922 0.0039215686274509803377 1.0"/>
@@ -2206,7 +2247,7 @@
         <collision>
             <origin xyz="0.029698103650376478368 -0.1109618801559370399 0.1019938543975157097" rpy="-1.8181502823667212709 -0.26621715400617168568 -3.4619281583421190386e-18" />
             <geometry>
-                <mesh filename="package:///left_antenna_holder.stl"/>
+                <mesh filename="left_antenna_holder.stl"/>
             </geometry>
         </collision>
         <inertial>
@@ -2227,7 +2268,7 @@
         <visual>
             <origin xyz="0.029698103650376478368 0.11096188015593702603 0.1019938543975157097" rpy="1.8181502823667210489 -0.26621715400617174119 -2.8114837816279266359e-17" />
             <geometry>
-                <mesh filename="package:///right_antenna_holder.stl"/>
+                <mesh filename="right_antenna_holder.stl"/>
             </geometry>
             <material name="right_antenna_holder_material">
                 <color rgba="0.98039215686274505668 0.71372549019607844922 0.0039215686274509803377 1.0"/>
@@ -2236,13 +2277,13 @@
         <collision>
             <origin xyz="0.029698103650376478368 0.11096188015593702603 0.1019938543975157097" rpy="1.8181502823667210489 -0.26621715400617174119 -2.8114837816279266359e-17" />
             <geometry>
-                <mesh filename="package:///right_antenna_holder.stl"/>
+                <mesh filename="right_antenna_holder.stl"/>
             </geometry>
         </collision>
         <visual>
             <origin xyz="0.029698103650376499185 0.10995093695903178366 0.10199385439751569582" rpy="1.8181502823667210489 -0.26621715400617174119 -2.811483781727350227e-17" />
             <geometry>
-                <mesh filename="package:///antenna.stl"/>
+                <mesh filename="antenna.stl"/>
             </geometry>
             <material name="antenna_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
@@ -2251,7 +2292,7 @@
         <collision>
             <origin xyz="0.029698103650376499185 0.10995093695903178366 0.10199385439751569582" rpy="1.8181502823667210489 -0.26621715400617174119 -2.811483781727350227e-17" />
             <geometry>
-                <mesh filename="package:///antenna.stl"/>
+                <mesh filename="antenna.stl"/>
             </geometry>
         </collision>
         <inertial>

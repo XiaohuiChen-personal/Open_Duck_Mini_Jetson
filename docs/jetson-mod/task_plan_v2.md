@@ -1408,7 +1408,48 @@ The gate itself is the smoke test. Specific observables, all from `docs/jetson-m
 
 ---
 
-### Task M7 — Decide the fate of `robot.urdf`, and either fix it or mark it non-authoritative
+### Task M7 — Decide the fate of `robot.urdf` — ✅ **DONE 2026-08-12 (branch A)**
+
+> **Completed. Do not re-run this task.** The owner chose branch (A), fix and
+> gate. What landed:
+>
+> - **266 mesh references** rewritten from `package:///<name>.stl` (an empty
+>   package name, unresolvable by any consumer) to plain paths relative to the
+>   URDF. All 47 distinct meshes verified present on disk.
+> - **The four invalid inertials removed.** `trunk`, `left_foot`, `right_foot`
+>   and `head` are pure kinematic frames; their zero-diagonal tensors were
+>   illegal URDF. They now carry no `<inertial>` at all, which the `urdf` skill
+>   endorses for frame-only links — rather than inventing an epsilon.
+> - **A design ledger** added at the top of the file, recording units, frame
+>   semantics, topology, the repairs, and — explicitly — that the inertials are
+>   inherited from the Onshape export and are NOT certified by this task.
+> - **`tests/test_urdf_consistency.py`** added: 7 tests that PARSE both
+>   descriptions and compare movable joint names, joint topology, the body/link
+>   set, the root link, total mass, and mesh resolution.
+>
+> Validator result: **0 errors.** The remaining warnings are only the deliberate
+> `<mujoco>` and `<joint_properties>` MuJoCo extensions.
+>
+> ```
+> OK robot 'onshape', root 'trunk_assembly', 21 links, 20 joints (16 movable),
+>    266 resolved mesh references, total mass 2.657 kg
+> ```
+>
+> **That mass is an independent confirmation of the MJCF**, which declares
+> 2.657067 kg — two descriptions produced by different toolchains agreeing.
+>
+> The URDF now **renders**: `urdf scripts/snapshot` produces a coherent robot
+> where it previously failed with `No link mesh loaded for robot`.
+>
+> The consistency suite was **mutation-tested**, because a test that cannot fail
+> is worse than no test. Five independent mutations, each caught by exactly one
+> assertion, all reverted: rename a joint in the URDF only; restore one
+> `package:///` URI; rewire a joint's parent; point a mesh at a missing file;
+> delete a link. Suite green again afterwards.
+>
+> The original task text follows, kept as the record of the decision.
+
+### Task M7 (original) — Decide the fate of `robot.urdf`, and either fix it or mark it non-authoritative
 
 **AI-agent suitable:** YES for the whole task. The *decision* in step 1 is the
 owner's if they want the URDF kept as a supported artifact; the agent can make
