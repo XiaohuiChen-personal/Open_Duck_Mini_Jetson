@@ -1,0 +1,33 @@
+{
+  "_comment": "Task M1 decision record. THIS FILE IS THE SINGLE SOURCE OF TRUTH for the print process; M2, M4 and M5 read it. Reasoning: docs/jetson-mod/print_process_decision.md. Do not hardcode a process or a density in any script.",
+
+  "process": "fdm-asa",
+  "kind": "fdm",
+  "density_g_cm3": 1.07,
+  "perimeters": 2,
+  "infill_pct": 15,
+
+  "tpu_part": "foot_bottom_tpu",
+  "tpu_density_g_cm3": 1.22,
+
+  "max_wall_mm": null,
+  "_max_wall_mm_note": "null because kind == fdm: M5 (shelling) is solid-process-only and does not run on this branch. See print_process_decision.md section 5 for the wall-thickness sources checked, and note that the plan's '3 mm cap' is not supported by any primary source.",
+
+  "decided_on": "2026-08-12",
+  "decided_by": "Task M1, on measured evidence: servo torque headroom (measure_joint_torque.py) and trunk-cavity temperature. Not on price.",
+
+  "vendor": null,
+  "quote_ref": null,
+  "quoted_price": null,
+  "lead_time": null,
+  "_vendor_note": "PENDING OWNER. Requesting and accepting a quote commits real money and is explicitly the owner's step (task_plan_v2.md M1 step 3).",
+
+  "profile_confirmed_with_vendor": false,
+  "_profile_gate": "HARD GATE ON M2/M4. fdm-asa measures 1004.29 g at 2 perimeters / 15 percent infill and 1163.14 g at 3 / 20 -- a 158.85 g swing, nearly twice the error PLANT-10 records. Many bureaus print to a fixed house profile and will not accept a customer perimeter count. Do NOT book any mass until the bureau's actual perimeter count and infill are written above, this flag is true, and measure_print_mass.py has been re-run with them. If the bureau will not commit to a profile, switch process to mjf-pa12, whose mass needs no such promise.",
+
+  "fallback_process": "fdm-abs",
+  "_fallback_note": "If ASA is unavailable: fdm-abs is 27 g lighter with slightly worse layer adhesion and the same ~90 C HDT. Do NOT fall back to fdm-pla -- its ~60 C HDT is at or below the 55-80 C Jetson heatsink range inside the trunk cavity it would enclose.",
+
+  "measured_set_mass_g": 1004.29,
+  "_measured_set_mass_note": "52 pieces, 1571.94 cm3 solid volume, TPU sole exempted at 1.22 g/cm3. PrusaSlicer 2.7.2 linux-arm64, supports/brim/skirt/raft/wipe-tower all off. Reproduce: python3 scripts/measure_print_mass.py --process fdm-asa --perimeters 2 --infill 15"
+}

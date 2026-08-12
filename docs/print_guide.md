@@ -2,18 +2,49 @@
 
 You can find the `.stl` files under the `print/` directory at the root of this repo. 
 
-All the parts are printed in standard PLA with 15% infill, except for `foot_bottom_tpu.stl`, which is to be printed in TPU at 40% infill.
+~~All the parts are printed in standard PLA with 15% infill~~, except for
+`foot_bottom_tpu.stl`, which is to be printed in TPU at 40% infill.
 
-> **Perimeter count is not specified above, and it should be.** Slicing this
-> part set at 15% infill gives **1,158 g at 2 perimeters and 1,309 g at 3** —
-> a 151 g swing on a 2.8 kg robot, larger than any material choice. Pick one and
-> record it here before printing.
+> ## ⛔ The material and profile are decided elsewhere now — 2026-08-12
 >
-> **If you are buying these parts from a printing service rather than printing
-> them**, infill stops being a lever for powder processes (MJF/SLS parts are
-> solid) and the same geometry lands at ~1,588 g in MJF PA12. See
-> `docs/jetson-mod/known_issues.md` [PLANT-10](jetson-mod/known_issues.md#plant-10)
-> for why the mass model is sensitive to this.
+> **The PLA line above is superseded and was wrong.** The single source of truth
+> is **`scripts/print_process.json`**, with the reasoning in
+> [`docs/jetson-mod/print_process_decision.md`](jetson-mod/print_process_decision.md).
+> Task M1 chose:
+>
+> | field | value |
+> |---|---|
+> | process | **`fdm-asa`** (ASA, not PLA) |
+> | perimeters | **2** |
+> | infill | **15 %** |
+> | TPU sole | unchanged — `foot_bottom_tpu` ×2 in TPU 95A at 40 % |
+> | measured set mass | **1004.29 g** (52 pieces, 1571.94 cm³) |
+>
+> **Why not PLA.** The trunk parts *are* the cavity enclosing the Jetson Orin
+> Nano, whose heatsink reaches **55–80 °C**. PLA's heat-deflection temperature
+> is ~60 °C and it creeps under sustained load well below that. ASA is ~91 °C
+> **and** 154 g lighter than PLA at the same profile — better on both axes.
+>
+> **Perimeter count is now specified: 2.** That resolves the TODO this block
+> used to carry. It matters more than the material: at 15 % infill in ASA,
+> 2 perimeters gives **1004.29 g** and 3 perimeters / 20 % infill gives
+> **1163.14 g** — a **158.85 g** swing, nearly twice the error
+> [PLANT-10](jetson-mod/known_issues.md#plant-10) records.
+>
+> **If you are buying these parts from a printing service** — which is the plan;
+> there is no printer — then **confirm the bureau's actual perimeter count and
+> infill before anyone books a mass**, and re-run
+> `python3 scripts/measure_print_mass.py --process fdm-asa --perimeters N --infill M`
+> with the real numbers. `scripts/print_process.json` carries
+> `profile_confirmed_with_vendor: false` until that happens, and it is a hard
+> gate on Tasks M2 and M4. Many services print to a fixed house profile and will
+> not accept a customer perimeter count; if yours will not commit, the decision
+> reverts to `mjf-pa12`.
+>
+> For a powder process, infill stops being a lever — MJF/SLS parts are solid —
+> and the same geometry lands at **1,598 g** in MJF PA12. (Not 1,588 g: that
+> figure was the all-PA12 total, 1571.94 cm³ × 1.01, and omitted the TPU sole,
+> which is 47.20 cm³ at 1.22 g/cm³ rather than 1.01 — worth +9.91 g.)
 
 ## Parts to print
 - foot_top.stl x2

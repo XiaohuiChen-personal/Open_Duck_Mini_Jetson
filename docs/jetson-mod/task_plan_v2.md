@@ -724,7 +724,76 @@ M4 must come after every task that changes geometry or per-part density, because
 
 ---
 
-### Task M1 — Choose the print process and record it as a machine-readable decision
+### Task M1 — Choose the print process and record it as a machine-readable decision — ✅ **DONE 2026-08-12** (quote pending owner)
+
+> **DECISION: `fdm-asa`, 2 perimeters, 15 % infill. NOT PLA, and not a powder
+> process.** Machine-readable record: `scripts/print_process.json`. Reasoning:
+> `docs/jetson-mod/print_process_decision.md`. All ten per-process reports are
+> committed as `docs/jetson-mod/print_mass_*.txt`.
+>
+> **The decision turned on a measurement this plan did not have.** New tool
+> `scripts/measure_joint_torque.py` rolled out the shipped v5d policy and found
+> that on the **current 2.657 kg plant** it already commands **6.723 N·m peak at
+> `right_hip_pitch` — 137 % of the STS3250's 4.903 N·m datasheet stall and 428 %
+> of its 1.569 N·m continuous rating**, with the knees above continuous for
+> ~60 % of steps. That is PLANT-5 made concrete, it is process-independent, and
+> no material choice fixes it (Task M0 step 2 plus the retrain does). What the
+> process *does* control is how much torque the retrained gait must find:
+> `fdm-asa` lands at 170 % of continuous versus `mjf-pa12` at 210 %.
+>
+> **Measured set mass, 52 pieces / 1571.94 cm³** (TPU sole exempt at 1.22):
+>
+> | process | set mass (g) | | process | set mass (g) |
+> |---|---|---|---|---|
+> | `fdm-abs` p2/i15 | 977.15 | | `sls-pa12` | 1536.58 |
+> | **`fdm-asa` p2/i15** | **1004.29** | | `mjf-pa12` | 1597.57 |
+> | `fdm-abs` p3/i20 | 1131.58 | | `sla-tough` | 1811.03 |
+> | `fdm-pla` p2/i15 | 1158.18 | | `mjf-pa12-gb` | 2039.75 |
+> | `fdm-asa` p3/i20 | 1163.14 | | | |
+> | `fdm-petg` p2/i15 | 1185.35 | | | |
+>
+> **The plan's `fdm-pla` baseline is thermally wrong and was never a candidate
+> once checked.** The trunk parts *are* the cavity enclosing a Jetson whose
+> heatsink reaches 55–80 °C; PLA's HDT is ~60 °C. ASA is ~91 °C **and** 154 g
+> lighter at the same profile — better on both axes at once.
+>
+> **The risk this takes on, and the gate that closes it.** FDM re-opens the
+> PLANT-10 failure class: `fdm-asa` measures **1004.29 g at 2 perim / 15 % and
+> 1163.14 g at 3 / 20 — a 158.85 g swing**, nearly twice PLANT-10's error, and
+> many bureaus print to a fixed house profile. `print_process.json` therefore
+> carries `profile_confirmed_with_vendor: false`, which is a **hard gate on M2
+> and M4**: do not book a gram until the bureau's real profile is written in and
+> `measure_print_mass.py` re-run with it. **If the bureau will not commit to a
+> profile, the decision reverts to `mjf-pa12`.**
+>
+> **M5 does not run on this branch** (it is solid-process-only), so
+> `max_wall_mm` is `null`.
+>
+> ### Correction to this plan, recorded because M1 owns `max_wall_mm`
+>
+> This document states *"HP's design guide caps walls at 3 mm because thicker
+> sections accumulate heat and deform."* **Three primary sources were checked on
+> 2026-08-12 and none supports it.** 2–3 mm is the recommended **shell wall when
+> hollowing**, not a cap on solid wall: Materialise's PA12 (MJF) guidelines
+> advise hollowing when wall thickness **exceeds 20 mm** (shell 2–3 mm, ≥2
+> escape holes ≥2 mm dia.); Proto3000 states no maximum at all. The thickest
+> part here is `trunk_top` at **T_eff 7.99 mm**. So on the solid branch,
+> shelling this part set would have been a mass-and-cost optimisation, **not a
+> print-quality requirement** — M5's stated premise is weaker than written.
+> Recorded so a future solid-branch revisit does not inherit it.
+>
+> **Open, and it is the owner's:** step 3, the quote. `vendor`, `quote_ref`,
+> `quoted_price` and `lead_time` are `null`, and
+> `tests/test_print_process.py::test_vendor_and_quote_are_filled_together`
+> enforces that they stay consistent. §6 of the decision document lists the
+> three things the quote must establish. The process choice does not depend on
+> price.
+>
+> Delivered: `scripts/print_process.json`, `print_process_decision.md`, ten
+> `print_mass_*.txt` reports, `scripts/measure_joint_torque.py`,
+> `tests/test_print_process.py` (12 tests), and `docs/print_guide.md` corrected
+> — PLA superseded, perimeter TODO resolved to 2, and the MJF figure fixed from
+> 1,588 g to 1,598 g.
 
 **AI-agent suitable:** PARTIAL. The agent can and should produce every measured row, the whole comparison document, the JSON, and the tests. It must stop before step 3: requesting and accepting a quote commits real money to an outside bureau and is the owner's call. Nothing here needs hardware or a GPU.
 
