@@ -239,6 +239,19 @@ Both the `cad` and `urdf` skills require it: after creating or modifying any
 start, say so — do not silently skip it. Snapshot review is **mandatory** after
 a visible geometry change, not optional because deterministic checks passed.
 
+> **Setup is a script now — run it, do not follow prose.**
+>
+> ```bash
+> scripts/setup_cad_tools.sh --check     # verify only, exits 1 if not ready
+> scripts/setup_cad_tools.sh             # install what is missing, then verify
+> ```
+>
+> It is idempotent, it creates the venv, installs the skill's own
+> `requirements.txt`, fetches chromium, and **proves the toolchain by actually
+> rendering a part** — a skipped render probe is treated as a failure, not a
+> pass. Use it as a gate at the top of any geometry task. `AGENTS.md` carries
+> the same rule. The diagnosis below is kept for context.
+>
 > **CAD Viewer setup — resolved 2026-08-12. `npm` is NOT the way in.**
 > The skill documents `npm --prefix scripts/viewer run start`, and that path is
 > broken in build 0.4.5: `package.json`'s `start` runs

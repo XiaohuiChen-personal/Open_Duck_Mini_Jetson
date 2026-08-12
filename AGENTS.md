@@ -100,6 +100,55 @@ Rules:
     again. Start here before filing or fixing anything.
 - `tests/` — Automated test suite
 
+## CAD, mesh and robot-description work (mandatory for any geometry task)
+
+If your task touches a `.stl`, `.step`, `.3mf`, `.glb`, `.urdf`, `.sdf` or
+`.dxf` file, or slices a mesh, **an installed agent skill already owns that
+workflow** — `cad`, `urdf`, `cad-viewer`, `step-parts`, `gcode`, `dxf`,
+`sendcutsend`. Invoke the skill rather than writing your own pipeline.
+
+**Run the setup gate first. It is idempotent and takes seconds:**
+
+```bash
+scripts/setup_cad_tools.sh --check     # verify only
+scripts/setup_cad_tools.sh             # install what is missing, then verify
+```
+
+**Then invoke every skill script with the venv interpreter, never plain
+`python3`:**
+
+```bash
+~/.venvs/cad-viewer/bin/python3 ~/.claude/skills/cad/scripts/snapshot --input part.stl --output out.png
+~/.venvs/cad-viewer/bin/python3 ~/.claude/skills/cad/scripts/inspect refs part.step --facts
+~/.venvs/cad-viewer/bin/python3 ~/.claude/skills/urdf/scripts/validate robot.urdf
+```
+
+Four things that will otherwise cost you an hour, all verified 2026-08-12:
+
+1. **Plain `python3` renders `.stl` but fails on `.step`** with
+   `No module named 'OCP'`. The toolchain looks healthy until the first STEP —
+   which is exactly what `task_plan_v2.md` Task M3 produces. The venv carries
+   `cadgen`, `OCP`, `build123d` and `playwright`; the system Python does not.
+2. **An agent can *see* geometry, not just link to it.** `scripts/snapshot`
+   writes a PNG (or `--mode orbit` GIF) that you then read directly. Use that as
+   your review step. Do not ask the owner to open a browser and describe it.
+3. **There is no STEP for any robot part.** The robot is 48 STLs in
+   `mini_bdx/robots/open_duck_mini_v2/` plus 37 in `print/`; the only `.step`
+   files belong to a third-party head mod. An STL has no B-rep, so **you cannot
+   shell, fillet or feature-edit an existing part** — `inspect refs` refuses it.
+   Author *new* parts in build123d; modify *existing* ones with `trimesh`
+   (see `scripts/generate_cad_mods.py` for the worked example).
+4. **`robot.urdf` cannot be rendered at all** until its 240 malformed
+   `package:///name.stl` mesh URIs are fixed (`task_plan_v2.md` Task M7).
+   `urdf scripts/snapshot` fails with `No link mesh loaded for robot`. That is a
+   data defect, not a tooling problem.
+
+**Do not put setup, rules or a venv inside `~/.agents/skills/<name>/`.** Skills
+are installed from `github.com/earthtojake/text-to-cad` and tracked in
+`~/.agents/.skill-lock.json`, so that directory is replaced wholesale on update
+and anything stored there is lost silently. The venv lives at
+`~/.venvs/cad-viewer` for exactly this reason; the rules live here.
+
 **Course-study archive:** the EN.665.645 PPO-vs-AMP study (runs 1-16, journal, eval results,
 policies, training-log evidence) is frozen in the dedicated repo
 https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp (`~/Projects/open-duck-ppo-vs-amp`);
