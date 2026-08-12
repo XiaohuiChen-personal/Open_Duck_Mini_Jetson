@@ -144,6 +144,13 @@ between M2, M3 and M5.
 
 Answered explicitly, because it was an open question when this plan was written.
 
+**`robot.urdf` — YES, whenever the mass model changes.** As of Task M7 the URDF
+is validated, renders, and is checked against the MJCF by
+`tests/test_urdf_consistency.py`. It carries its own copy of every link's mass,
+CoM and inertia tensor, so **any Phase M task that rewrites the MJCF inertials
+must rewrite the URDF's too, in the same change.** The test will fail until you
+do — that is the reminder working, not a broken test.
+
 **USD — YES, unconditionally, every time `robot_motors.xml` changes.**
 The USD is generated, not authored: `scripts/convert_mjcf_to_usd.py` runs
 `MjcfConverter` over `mini_bdx/robots/open_duck_mini_v2/robot_motors.xml`.
@@ -1423,9 +1430,36 @@ The gate itself is the smoke test. Specific observables, all from `docs/jetson-m
 > - **A design ledger** added at the top of the file, recording units, frame
 >   semantics, topology, the repairs, and — explicitly — that the inertials are
 >   inherited from the Onshape export and are NOT certified by this task.
-> - **`tests/test_urdf_consistency.py`** added: 7 tests that PARSE both
->   descriptions and compare movable joint names, joint topology, the body/link
->   set, the root link, total mass, and mesh resolution.
+> - **`tests/test_urdf_consistency.py`** added: **10 tests** that PARSE both
+>   descriptions and compare movable joint names, joint parent/child topology,
+>   **joint limits and axes**, the body/link set, the root link, **per-link mass,
+>   centre of mass and full inertia tensors**, total mass, and mesh resolution.
+>
+> **Scope of that test, stated precisely — the next agent needs this.**
+> An earlier draft of this task said inertia tensors and joint limits would be
+> left uncompared because Phase M is about to change them. That reasoning was
+> wrong and the measurement disproved it: the two files **already agree
+> exactly**. `trunk_assembly`'s full tensor and CoM match to every digit;
+> per-link masses differ by at most **1.2e-8 kg**; joint limits by at most
+> **4.0e-6 rad**, which is just the MJCF exporting to 6 significant figures
+> (URDF `1.1344640137963142` → MJCF `1.13446`). So the comparison is enforced,
+> with tolerances derived from those measurements rather than guessed.
+>
+> **This means the suite WILL fail when Phase M changes the mass model. That is
+> the intended signal — regenerate the URDF inertials. Do not loosen the
+> tolerance to make it pass.**
+>
+> What it deliberately does **not** cover, and why:
+> 1. **Actuator parameters** (gear, damping, armature, frictionloss) — MuJoCo
+>    concepts with no URDF equivalent. The simulated actuator model lives in
+>    `robot_cfg.py`, so there is nothing to cross-check between the two files.
+> 2. **The USD** — generated from the MJCF and verified separately by
+>    `scripts/audit_plant_mass.py`, which reads back what PhysX actually loaded.
+>    That catches a class of defect this test structurally cannot: in PLANT-1
+>    every file on disk was correct and only the *loaded* plant was wrong.
+> 3. **The four frame links** — no `<inertial>` in the URDF vs `mass=1e-09` in
+>    the MJCF. An intentional representation difference, documented in the URDF
+>    ledger, skipped rather than treated as drift.
 >
 > Validator result: **0 errors.** The remaining warnings are only the deliberate
 > `<mujoco>` and `<joint_properties>` MuJoCo extensions.
@@ -1442,10 +1476,12 @@ The gate itself is the smoke test. Specific observables, all from `docs/jetson-m
 > where it previously failed with `No link mesh loaded for robot`.
 >
 > The consistency suite was **mutation-tested**, because a test that cannot fail
-> is worse than no test. Five independent mutations, each caught by exactly one
-> assertion, all reverted: rename a joint in the URDF only; restore one
-> `package:///` URI; rewire a joint's parent; point a mesh at a missing file;
-> delete a link. Suite green again afterwards.
+> is worse than no test. **Ten independent mutations, each caught by exactly one
+> assertion, all reverted**, and the suite green again afterwards: rename a joint
+> in the URDF only; restore one `package:///` URI; rewire a joint's parent; point
+> a mesh at a missing file; delete a link; change a link's mass by 1 g; perturb
+> one inertia component; shift a CoM by 1 mm; widen a joint limit by 0.01 rad;
+> flip a joint axis sign.
 >
 > The original task text follows, kept as the record of the decision.
 
