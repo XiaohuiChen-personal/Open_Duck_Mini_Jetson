@@ -30,12 +30,21 @@ PLAY_TASK="${2:?usage: v5_pipeline.sh <run_name> <play_task_id>}"
 
 REPO=/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson
 ISAACLAB=/home/xiaohui_chen/IsaacLab
-LOGROOT=$ISAACLAB/logs/rsl_rl/open_duck_ppo_v5
-RESULTS=$REPO/docs/jetson-mod/eval_results_v5
+# Overridable by environment so a second campaign can reuse this pipeline
+# without editing constants inline -- which would destroy the v5 campaign's
+# reproduction path. Defaults are the v5 values, so a bare invocation still
+# reproduces v5 exactly.
+LOGROOT="${LOGROOT:-$ISAACLAB/logs/rsl_rl/open_duck_ppo_v5}"
+RESULTS="${RESULTS:-$REPO/docs/jetson-mod/eval_results_v5}"
+COMPARISON_MD="${COMPARISON_MD:-$REPO/docs/jetson-mod/v5_comparison.md}"
 STATE=$REPO/.training_runs
 PIPELOG=$STATE/${RUN_NAME}_pipeline.log
 
-CONDITIONS="0.2,0,0;-0.1,0,0;0,0.1,0;0,0,0.3;0.15,0.05,0.2;0,0,0.5"
+CONDITIONS="${CONDITIONS:-0.2,0,0;-0.1,0,0;0,0.1,0;0,0,0.3;0.15,0.05,0.2;0,0,0.5}"
+# EVAL-1: without --include, every *.json in RESULTS is injected into the
+# comparison table, which already mixed push rows into a table documented as
+# push-free once. Unquoted on use so it word-splits into separate args.
+INCLUDE_ARGS="${INCLUDE_ARGS:---include v5d_contact_wrench --include v4_robust_grid6}"
 
 mkdir -p "$RESULTS"
 exec > >(tee -a "$PIPELOG") 2>&1
@@ -62,7 +71,16 @@ else
 fi
 
 # Newest run dir that is not the seeded v4 checkpoint copy.
-RUNDIR=$(ls -td "$LOGROOT"/*/ 2>/dev/null | grep -v v4robust_seed | head -1)
+# SHELL-1 FIX: select the run directory BY NAME, not by mtime. The pipeline is
+# handed a run name and never used it, so any newer directory under the same
+# log root -- including one from a different plant -- could win. Falls back to
+# the old mtime behaviour only when no name-matching dir exists, and says so.
+RUNDIR="${RUNDIR_OVERRIDE:-$(ls -td "$LOGROOT"/*_"$RUN_NAME"/ 2>/dev/null | head -1)}"
+if [ -z "$RUNDIR" ]; then
+    echo "[pipeline] WARNING: no run dir matching *_$RUN_NAME under $LOGROOT;" \
+         "falling back to newest-by-mtime (SHELL-1 exposure)."
+    RUNDIR=$(ls -td "$LOGROOT"/*/ 2>/dev/null | grep -v _seed | head -1)
+fi
 if [ -z "$RUNDIR" ]; then echo "[pipeline] FATAL: no run dir under $LOGROOT"; exit 1; fi
 CKPT=$(ls "$RUNDIR"/model_*.pt 2>/dev/null | sed 's/.*model_\([0-9]*\)\.pt/\1 &/' | sort -n | tail -1 | cut -d' ' -f2)
 if [ -z "$CKPT" ]; then echo "[pipeline] FATAL: no checkpoint in $RUNDIR"; exit 1; fi
@@ -83,7 +101,8 @@ run_eval () {  # name, task, extra args...
         --policies "$name=$task:rsl_rl:$CKPT" \
         --conditions "$CONDITIONS" \
         --output_dir "$RESULTS" \
-        --comparison_md "$REPO/docs/jetson-mod/v5_comparison.md" \
+        --comparison_md "$COMPARISON_MD" \
+        $INCLUDE_ARGS \
         --headless "$@" ) >> "$STATE/${RUN_NAME}_${name}.log" 2>&1
     local rc=$?
     echo "[pipeline] eval $name exit=$rc"

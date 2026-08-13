@@ -228,18 +228,13 @@ def _():
 
 
 # ------------------------------------------------------------------ SHELL
-@issue("SHELL-1", "v5_pipeline.sh selects the run directory by mtime, not run name")
-def _():
-    line = [l for l in R("scripts/v5_pipeline.sh").splitlines() if "RUNDIR=$(" in l][0]
-    root = os.path.expanduser("~/IsaacLab/logs/rsl_rl/open_duck_ppo_v5")
-    n = len(os.listdir(root)) if os.path.isdir(root) else -1
-    return ("CONFIRMED" if "RUN_NAME" not in line and "ls -td" in line else "REFUTED"), [
-        f"selection line: {line.strip()}",
-        f"references RUN_NAME: {'RUN_NAME' in line}; candidate dirs today: {n}",
-        "partially guarded upstream: lines 54-58 block on $STATE/${RUN_NAME}.pid first",
-    ]
-
-
+# SHELL-1 FIXED 2026-08-13 (Task R2b prep). v5_pipeline.sh selects the run
+# directory BY NAME -- RUNDIR="${RUNDIR_OVERRIDE:-$(ls -td "$LOGROOT"/*_"$RUN_NAME"/ ...)}"
+# -- with an mtime fallback that only fires when no name-matching dir exists
+# and PRINTS A WARNING when it does. LOGROOT, RESULTS, COMPARISON_MD,
+# CONDITIONS and INCLUDE_ARGS are all environment-overridable now, so a
+# second campaign reuses the pipeline instead of editing its constants.
+# Per this script's convention a fixed issue carries no check.
 @issue("SHELL-2", "v5_chain.sh deletes the pidfile its duplicate-run guard needs")
 def _():
     c, l = R("scripts/v5_chain.sh"), R("scripts/launch_training_detached.sh")

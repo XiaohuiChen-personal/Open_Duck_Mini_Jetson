@@ -30,7 +30,7 @@ Two verification passes exist, and both are runnable:
 `numpy` and `mujoco`, the same dependencies `tests/` already uses. Current state:
 
 ```
-CONFIRMED 19 / 20
+CONFIRMED 18 / 19
 INCONCLUSIVE -> could not be evaluated here: ['DEPLOY-1']
    the ONNX checks need an interpreter with `onnx` installed, e.g.
    ~/IsaacLab/_isaac_sim/python.sh scripts/verify_known_issues.py DEPLOY-1
@@ -98,7 +98,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [CFG-5](#cfg-5) | ContactSensor history spans 15 ms, not 60 ms | LOW | all consumers of the sensor |
 | [EVAL-1](#eval-1) | `--report-only` injects every JSON in the directory — already fired | HIGH | **FIXED 2026-08-12** by the `--include` allowlist (Task R0) |
 | [EVAL-2](#eval-2) | Documented eval protocol is not the protocol that ran | MEDIUM | all v5 results |
-| [SHELL-1](#shell-1) | `v5_pipeline.sh` selects the run directory by mtime, not by run name | MEDIUM | future runs |
+| [SHELL-1](#shell-1) | ~~selects the run directory by mtime~~ **FIXED 2026-08-13** | MEDIUM | future runs |
 | [SHELL-2](#shell-2) | `v5_chain.sh` deletes the pidfile its own duplicate-run guard depends on | MEDIUM | future runs |
 | [SHELL-3](#shell-3) | Launcher dispatches `--algorithm` to a deleted script and records success | LOW | dead code |
 | [SHELL-4](#shell-4) | Queue's GPU-busy predicate is blind to eval and play jobs | LOW | dormant script |
@@ -1034,7 +1034,28 @@ generator, which should render the header from each entry's own `protocol` block
 # SHELL — orchestration
 
 <a id="shell-1"></a>
-## SHELL-1 · Run directory selected by mtime, not by run name — MEDIUM
+## SHELL-1 · Run directory selected by mtime, not by run name — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task R2b preparation
+>
+> The pipeline is handed a run name and now uses it:
+> `RUNDIR="${RUNDIR_OVERRIDE:-$(ls -td "$LOGROOT"/*_"$RUN_NAME"/ …)}"`.
+> An mtime fallback survives for the case where no name-matching
+> directory exists, but it fires only then and **prints a warning
+> naming this issue** when it does.
+>
+> `LOGROOT`, `RESULTS`, `COMPARISON_MD`, `CONDITIONS` and a new
+> `INCLUDE_ARGS` are environment-overridable, so the rebuild campaign
+> reuses this pipeline rather than editing its constants inline — which
+> would have destroyed the v5 campaign's reproduction path. Defaults are
+> unchanged, so a bare invocation still reproduces v5 exactly.
+>
+> `INCLUDE_ARGS` also closes the EVAL-1 exposure inside the pipeline:
+> without it every `*.json` in the results dir is injected into the
+> comparison table.
+>
+> Check retired; the entry stays here.
+
 
 ```
 RUNDIR=$(ls -td "$LOGROOT"/*/ 2>/dev/null | grep -v v4robust_seed | head -1)
