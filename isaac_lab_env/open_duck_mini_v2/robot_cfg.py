@@ -20,6 +20,23 @@ _USD_PATH = os.path.join(
     _REPO_ROOT, "mini_bdx", "robots", "open_duck_mini_v2", "usd", "open_duck_mini_v2.usd"
 )
 
+# PLANT-5 (Task M0, 2026-08-13). The ceiling used to be a bare 8.716, which is
+# BAM id008's kt*V/R at 12.1 V -- an ELECTRICAL stall from the identified model,
+# and 1.78x the 50 kg.cm (4.903 N.m) the datasheet rates. The simulator enforced
+# the electrical figure, so the policy was free to lean on torque the hardware
+# cannot deliver. scripts/measure_joint_torque.py measured exactly that: v5d
+# commands 6.723 N.m peak at right_hip_pitch, 137 % of datasheet stall and 428 %
+# of the 1.569 N.m continuous rating.
+#
+# The ceiling is now the DATASHEET stall. That is the defensible number: it is
+# what the vendor will stand behind, and a policy trained against it cannot
+# learn a gait the servo physically cannot execute.
+STS3250_EFFORT_LIMIT_NM = 4.903        # 50 kg.cm datasheet stall
+STS3250_CONTINUOUS_NM = 1.569          # 16 kg.cm, the THERMAL limit
+
+# An SG90 micro servo, for the antennas. ~0.18 N.m stall.
+SG90_EFFORT_LIMIT_NM = 0.18
+
 OPEN_DUCK_MINI_V2_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=_USD_PATH,
@@ -96,18 +113,45 @@ OPEN_DUCK_MINI_V2_CFG = ArticulationCfg(
             damping=1.346,
             armature=0.040,
             friction=0.200,
-            effort_limit_sim=8.716,
+            effort_limit_sim=STS3250_EFFORT_LIMIT_NM,
         ),
         "head": ImplicitActuatorCfg(
+            # PLANT-4 / DEPLOY-3 (Task M0b): `.*_antenna` is NOT here any more.
+            # The antennas are open-loop SG90s with no position feedback, so
+            # four of the observation dims could never be measured on hardware,
+            # and driving them with the STS3250 parameter set simulated a
+            # flywheel bolted to the head. They have their own group below.
             joint_names_expr=[
-                "neck_pitch", "head_pitch", "head_yaw",
-                "head_roll", ".*_antenna",
+                "neck_pitch", "head_pitch", "head_yaw", "head_roll",
             ],
             stiffness=45.53,
             damping=1.346,
             armature=0.040,
             friction=0.200,
-            effort_limit_sim=8.716,
+            effort_limit_sim=STS3250_EFFORT_LIMIT_NM,
+        ),
+        # PLANT-4 FIX (Task M0b). The antennas keep AN actuator -- without one
+        # PhysX leaves the joints free-swinging -- but with SG90-appropriate
+        # values instead of the STS3250 set they inherited:
+        #
+        #   effort_limit_sim  8.716 -> 0.18 N.m   (an SG90 stalls at ~0.18;
+        #                                          8.716 was ~48x)
+        #   armature          0.040 -> 4.0e-06    (the antenna link's own
+        #                                          principal inertia is
+        #                                          3.31e-06; 0.040 was 12082x,
+        #                                          i.e. a flywheel)
+        #
+        # Stiffness and damping are scaled by the same ratio as the effort
+        # limit (0.18 / 8.716 = 0.0207) so the group keeps its closed-loop
+        # character at a plausible torque scale. The policy neither reads nor
+        # writes these joints after M0b, so they simply hold their default.
+        "antenna": ImplicitActuatorCfg(
+            joint_names_expr=[".*_antenna"],
+            stiffness=0.941,
+            damping=0.0278,
+            armature=4.0e-06,
+            friction=0.0,
+            effort_limit_sim=SG90_EFFORT_LIMIT_NM,
         ),
     },
 )

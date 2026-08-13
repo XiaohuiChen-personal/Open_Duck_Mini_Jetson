@@ -379,7 +379,44 @@ change what the *hardware* will receive:
   milliseconds against a 20 ms control step. Adding it later means another
   retrain; adding it now costs one event term.
 
-### Task M0 — Assemble the batched plant-fix changeset
+### Task M0 — Assemble the batched plant-fix changeset — ✅ **DONE 2026-08-13**
+
+> **Completed together with M0b, as the plan requires** (M0b supersedes M0
+> step 1). Seven issues fixed in one changeset, so one retrain covers them all.
+>
+> | issue | fix | evidence |
+> |---|---|---|
+> | **PLANT-3** | `reset_base` gains a +20 mm spawn `z` | below-ground resets **61.7 % → 0.0 %**, deepest now **+4.40 mm** |
+> | **PLANT-4** | antennas get their own SG90-scale actuator group | effort 8.716 → **0.18 N·m**, armature 0.040 → **4.0e-06** (was 12,082× the link inertia) |
+> | **PLANT-5** | ceiling = datasheet stall, not electrical | 8.716 → **4.903 N·m**; `measure_joint_torque.py` had measured v5d at 6.723 |
+> | **PLANT-7** | new `latency.py` observation delay | **0–2 control steps (0–40 ms)**, per-env at reset; critic undelayed |
+> | **PLANT-8** | `rel_heading_envs = 0.7` | 30 % of envs train on open-loop `wz`, which the Phase-V VLM needs |
+> | **PLANT-9** | CoM height 0.17 → **0.203 m** | 0.17 was the *spawn* height of the root body, not the CoM |
+> | **CFG-1** | `add_forces_and_torques` + composer `reset()` | the `set_` kernel assigned torque twice, discarding `torque_z_range` |
+> | **CFG-2** | predicate `<= 1` → `== 1` | the obstacle was drawn **twice per episode** |
+>
+> **CFG-4 is recorded WON'T-FIX**, per the plan's own scope check: the `head`
+> half of `ground_contact_penalty` exists only in `DuckContactRewards`
+> (v5a/v5b), and that arm is not being revived. Editing it would change nothing
+> that runs.
+>
+> **PLANT-3's check could never have seen its own fix.** It simulated the joint
+> scaling and measured the lowest collision vertex, but never read
+> `reset_base`'s spawn `z` — so it measured the POSE, not the RESET. It now
+> reads the offset from `env_cfg.py`, and only then does it report 0.0 %.
+>
+> **A stale grep test failed and was rewritten, not re-pinned.**
+> `test_robot_cfg_has_correct_actuator_params` asserted the literal
+> `effort_limit_sim=8.716`. It now parses the AST, asserts the *constant*, and
+> additionally asserts the old literal is absent — TEST-1 in miniature.
+>
+> Seven checks retired from `scripts/verify_known_issues.py` and marked FIXED in
+> the register: PLANT-3/4/5/7, CFG-1/2, DEPLOY-3. Verifier now reads
+> **`CONFIRMED 20 / 21`**, no refutations. Suite **202 passed**.
+>
+> **No training has been run.** The retrain is Task R2, and **M6 must run first**
+> — Isaac Lab loads the USD, not the MJCF.
+
 
 > **⛔ Ordering check before you start.** If your changeset will include
 > [Task M0b](#task-m0b--drop-the-antennas-from-the-action-and-observation-spaces)
@@ -493,7 +530,50 @@ exactly the set of issues you intended to fix, and no others.
 - [ ] `./isaaclab.sh -p scripts/audit_plant_mass.py --headless` still exits 0
 - [ ] No training has been run yet — that is Task R2
 
-### Task M0b — Drop the antennas from the action and observation spaces
+### Task M0b — Drop the antennas from the action and observation spaces — ✅ **DONE 2026-08-13**
+
+> **Completed.** R1/R1b had run (10 JSONs in `eval_results_m2657/`), so the
+> re-gate this task destroys was already taken.
+>
+> **Measured off a freshly built environment, not computed:**
+>
+> ```
+> obs    dim: 53
+> action dim: 14
+> critic dim: 56
+> action joints: left_hip_yaw, neck_pitch, right_hip_yaw, left_hip_roll,
+>                head_pitch, right_hip_roll, left_hip_pitch, head_yaw,
+>                right_hip_pitch, left_knee, head_roll, right_knee,
+>                left_ankle, right_ankle          <- 14, no antenna
+> stepped 60x with zero actions: OK
+> ```
+>
+> **53, exactly as the plan warned — not 55.** `last_action` is called with
+> `action_name=None` so it returns the whole action tensor and shrinks 16 → 14
+> by itself: 3 + 3 + 3 + 14 + 14 + 14 + 2.
+>
+> **The critic needed the same filter and I missed it first time.** `CriticCfg`
+> subclasses `PolicyCfg` but is a *separate instance*, so filtering
+> `self.observations.policy.*` left the critic at **60**, carrying the four
+> antenna dims. Caught by reading the dim off the env rather than trusting the
+> edit. It is 56 now, and the critic deliberately gets the **undelayed**
+> observation — it is privileged, never runs on hardware, and that is the
+> standard asymmetric arrangement.
+>
+> Filtered **by name** via `^(?!.*antenna).*$`, never by index: Isaac Lab's
+> joint order is interleaved and matches neither the MJCF nor the Playground
+> order, so an index filter would remove the wrong joints. A test runs the
+> actual regex against the actual `duck_init_pos.json` order and asserts 14.
+>
+> Option **(a)** was taken, as recommended: the antennas stay in the model as
+> passive links held at `q_default` by their own actuator group, which is what
+> the real robot does when the runtime does not drive them. The plant does not
+> move, so `audit_plant_mass.py` is unaffected.
+>
+> `AGENTS.md`'s observation table and action-space section now read 53 / 14,
+> with the old 59-dim layout kept as explicitly historical and marked
+> **will not load** against the current config.
+
 
 > ## ⛔ STOP — this task destroys a measurement you cannot take later
 >

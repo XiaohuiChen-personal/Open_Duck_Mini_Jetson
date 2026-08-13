@@ -81,116 +81,25 @@ def _():
 # "too small" against. Check retired.
 
 
-@issue("PLANT-3", "61.7% of training resets start inside the ground plane")
-def _():
-    import mujoco
-    import numpy as np
-    model = mujoco.MjModel.from_xml_path(P("mini_bdx/robots/open_duck_mini_v2/scene.xml"))
-    data = mujoco.MjData(model)
-    src = R("isaac_lab_env/open_duck_mini_v2/robot_cfg.py")
-    blk = src.split("joint_pos={", 1)[1].split("},", 1)[0]
-    defaults = {k: float(v) for k, v in re.findall(r'"(\w+)"\s*:\s*(-?[\d.]+)', blk)}
-
-    hinges = []
-    for j in range(model.njnt):
-        if model.jnt_type[j] != mujoco.mjtJoint.mjJNT_HINGE:
-            continue
-        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j)
-        lo, hi = model.jnt_range[j]
-        mid, half = 0.5 * (lo + hi), 0.5 * (hi - lo) * 0.9   # soft_joint_pos_limit_factor
-        hinges.append((model.jnt_qposadr[j], defaults[name], mid - half, mid + half))
-
-    def lowest_vertex():
-        lo = np.inf
-        for g in range(model.ngeom):
-            if not (model.geom_contype[g] or model.geom_conaffinity[g]):
-                continue
-            if model.geom_type[g] != mujoco.mjtGeom.mjGEOM_MESH:
-                continue
-            d = model.geom_dataid[g]
-            v = model.mesh_vert[model.mesh_vertadr[d]:model.mesh_vertadr[d] + model.mesh_vertnum[d]]
-            lo = min(lo, float((v @ data.geom_xmat[g].reshape(3, 3).T)[:, 2].min()
-                               + data.geom_xpos[g][2]))
-        return lo
-
-    mujoco.mj_resetData(model, data)
-    for adr, dflt, _, _ in hinges:
-        data.qpos[adr] = dflt
-    mujoco.mj_kinematics(model, data)
-    nominal = lowest_vertex()
-
-    rng = np.random.default_rng(0)
-    N = 4000
-    lows = np.empty(N)
-    for i in range(N):
-        mujoco.mj_resetData(model, data)
-        s = rng.uniform(0.9, 1.1, size=len(hinges))       # env_cfg.py reset_robot_joints
-        for k, (adr, dflt, slo, shi) in enumerate(hinges):
-            data.qpos[adr] = min(max(dflt * s[k], slo), shi)
-        mujoco.mj_kinematics(model, data)
-        lows[i] = lowest_vertex()
-    mm = lows * 1000.0
-    frac = float((mm < 0).mean())
-    return ("CONFIRMED" if frac > 0.5 else "REFUTED"), [
-        f"nominal pose lowest COLLISION VERTEX = {nominal*1000:+.2f} mm "
-        f"(the 2026-08-02 plant audit independently measured +3.2 mm)",
-        f"over {N} random resets: mean {mm.mean():+.2f} mm, deepest {mm.min():+.2f} mm",
-        f"FRACTION starting below ground = {frac*100:.1f}%  (plant audit reported 61.4%)",
-        "NB measure collision VERTICES, not body origins -- origins sit ~3 mm above the sole",
-    ]
-
-
-@issue("PLANT-4", "Antennas are simulated with STS3250 actuator parameters")
-def _():
-    head = R("isaac_lab_env/open_duck_mini_v2/robot_cfg.py").split(
-        '"head": ImplicitActuatorCfg(', 1)[1].split("),", 1)[0]
-    eff = re.search(r"effort_limit_sim=([\d.]+)", head).group(1)
-    arm = float(re.search(r"armature=([\d.]+)", head).group(1))
-    # Task M4 rewrote every inertial as `fullinertia` (body-frame) and dropped
-    # the principal-frame `diaginertia`/`quat` pair, so read both forms. The
-    # comparison wants the largest PRINCIPAL moment, which for a fullinertia is
-    # the largest eigenvalue.
-    inert = {}
-    for b in mjcf_bodies().iter("body"):
-        if "antenna" not in (b.get("name") or ""):
-            continue
-        i = b.find("inertial")
-        if i.get("diaginertia") is not None:
-            vals = [float(x) for x in i.get("diaginertia").split()]
-        else:
-            import numpy as _np
-            fi = [float(x) for x in i.get("fullinertia").split()]
-            M = _np.array([[fi[0], fi[3], fi[4]],
-                           [fi[3], fi[1], fi[5]],
-                           [fi[4], fi[5], fi[2]]])
-            vals = list(_np.linalg.eigvalsh(M))
-        inert[b.get("name")] = max(vals)
-    biggest = max(inert.values())
-    ok = ".*_antenna" in head and "SG90" in R("AGENTS.md")
-    return ("CONFIRMED" if ok else "REFUTED"), [
-        f"'head' actuator group includes '.*_antenna': {'.*_antenna' in head}",
-        f"  -> effort_limit_sim={eff} N.m (SG90 stalls ~0.18 N.m => ~{float(eff)/0.18:.0f}x)",
-        f"  -> armature={arm} vs largest antenna principal inertia {biggest:.3e} = {arm/biggest:.0f}x",
-    ]
-
-
-@issue("PLANT-5", "Torque ceiling is 1.78x datasheet stall, pinned to 12.1 V")
-def _():
-    bam = json.load(open(P("experiments/v2/params_sts3250_id008.json")))
-    kt, Rr, vin = bam["kt"], bam["R"], bam["vin"]
-    calc = kt * vin / Rr
-    eff = float(re.search(r"effort_limit_sim=([\d.]+)",
-                          R("isaac_lab_env/open_duck_mini_v2/robot_cfg.py")).group(1))
-    ds = 50 * 0.0980665
-    return ("CONFIRMED" if abs(calc - eff) < 0.01 else "REFUTED"), [
-        f"BAM kt={kt:.6f} R={Rr:.6f} vin={vin} V -> kt*V/R = {calc:.4f} N.m",
-        f"robot_cfg effort_limit_sim = {eff} (matches BAM)",
-        f"datasheet 50 kg.cm = {ds:.3f} N.m -> simulated ceiling is {eff/ds:.2f}x",
-        f"pack nominal 11.1 V -> {kt*11.1/Rr:.3f} N.m ({100*(1-kt*11.1/Rr/eff):.1f}% below sim)",
-        "and no DR touches any actuator parameter",
-    ]
-
-
+# PLANT-3 FIXED 2026-08-13 (Task M0/M0b).
+# Task M0 added a +20 mm spawn z to reset_base.pose_range. Re-measured
+# with this script before retiring: fraction starting below ground 61.7%
+# -> 0.0%, deepest reset +4.40 mm.
+# Per this script's convention a fixed issue carries no check, so the check
+# is retired rather than inverted. The entry stays in known_issues.md.
+# PLANT-4 FIXED 2026-08-13 (Task M0/M0b).
+# Task M0b removed `.*_antenna` from the `head` actuator group and gave
+# the antennas their own group at SG90 scale (effort 8.716 -> 0.18 N.m,
+# armature 0.040 -> 4.0e-06 against a 3.31e-06 link inertia). They are
+# also out of the action and observation spaces entirely.
+# Per this script's convention a fixed issue carries no check, so the check
+# is retired rather than inverted. The entry stays in known_issues.md.
+# PLANT-5 FIXED 2026-08-13 (Task M0/M0b).
+# Task M0 replaced the bare 8.716 (BAM's ELECTRICAL stall at 12.1 V, 1.78x
+# datasheet) with STS3250_EFFORT_LIMIT_NM = 4.903, the 50 kg.cm datasheet
+# stall, and recorded STS3250_CONTINUOUS_NM = 1.569 alongside it.
+# Per this script's convention a fixed issue carries no check, so the check
+# is retired rather than inverted. The entry stays in known_issues.md.
 @issue("PLANT-6", "Joint dry friction is inactive during motion")
 def _():
     rc = R("isaac_lab_env/open_duck_mini_v2/robot_cfg.py")
@@ -214,47 +123,28 @@ def _():
     ]
 
 
-@issue("PLANT-7", "No latency / action-delay / observation-staleness model")
-def _():
-    env = R("isaac_lab_env/open_duck_mini_v2/env_cfg.py")
-    y = R("exported_policies/v5d_contact_wrench_ppo/env.yaml")
-    # match identifiers only, and ignore comments (the file has the word "delays" in prose)
-    code = "\n".join(l.split("#")[0] for l in env.splitlines())
-    hits = {t: bool(re.search(rf"\b{t}\b", code) or re.search(rf"\b{t}\b", y))
-            for t in ("latency", "delay", "action_delay", "ObservationDelay")}
-    return ("CONFIRMED" if not any(hits.values()) else "REFUTED"), [
-        f"identifier hits in env_cfg.py (comments stripped) and shipped env.yaml: {hits}",
-        "-> an absence, so nothing in the config will ever look wrong",
-    ]
-
-
+# PLANT-7 FIXED 2026-08-13 (Task M0/M0b).
+# Task M0 added isaac_lab_env/open_duck_mini_v2/latency.py: the policy's
+# joint_pos/joint_vel observations are delayed 0-2 control steps (0-40
+# ms), redrawn per env at reset. The VALUE is provisional until Task S.6
+# measures the real loop; the mechanism is not.
+# Per this script's convention a fixed issue carries no check, so the check
+# is retired rather than inverted. The entry stays in known_issues.md.
 # -------------------------------------------------------------------- CFG
-@issue("CFG-1", "torque_z_range is overwritten by skew(r)xF in the warp kernel")
-def _():
-    k = open("/home/xiaohui_chen/IsaacLab/source/isaaclab/isaaclab/utils/warp/kernels.py").read()
-    fn = k.split("def set_forces_and_torques_at_position(", 1)[1].split("\n@wp.kernel", 1)[0]
-    n = fn.count("composed_torques_b[env_ids[tid_env], body_ids[tid_body]] =")
-    ce = R("isaac_lab_env/open_duck_mini_v2/contact_events.py")
-    passes = all(t in ce for t in ("forces=", "torques=", "positions=", "set_forces_and_torques"))
-    return ("CONFIRMED" if n >= 2 and passes and "+=" not in fn else "REFUTED"), [
-        f"assignments to composed_torques_b in the kernel: {n} (the 2nd overwrites the 1st)",
-        f"kernel uses '=' not '+=': {'+=' not in fn}",
-        f"contact_events passes forces+torques+positions in one call: {passes}",
-        "runtime: requested tau=[0,0,0.15] with F=[3,0,0] at r=[0,0.04,0] -> composed [0,0,-0.12]",
-    ]
-
-
-@issue("CFG-2", "Obstacles are placed twice per episode")
-def _():
-    ce = R("isaac_lab_env/open_duck_mini_v2/contact_events.py")
-    m = re.search(r"fresh = \(env\.episode_length_buf (<=|<) (\d)\)", ce)
-    return ("CONFIRMED" if m and m.group(1) == "<=" and m.group(2) == "1" else "REFUTED"), [
-        f"placement trigger: episode_length_buf {m.group(1)} {m.group(2)}",
-        "buf is 0 on the reset step and 1 on the next -> fires twice",
-        f"and re-rolls obstacle_active each time: {'active = torch.rand' in ce}",
-    ]
-
-
+# CFG-1 FIXED 2026-08-13 (Task M0/M0b).
+# Task M0 switched the wrench from set_forces_and_torques(..., positions=)
+# to add_forces_and_torques(..., positions=), preceded by a composer
+# reset() for those envs. The set_ variant's warp kernel ASSIGNS the
+# torque and then assigns it again from the position moment, discarding
+# torque_z_range; the add_ variant accumulates both.
+# Per this script's convention a fixed issue carries no check, so the check
+# is retired rather than inverted. The entry stays in known_issues.md.
+# CFG-2 FIXED 2026-08-13 (Task M0/M0b).
+# Task M0 changed the fresh-episode predicate from `episode_length_buf <=
+# 1` (true at buf 0 AND 1, so two independent obstacle draws per episode)
+# to `== 1`.
+# Per this script's convention a fixed issue carries no check, so the check
+# is retired rather than inverted. The entry stays in known_issues.md.
 @issue("CFG-3", "v5d inherits DuckRewards, so nothing reads the disturbance gate")
 def _():
     src = R("isaac_lab_env/open_duck_mini_v2/env_cfg.py")
@@ -453,18 +343,12 @@ def _():
     ]
 
 
-@issue("DEPLOY-3", "4 of the 59 observation dims cannot be measured on hardware")
-def _():
-    order = json.load(open(P("scripts/duck_init_pos.json")))["joint_order"]
-    idx = [i for i, n in enumerate(order) if "antenna" in n]
-    return ("CONFIRMED" if len(idx) == 2 else "REFUTED"), [
-        f"antenna joint indices: {idx}",
-        f"-> obs dims joint_pos_rel {[9+i for i in idx]}, joint_vel_rel {[25+i for i in idx]}; "
-        f"action outputs {idx}",
-        "the SG90s are open-loop PWM servos with no position feedback",
-    ]
-
-
+# DEPLOY-3 FIXED 2026-08-13 (Task M0/M0b).
+# Task M0b removed the antennas from the action and observation spaces:
+# obs 59 -> 53, action 16 -> 14, critic 62 -> 56, all three read back off
+# a freshly built env. The four unmeasurable dims no longer exist.
+# Per this script's convention a fixed issue carries no check, so the check
+# is retired rather than inverted. The entry stays in known_issues.md.
 # ------------------------------------------------------------------- TEST
 @issue("TEST-1", "Grepped test literals are non-unique (only scale = 0.25 is unique)")
 def _():

@@ -54,7 +54,7 @@ from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     RewardsCfg,
 )
 
-from isaac_lab_env.open_duck_mini_v2 import contact_events, gated_rewards
+from isaac_lab_env.open_duck_mini_v2 import contact_events, gated_rewards, latency
 from isaac_lab_env.open_duck_mini_v2.duck_commands import BandedWzVelocityCommandCfg
 from isaac_lab_env.open_duck_mini_v2.imitation_reward import (
     ImitationReward,
@@ -70,9 +70,19 @@ from isaac_lab_env.open_duck_mini_v2.robot_cfg import OPEN_DUCK_MINI_V2_CFG
 # Isaac Lab's independent per-axis box, for which E|dv| = a*0.7652), it matches
 # the Froude-scaled median across seven published legged-RL configs
 # (0.741 m/s), and it matches the capture-point limit for the robot's measured
-# ~0.10-0.12 m leg reach at a 0.17 m CoM height. Task 2.8's written 1.3 m/s is
-# amended: it would demand a 24 cm capture step on a robot whose CoM sits at
-# 17 cm, i.e. unrecoverable by construction.
+# ~0.10-0.12 m leg reach at the MEASURED 0.203 m CoM height. Task 2.8's written
+# 1.3 m/s is amended: it would demand a 24 cm capture step, unrecoverable by
+# construction.
+#
+# PLANT-9 FIX (Task M0, 2026-08-13): this derivation previously used 0.17 m,
+# which is the nominal SPAWN height of the root body, not the CoM height. The
+# measured standing CoM is 0.203 m. The capture-point limit scales as
+# sqrt(h/g), so the correct height raises the recoverable push by
+# sqrt(0.203/0.17) = 1.093x. PUSH_END is left at 0.7 m/s rather than raised to
+# 0.765: the ramp was validated empirically against v4/v5 fall rates at 0.7 and
+# raising it is a curriculum change that belongs with a retrain, not with a
+# units correction. The number is corrected here so the NEXT person derives
+# from the right one.
 PUSH_START = 0.4
 PUSH_END = 0.7
 PUSH_RAMP_START_STEPS = 0
@@ -265,6 +275,73 @@ class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # --- Action scale: 0.25 matching Open Duck Playground ---
         self.actions.joint_pos.scale = 0.25
 
+        # --- M0b: drop the antennas from the action and observation spaces ---
+        #
+        # DEPLOY-3 (HIGH, Phase-4 blocker) and PLANT-4 (MEDIUM) close together
+        # here, and this is the only moment they can: it changes the interface,
+        # so it can only be done at a retrain.
+        #
+        # The two antenna joints are driven on hardware by SG90 micro servos
+        # with NO POSITION FEEDBACK. They contributed 4 of the 59 observation
+        # dims -- joint_pos_rel[22, 23] and joint_vel_rel[38, 39] -- and none of
+        # the four can be measured on the real robot. Feeding zeros is
+        # distribution shift; feeding the commanded angle is also distribution
+        # shift. There is no correct value, so the observation vector could not
+        # be honestly built on hardware while those dims existed.
+        #
+        # Filter BY NAME, never by index: Isaac Lab's joint order is
+        # interleaved and matches neither the MJCF nor the Playground order
+        # (AGENTS.md "Joint Orders"), so an index filter would silently remove
+        # the wrong joints.
+        #
+        # DIMENSIONS. Action 16 -> 14. Observation 59 -> 53, NOT 55: the
+        # `actions` observation term is `last_action` called with params {},
+        # i.e. action_name=None, so it returns the ENTIRE action tensor and
+        # shrinks 16 -> 14 by itself. 3 + 3 + 3 + 14 + 14 + 14 + 2 = 53. The
+        # critic group, which adds base_lin_vel(3), goes 62 -> 56.
+        #
+        # The antennas stay in the model as passive links held at q_default by
+        # their own actuator group (robot_cfg.py "antenna"), which is exactly
+        # what the real robot does when the runtime does not drive them. THE
+        # HARDWARE RUNTIME MUST DO THE SAME.
+        _NON_ANTENNA = "^(?!.*antenna).*$"
+        self.actions.joint_pos.joint_names = [_NON_ANTENNA]
+        self.observations.policy.joint_pos.params["asset_cfg"] = SceneEntityCfg(
+            "robot", joint_names=[_NON_ANTENNA]
+        )
+        self.observations.policy.joint_vel.params["asset_cfg"] = SceneEntityCfg(
+            "robot", joint_names=[_NON_ANTENNA]
+        )
+
+        # --- PLANT-7: sensor -> inference latency (Task M0) ---
+        #
+        # There was NO latency model of any kind. On hardware the loop is a
+        # half-duplex serial read of 14 servos, then inference, then a write
+        # back over the same bus, against a 20 ms control step. A policy
+        # trained at zero latency reacts on information it will not have.
+        #
+        # The VALUE IS PROVISIONAL and Task S.6 replaces it with a measurement.
+        # 0-2 control steps (0-40 ms), redrawn per environment at reset. The
+        # randomisation matters more than the nominal, precisely because the
+        # nominal is a guess.
+        self.observations.policy.joint_pos = ObsTerm(
+            func=latency.delayed_joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[_NON_ANTENNA]),
+                    "latency_steps": latency.DEFAULT_LATENCY_STEPS},
+            noise=self.observations.policy.joint_pos.noise,
+        )
+        self.observations.policy.joint_vel = ObsTerm(
+            func=latency.delayed_joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[_NON_ANTENNA]),
+                    "latency_steps": latency.DEFAULT_LATENCY_STEPS},
+            noise=self.observations.policy.joint_vel.noise,
+        )
+        self.events.randomize_latency = EventTerm(
+            func=latency.randomize_latency,
+            mode="reset",
+            params={"latency_steps": latency.DEFAULT_LATENCY_STEPS},
+        )
+
         # --- Terminations ---
         self.terminations.base_contact.params["sensor_cfg"].body_names = (
             "trunk_assembly"
@@ -278,10 +355,19 @@ class OpenDuckRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             "trunk_assembly"
         ]
         self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
+        # PLANT-3 FIX (Task M0, 2026-08-13). `z` was absent, i.e. (0, 0), and
+        # 61.7 % of resets therefore started with a collision vertex INSIDE the
+        # ground plane. The nominal standing pose's lowest vertex is +3.17 mm;
+        # reset_robot_joints scales every joint by U(0.9, 1.1), and that scaling
+        # is what drives it under -- measured over 4000 draws: mean -2.27 mm,
+        # deepest -15.60 mm. +0.020 m clears the deepest draw with ~4 mm to
+        # spare. Re-measure with `python3 scripts/verify_known_issues.py PLANT-3`
+        # after changing it; the check reports the fraction directly.
         self.events.reset_base.params = {
             "pose_range": {
                 "x": (-0.5, 0.5),
                 "y": (-0.5, 0.5),
+                "z": (0.020, 0.020),
                 "yaw": (-3.14, 3.14),
             },
             "velocity_range": {
@@ -348,6 +434,28 @@ class OpenDuckRobustEnvCfg(OpenDuckRoughEnvCfg):
         # Critic mirrors the policy group setup (height_scan off, gait phase on).
         self.observations.critic.height_scan = None
         self.observations.critic.gait_phase = ObsTerm(func=gait_phase_observation)
+
+        # M0b: the critic is a SEPARATE group instance (CriticCfg subclasses
+        # PolicyCfg), so filtering the policy group does not reach it. Without
+        # this the critic keeps the four antenna dims and comes out 60 wide
+        # instead of 56 -- measured, not assumed.
+        #
+        # The critic gets the LATENCY-FREE observation on purpose. It is
+        # privileged and never runs on hardware, so giving it the true state
+        # while the actor sees the delayed one is the standard asymmetric-actor-
+        # critic arrangement and is what makes the value function able to
+        # explain what the delayed actor could not see.
+        _NA = "^(?!.*antenna).*$"
+        self.observations.critic.joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[_NA])},
+            noise=self.observations.critic.joint_pos.noise,
+        )
+        self.observations.critic.joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=[_NA])},
+            noise=self.observations.critic.joint_vel.noise,
+        )
 
         # --- Dynamics domain randomization ---
         # NOTE: `trunk_assembly` IS the articulation root as of the PLANT-1
@@ -567,6 +675,12 @@ class OpenDuckContactEnvCfg(OpenDuckRobustEnvCfg):
             asset_name="robot",
             resampling_time_range=(2.0, 10.0),
             rel_standing_envs=0.08,
+            # PLANT-8 (Task M0): below 1.0 so a share of envs train on a
+            # DIRECTLY SAMPLED yaw rate rather than a heading servo. An
+            # open-loop consumer -- the Phase-V VLM commands wz, not a heading
+            # -- only gets a policy that tracks wz if some envs trained that
+            # way. 0.7 leaves 30 % of envs on open-loop wz. Already below 1.0
+            # in this config; recorded here so it is not "tidied" back up.
             rel_heading_envs=0.7,
             heading_command=True,
             heading_control_stiffness=0.5,

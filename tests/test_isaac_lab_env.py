@@ -37,18 +37,43 @@ class TestRobotCfgModule:
         assert "ImplicitActuatorCfg" in content
 
     def test_robot_cfg_has_correct_actuator_params(self):
-        """Actuator parameters must match BAM identification values."""
+        """Actuator parameters, PARSED rather than grepped.
+
+        Task M0 (PLANT-5) changed the effort ceiling and this test pinned the
+        old value as a string literal, so it failed the moment the fix landed.
+        That is TEST-1 in miniature: a literal check asserts the text, not the
+        behaviour, and goes stale silently in the other direction too.
+
+        The BAM-identified stiffness/damping/armature/friction are unchanged --
+        they describe the servo's dynamics. The effort LIMIT is different in
+        kind: 8.716 was BAM's electrical stall at 12.1 V, 1.78x the 4.903 N.m
+        the vendor rates, and the simulator enforcing the electrical figure let
+        the policy borrow torque the hardware cannot deliver.
+        """
+        import ast
         cfg_path = os.path.join(
             REPO_ROOT, "isaac_lab_env", "open_duck_mini_v2", "robot_cfg.py"
         )
-        with open(cfg_path) as f:
-            content = f.read()
-        # BAM-identified Feetech STS3250 parameters (kscalelabs/sysid id008)
+        tree = ast.parse(open(cfg_path).read())
+        consts = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+                try:
+                    consts[node.targets[0].id] = ast.literal_eval(node.value)
+                except (ValueError, SyntaxError):
+                    pass
+
+        content = open(cfg_path).read()
         assert "stiffness=45.53" in content, "kp (stiffness) should be 45.53"
         assert "damping=1.346" in content, "kd (damping) should be 1.346"
-        assert "armature=0.04" in content, "armature should be 0.04"
-        assert "friction=0.2" in content, "friction should be 0.2"
-        assert "effort_limit_sim=8.716" in content, "effort_limit_sim should be 8.716"
+        assert "armature=0.040" in content, "armature should be 0.040"
+        assert "friction=0.200" in content, "friction should be 0.200"
+
+        assert abs(consts["STS3250_EFFORT_LIMIT_NM"] - 4.903) < 1e-6, (
+            "effort ceiling must be the 4.903 N.m datasheet stall (50 kg.cm), "
+            "not BAM's 8.716 electrical stall — see known_issues.md PLANT-5")
+        assert "effort_limit_sim=8.716" not in content, (
+            "an actuator group still hard-codes the old electrical stall")
 
     def test_robot_cfg_has_all_16_joints(self):
         """Initial state must define positions for all 16 joints."""

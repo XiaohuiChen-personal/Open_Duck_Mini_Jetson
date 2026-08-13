@@ -30,7 +30,7 @@ Two verification passes exist, and both are runnable:
 `numpy` and `mujoco`, the same dependencies `tests/` already uses. Current state:
 
 ```
-CONFIRMED 27 / 28
+CONFIRMED 20 / 21
 INCONCLUSIVE -> could not be evaluated here: ['DEPLOY-1']
    the ONNX checks need an interpreter with `onnx` installed, e.g.
    ~/IsaacLab/_isaac_sim/python.sh scripts/verify_known_issues.py DEPLOY-1
@@ -38,8 +38,9 @@ INCONCLUSIVE -> could not be evaluated here: ['DEPLOY-1']
 
 The denominator falls as issues are fixed: a fixed issue keeps its entry (with a
 `FIXED` block) and **loses its check**, so 34 checks on 2026-08-09 became 29 on
-2026-08-11 (PLANT-1, PLANT-2, DEPLOY-5, ART-3, DOC-4 retired) and 28 on
-2026-08-12 (EVAL-1 retired by Task R0).
+2026-08-11 (PLANT-1, PLANT-2, DEPLOY-5, ART-3, DOC-4 retired) and 28 on 2026-08-12 (EVAL-1 retired by Task R0) and **21 on 2026-08-13**, when
+Tasks M0/M0b fixed and retired PLANT-3, PLANT-4, PLANT-5, PLANT-7, CFG-1,
+CFG-2 and DEPLOY-3.
 
 Exit codes: **0** all confirmed · **1** a claim was refuted (the issue was fixed,
 or the check has rotted — either way, act on it) · **2** a check could not be
@@ -82,16 +83,16 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 |---|---|---|---|
 | [PLANT-1](#plant-1) | Phantom 1.000 kg on the articulation root `base` | CRITICAL | **FIXED 2026-08-11**; every policy v1–v5d was trained with it |
 | [PLANT-2](#plant-2) | The one DR term that could cover PLANT-1 misses on both axes | CRITICAL | **RESOLVED 2026-08-11** by the PLANT-1 fix |
-| [PLANT-3](#plant-3) | 61.7% of training resets start inside the ground plane | MEDIUM | training only |
-| [PLANT-4](#plant-4) | Antennas simulated with STS3250 parameters (~48× torque, ~10⁴× armature) | MEDIUM | all |
-| [PLANT-5](#plant-5) | Torque ceiling is 1.78× datasheet stall, pinned to 12.1 V, never randomized | MEDIUM | all |
+| [PLANT-3](#plant-3) | 61.7% of training resets start inside the ground plane | MEDIUM | **FIXED 2026-08-13** (M0/M0b) |
+| [PLANT-4](#plant-4) | Antennas simulated with STS3250 parameters (~48× torque, ~10⁴× armature) | MEDIUM | **FIXED 2026-08-13** (M0/M0b) |
+| [PLANT-5](#plant-5) | Torque ceiling is 1.78× datasheet stall, pinned to 12.1 V, never randomized | MEDIUM | **FIXED 2026-08-13** (M0/M0b) |
 | [PLANT-6](#plant-6) | Joint dry friction is inactive during motion; BAM's viscous term is dropped | MEDIUM | all |
-| [PLANT-7](#plant-7) | No latency model of any kind | MEDIUM | all |
+| [PLANT-7](#plant-7) | No latency model of any kind | MEDIUM | **FIXED 2026-08-13** (M0/M0b) |
 | [PLANT-8](#plant-8) | The yaw command is a heading servo, never an open-loop rate | MEDIUM | teleop / VLM consumers |
 | [PLANT-9](#plant-9) | The push curriculum is sized against a "0.17 m CoM height"; 0.17 m is the root spawn height and the measured CoM is 0.203 m | LOW | v5a/v5b only |
 | [PLANT-10](#plant-10) | CAD-mod mass deltas were booked at 0.9× solid PLA; `trunk_assembly` was **74.53 g light** | HIGH | **FIXED 2026-08-12** (Task M2) — mass is now whole-part measured, no density assumed |
-| [CFG-1](#cfg-1) | `torque_z_range` is silently discarded — a dead configured parameter | MEDIUM | all v5 arms incl. v5d |
-| [CFG-2](#cfg-2) | Obstacles are placed twice per episode, with two independent draws | MEDIUM | v5a–v5d, ObstacleEval |
+| [CFG-1](#cfg-1) | `torque_z_range` is silently discarded — a dead configured parameter | MEDIUM | **FIXED 2026-08-13** (M0/M0b) |
+| [CFG-2](#cfg-2) | Obstacles are placed twice per episode, with two independent draws | MEDIUM | **FIXED 2026-08-13** (M0/M0b) |
 | [CFG-3](#cfg-3) | In v5c/v5d the disturbance gate is maintained every step and read by nothing | LOW | v5c, v5d |
 | [CFG-4](#cfg-4) | The `head` half of `ground_contact_penalty` can never fire | MEDIUM | v5a/v5b **only** |
 | [CFG-5](#cfg-5) | ContactSensor history spans 15 ms, not 60 ms | LOW | all consumers of the sensor |
@@ -108,7 +109,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [ART-4](#art-4) | `.gitignore` ignores `*.txt` repo-wide — any future prompt library or fixture is silently untracked | MEDIUM | Phase 4/5 |
 | [DEPLOY-1](#deploy-1) | The ONNX omits `action_scale` and `q_default` entirely | HIGH | Phase 4 |
 | [DEPLOY-2](#deploy-2) | The normalizer epsilon is in the graph but not in the checkpoint | MEDIUM | Phase 4 |
-| [DEPLOY-3](#deploy-3) | 4 of the 59 observation dims cannot be measured on hardware | HIGH | Phase 4 blocker |
+| [DEPLOY-3](#deploy-3) | 4 of the 59 observation dims cannot be measured on hardware | HIGH | **FIXED 2026-08-13** (M0/M0b) |
 | [DEPLOY-4](#deploy-4) | Exported ONNX has a hard-fixed batch dimension of 1 | LOW | offline tooling |
 | [DEPLOY-5](#deploy-5) | Documented velocity clamp exceeds the trained command hull | MEDIUM | **FIXED 2026-08-11** |
 | [TEST-1](#test-1) | The test suite is source-text grepping; 5 of 7 real regressions pass | HIGH | all future changes |
@@ -403,7 +404,14 @@ The naming-families lesson still stands and is why the entry is kept rather than
 deleted.
 
 <a id="plant-3"></a>
-## PLANT-3 · 61.7% of training resets start inside the ground plane — MEDIUM
+## PLANT-3 · 61.7% of training resets start inside the ground plane — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task M0 / M0b
+>
+> 61.7 % -> **0.0 %**. Task M0 added a +20 mm spawn `z` to `reset_base.pose_range`. Re-measured with `verify_known_issues.py PLANT-3` before retiring the check: deepest reset is now **+4.40 mm** above ground, mean +17.73 mm. The check was also taught to READ the spawn offset — before that it simulated the pose only and could never have observed the fix.
+>
+> Check retired from `scripts/verify_known_issues.py`; the entry stays here.
+
 
 **Scope: training only.** All `_PLAY` configs pin `position_range=(1.0, 1.0)`,
 so every published gate number is unaffected.
@@ -433,7 +441,14 @@ Every such episode opens with a PhysX depenetration impulse of up to
 > penetration. §4.7 is correct.
 
 <a id="plant-4"></a>
-## PLANT-4 · Antennas are simulated as STS3250 servos — MEDIUM
+## PLANT-4 · Antennas are simulated as STS3250 servos — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task M0 / M0b
+>
+> Task **M0b** removed `.*_antenna` from the `head` actuator group and gave the antennas their own: `effort_limit_sim` 8.716 -> **0.18 N.m** (an SG90 stalls there; 8.716 was ~48x) and `armature` 0.040 -> **4.0e-06** against the link's 3.31e-06 principal inertia (0.040 was 12,082x — a flywheel). They are also out of the action and observation spaces entirely.
+>
+> Check retired from `scripts/verify_known_issues.py`; the entry stays here.
+
 
 `robot_cfg.py` places `.*_antenna` in the `head` actuator group with the full
 STS3250 parameter set. The real hardware uses SG90 micro servos.
@@ -455,7 +470,14 @@ locomotion, but both joints are in the 16-dim action vector destined for real
 servos. See also [DEPLOY-3](#deploy-3).
 
 <a id="plant-5"></a>
-## PLANT-5 · Torque ceiling is 1.78× datasheet, pinned to 12.1 V — MEDIUM
+## PLANT-5 · Torque ceiling is 1.78× datasheet, pinned to 12.1 V — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task M0 / M0b
+>
+> Task M0 replaced the bare `8.716` — BAM id008's **electrical** stall at 12.1 V, 1.78x the datasheet — with `STS3250_EFFORT_LIMIT_NM = 4.903`, the 50 kg·cm datasheet stall, and recorded `STS3250_CONTINUOUS_NM = 1.569` beside it. `scripts/measure_joint_torque.py` had measured v5d commanding **6.723 N·m**, 137 % of datasheet stall, against the old ceiling.
+>
+> Check retired from `scripts/verify_known_issues.py`; the entry stays here.
+
 
 **Evidence:**
 ```
@@ -498,7 +520,14 @@ Related: BAM identifies `friction_viscous = 0.6256393187557033` and nothing
 applies it.
 
 <a id="plant-7"></a>
-## PLANT-7 · No latency model of any kind — MEDIUM
+## PLANT-7 · No latency model of any kind — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task M0 / M0b
+>
+> Task M0 added `isaac_lab_env/open_duck_mini_v2/latency.py`. The policy's `joint_pos`/`joint_vel` observations are delayed **0–2 control steps (0–40 ms)**, redrawn per environment at reset; the privileged critic keeps the undelayed state. **The VALUE is provisional** until Task S.6 measures the real sensor->inference->actuation loop — the mechanism is not.
+>
+> Check retired from `scripts/verify_known_issues.py`; the entry stays here.
+
 
 **Evidence:** no `latency`, `delay`, or observation-staleness term appears in
 `env_cfg.py` or the shipped `env.yaml`. (The single textual "delay" hit is the
@@ -817,7 +846,14 @@ Two related counting traps, both verified:
 # CFG — configuration and reward-wiring defects
 
 <a id="cfg-1"></a>
-## CFG-1 · `torque_z_range` is silently discarded — MEDIUM
+## CFG-1 · `torque_z_range` is silently discarded — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task M0 / M0b
+>
+> Task M0 switched the wrench from `set_forces_and_torques(..., positions=)` to `add_forces_and_torques(..., positions=)`, preceded by a composer `reset()` for those envs so `add` behaves as `set`. The `set_` variant's warp kernel assigns the composed torque and then assigns it again from the position moment, so `torque_z_range` was dead configuration for v5c and v5d alike.
+>
+> Check retired from `scripts/verify_known_issues.py`; the entry stays here.
+
 
 **Scope:** every v5 arm including the shipped v5d. The parameter is configured,
 documented, threaded through the cfg, and frozen into
@@ -841,7 +877,14 @@ CONTROL, no `positions`  = [0,0,+0.15]    ✓
 `positions` and apply the offset moment manually.
 
 <a id="cfg-2"></a>
-## CFG-2 · Obstacles are placed twice per episode — MEDIUM
+## CFG-2 · Obstacles are placed twice per episode — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task M0 / M0b
+>
+> Task M0 changed the fresh-episode predicate from `episode_length_buf <= 1` — true at **both** buf 0 and buf 1, so every episode drew its obstacle twice and the second draw silently replaced the first — to `== 1`.
+>
+> Check retired from `scripts/verify_known_issues.py`; the entry stays here.
+
 
 `_place_obstacles_for_fresh_episodes` triggers on `episode_length_buf <= 1`,
 which is true both on the reset step (buf = 0) and the following step (buf = 1).
@@ -1183,7 +1226,14 @@ than a code bug. **Only affects a hand-rolled reimplementation**; rsl-rl's own
 loader reconstructs the same default, so `policy.pt` and `policy.onnx` are correct.
 
 <a id="deploy-3"></a>
-## DEPLOY-3 · 4 of the 59 observation dims cannot be measured on hardware — HIGH
+## DEPLOY-3 · 4 of the 59 observation dims cannot be measured on hardware — HIGH — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task M0 / M0b
+>
+> Task **M0b** removed the antennas from the interface: **obs 59 -> 53, action 16 -> 14, critic 62 -> 56**, all three read back off a freshly built environment rather than computed. The four dims that could never be measured on hardware no longer exist. 53, not 55: the `actions` observation term is `last_action` with `action_name=None`, so it returns the whole action tensor and shrinks with it.
+>
+> Check retired from `scripts/verify_known_issues.py`; the entry stays here.
+
 
 ```
 antenna joint indices: [13, 14]

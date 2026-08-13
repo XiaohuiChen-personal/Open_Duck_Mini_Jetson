@@ -474,18 +474,39 @@ revision of this table listed "Velocity command" second-to-last; it is actually
 the 4th term in the v3 layout and the 3rd in v5d. Corrected 2026-08-02 against
 the exported `env.yaml` term order.
 
-**Current policy (v5d_contact_wrench) — 59 dims**, verified against
-`exported_policies/v5d_contact_wrench_ppo/env.yaml:435-514`:
+**Current layout — 53 dims** (Task M0b, 2026-08-13). Read back off a freshly
+built environment, not computed:
 
 | # | Component | Dims | Slice | Isaac Lab term |
 |---|---|---|---|---|
 | 1 | Base angular velocity | 3 | `[0:3]` | `base_ang_vel` — gyro |
 | 2 | Projected gravity | 3 | `[3:6]` | `projected_gravity` — from IMU |
 | 3 | Velocity command | 3 | `[6:9]` | `generated_commands` — (vx, vy, yaw_rate) |
-| 4 | Joint positions | 16 | `[9:25]` | **`joint_pos_rel`** — `q − q_default`, NOT absolute |
-| 5 | Joint velocities | 16 | `[25:41]` | **`joint_vel_rel`** — minus default joint vel (zero, so numerically absolute) |
-| 6 | Previous action | 16 | `[41:57]` | `last_action` |
-| 7 | Gait phase | 2 | `[57:59]` | `[cos(phase), sin(phase)]` |
+| 4 | Joint positions | **14** | `[9:23]` | **`joint_pos_rel`** — `q − q_default`, NOT absolute; **delayed 0–2 control steps** (PLANT-7) |
+| 5 | Joint velocities | **14** | `[23:37]` | **`joint_vel_rel`** — minus default joint vel (zero, so numerically absolute); same delay |
+| 6 | Previous action | **14** | `[37:51]` | `last_action` |
+| 7 | Gait phase | 2 | `[51:53]` | `[cos(phase), sin(phase)]` |
+
+> **The antennas are gone from the interface, and that was the point.**
+> Terms 4 and 5 were 16 wide and included `left_antenna`/`right_antenna`. Those
+> joints are driven on hardware by **SG90 micro servos with no position
+> feedback**, so four of the old 59 dims — `joint_pos_rel[22, 23]` and
+> `joint_vel_rel[38, 39]` — **could not be measured on the real robot at all**
+> (DEPLOY-3). Feeding zeros is distribution shift; feeding the commanded angle
+> is also distribution shift. There was no correct value.
+>
+> **53, not 55.** Term 6 is `last_action` called with `action_name=None`, so it
+> returns the whole action tensor and shrinks 16 → 14 by itself. Subtracting
+> only the four joint dims gives 55 and is wrong.
+>
+> The antennas remain in the model as passive links held at `q_default` by
+> their own actuator group. **The hardware runtime must do the same** — do not
+> drive them from the policy.
+
+**Historical (v5d_contact_wrench and earlier) — 59 dims.** Terms 4/5/6 at 16
+wide. Every checkpoint through v5d has this layout and **will not load against
+the current config**; that is deliberate and irreversible (`task_plan_v2.md`
+M0b). Their re-gate on the corrected plant is `m2657_regate.md`.
 
 > **Deployment trap — read this before writing the Jetson obs builder.**
 > Term 4 is `joint_pos_rel`, so the runtime must send `q − q_default`, not raw
@@ -497,9 +518,9 @@ the exported `env.yaml` term order.
 prepended at `[0:3]`, shifting velocity command to `[9:12]`. `base_lin_vel` is
 not directly measurable by the BNO055, which is why the v4/v5 layout drops it.
 
-### Action Space (16 dimensions)
+### Action Space (14 dimensions)
 
-Joint position targets for all 16 actuators. Scaled by `action_scale` (0.25, matching Open Duck Playground) and offset by `init_pos`.
+Joint position targets for the 14 **non-antenna** actuators (Task M0b). Scaled by `action_scale` (0.25, matching Open Duck Playground) and offset by `init_pos`.
 
 ### Joint Orders
 

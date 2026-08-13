@@ -237,7 +237,11 @@ class ContactRegimeEvent(ManagerTermBase):
         """Position each env's box on the first step of its episode."""
         if self._obstacle is None or obstacle_frac <= 0.0:
             return
-        fresh = (env.episode_length_buf <= 1).nonzero().flatten()
+        # CFG-2 FIX (Task M0, 2026-08-13). This was `<= 1`, which is true at
+        # BOTH buf==0 and buf==1, so every episode placed its obstacle twice
+        # with two independent draws -- the second silently replacing the first.
+        # `== 1` fires exactly once per episode.
+        fresh = (env.episode_length_buf == 1).nonzero().flatten()
         if len(fresh) == 0:
             return
 
@@ -342,7 +346,19 @@ class ContactRegimeEvent(ManagerTermBase):
         torque[:, 2] = _uniform(n, torque_z_range, dev) * _rand_sign(n, dev)
         offset = (torch.rand(n, 3, device=dev) * 2.0 - 1.0) * self._trunk_half_extent
 
-        self._robot.permanent_wrench_composer.set_forces_and_torques(
+        # CFG-1 FIX (Task M0, 2026-08-13). This used to call
+        # set_forces_and_torques(..., positions=offset), and passing `positions`
+        # routes to the warp kernel set_forces_and_torques_at_position, which
+        # ASSIGNS the composed torque from `torques` and then ASSIGNS it again
+        # from the position-induced moment. The second assignment wins, so
+        # `torque_z_range` was dead configuration: the wrench never applied the
+        # yaw torque it was configured to apply, for v5c and v5d alike.
+        #
+        # The add_ variant ACCUMULATES both, which is what was always intended.
+        # reset() first so `add` behaves as `set` for these envs rather than
+        # piling a new wrench on top of an existing one every activation.
+        self._robot.permanent_wrench_composer.reset(env_ids=chosen)
+        self._robot.permanent_wrench_composer.add_forces_and_torques(
             forces=force.unsqueeze(1),
             torques=torque.unsqueeze(1),
             positions=offset.unsqueeze(1),
