@@ -56,6 +56,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 21 | `v5d_contact_wrench` | PPO | 2026-07-29 | **sustained wrench added** | **PASS — SHIPPED**, beats v4_robust on all four contact gates |
 | 22 | `v6_robust` | PPO | 2026-08-13 | **the post-Phase-M plant** (2.729 kg, 53/14, 4.903 N·m ceiling, 0-40 ms latency); v4_robust recipe from scratch | PASS — reward 244.83, in-training falls 3.6 % |
 | 23 | `v6_smoke` | PPO | 2026-08-13 | contact-wrench curriculum switched on over the Run-22 seed, 100 iters | PASS (smoke) — wrench scaled to the measured 2.729 kg plant; no gate by design |
+| 24 | `v6d_contact_wrench` | PPO | 2026-08-13 | **sustained wrench added** to Run 23's obstacles, 3,000-iter fine-tune of Run 22 | **PASS — SHIPPED**, beats the same-plant control on 4/4 contact gates, gait 6/6 |
 
 ---
 
@@ -1219,3 +1220,97 @@ the floor. Cleared Run 24 to start.
 **Artifacts:**
 `~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/2026-08-13_03-36-47_v6_smoke/`,
 final `model_3098.pt`; log `.training_runs/v6_smoke.log`.
+
+## Run 24 — `v6d_contact_wrench` (`open_duck_ppo_v6/2026-08-13_03-50-54_v6d_contact_wrench`) — sustained wrench added: **PASS, SHIPPED**
+
+> **Plant banner.** The **post-Phase-M** plant: **2.729035 kg**, obs **53** /
+> action **14**, USD asset hash `767f2415d1b3a056d95e9c310434dbbc`. Results dir
+> `eval_results_rebuild/`; **nothing may be copied to or from
+> `eval_results_m2657/`.**
+
+**One-lever delta: the sustained wrench, on top of the obstacles.** A 3,000-
+iteration fine-tune of Run 22's checkpoint under the contact-wrench curriculum
+(`active_frac=0.5`, `force_frac_range=(0.05, 0.2)`, `torque_z_range=(0.05, 0.15)`,
+`obstacle_frac=0.25`), resumed from `0000-00-00_v6robust_seed/model_2999.pt` to
+final `model_5998.pt`. This repeats the v5 campaign's decisive arm on the
+rebuilt plant, with three defects fixed that were open when that arm ran.
+
+**The curriculum scaled to the measured robot**, which is the check PLANT-1
+defeated for the whole v5 campaign:
+
+```
+[v5] ContactRegimeEvent: measured robot weight 26.77 N (2.729 kg)
+     -> wrench 1.34-5.35 N (active_frac=0.5); obstacle asset present, obstacle_frac=0.25
+```
+
+26.77 / 9.81 = 2.729 kg, matching `audit_plant_mass.py` exactly.
+
+**Training signals** (`scripts/tb_summary.py --last 100`, TensorBoard means —
+never a console grep, per journal rule 1):
+
+| tag | last-100 mean | final | peak @ step |
+|---|---|---|---|
+| `Train/mean_reward` | **225.9463** | 229.3842 | 237.8855 @ 5774 |
+| `Train/mean_episode_length` | 934.9703 | 945.3000 | 984.0100 @ 5774 |
+| `Gait/duty_in_band_frac` | **0.9891** | 0.9905 | 0.9920 @ 4472 |
+| `Episode_Reward/track_lin_vel_xy_exp` | 0.8363 | 0.8454 | 0.8784 @ 5848 |
+| `Episode_Reward/imitation_reward` | 1.2684 | 1.3145 | 1.3695 @ 5337 |
+| `Episode_Reward/alive_bonus` | 9.3711 | 9.4416 | 9.8614 @ 5848 |
+
+Wall clock **2:05:42** (03:55:15 -> 06:00:57), 3,000 iterations.
+
+**The fine-tune's actual product, in one row.** `Episode_Termination/tilt`
+peaked at **0.6336 at iteration 3042** — the open-field seed toppled in 63 % of
+episodes the moment contact was switched on — and finished at **0.1151**
+last-100. `fell_low` fell 0.0369 -> 0.0136; `time_out` rose to 0.8842, so 88 %
+of episodes now survive the full 20 s under wrench and obstacles.
+
+**The curriculum verifiably fired**, from `Regime/*` (last-100): wrench force
+**3.3070 N** (inside the banner's 1.34-5.35 N band), wrench duty 0.3981,
+obstacle envs **0.2480** against a configured 0.25 — i.e. **one** draw per
+episode, confirming the CFG-2 double-placement fix.
+
+**Watchdog.** `Gait/duty_in_band_frac` read **0.9877** at the +30 min
+checkpoint against a 0.30 abort bar (v5d healthy: 0.9836). No abort. Per CFG-5
+this metric samples a 15 ms ContactSensor history and reads systematically high
+relative to `evaluate_policies.py`; it is a watchdog, never a gate number.
+
+**Gate evaluation.** Source `eval_results_rebuild/`, 3,840 episodes per
+entry, seed 42, deterministic. Open field: **6/6 gait
+valid**, **0.000 % falls**, ref RMS 4.719 deg.
+
+Contact battery, fall rate %, against the **same-plant** control `v6_robust`:
+
+| gate | control | v6d | delta |
+|---|---|---|---|
+| Push recovery, v4 fall rule | 10.990 | **0.104** | -10.885 |
+| Push recovery, v5 fall rule | 13.359 | **0.026** | -13.333 |
+| Sustained wrench | 100.000 | **70.365** | -29.635 |
+| Obstacle graze | 34.245 | **7.318** | -26.927 |
+
+**v6d beats the control on 4 of 4**, while matching it on open-field
+locomotion — which is the acceptance rule R2b fixed in advance. The wrench row
+is the argument: the control falls 100.000 % under a sustained press, v6d
+70.365 %, and v6d *is* the control plus 3,000 iterations of contact
+curriculum.
+
+**Video (G-R3): all five conditions PASS**, audited frame by frame in
+`eval_results_rebuild/videos/AUDIT.md`. The press clip shows the trunk pitching
+close to the 60 deg termination at ~7 s and **recovering to upright within about
+a second** — v5d's audit on the same clip type records a topple at ~12 s with no
+self-righting.
+
+**Verdict: PASS — SHIPPED** to `exported_policies/v6d_contact_wrench_ppo/`
+(`model_5998.pt`, md5 `37da88d08bf5d593a3febf74bce96dbe`) with a
+`deployment_contract.json` sidecar (Task R3).
+
+**Comparison to v5d is context, NOT a delta.** It crosses a plant change, an
+interface change and fifteen defect fixes — including CFG-1, which means every
+earlier wrench measurement was taken under a press that could not twist. See
+`rebuild_results.md` §1.
+
+**Artifacts:**
+`~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/2026-08-13_03-50-54_v6d_contact_wrench/`,
+final `model_5998.pt`, `exported/`, `videos/play/` (5 clips) and
+`videos/train/` (15 clips); results `docs/jetson-mod/eval_results_rebuild/`;
+verdict `docs/jetson-mod/rebuild_results.md`.

@@ -3464,7 +3464,7 @@ finding in its own right and changes R2b's design.
 
 ---
 
-### Task R2b — Retrain the contact-wrench recipe on the post-Phase-M plant (`v6d_contact_wrench`)
+### Task R2b — Retrain the contact-wrench recipe on the post-Phase-M plant (`v6d_contact_wrench`) — ✅ **DONE 2026-08-13** — PASS, 4/4 contact gates beat the same-plant control
 
 **AI-agent suitable:** PARTIAL — training and evaluation are autonomous; the
 mandatory video audit needs a vision-capable reviewer, exactly as in R1.
@@ -3862,7 +3862,7 @@ script exits **0**.
 
 ---
 
-### Task R4 — Backfill the experiment journal (`v5_contact_results.md` already exists)
+### Task R4 — Backfill the experiment journal (`v5_contact_results.md` already exists) — ✅ **DONE 2026-08-13** — Runs 17–24 journalled
 
 **AI-agent suitable:** YES
 
