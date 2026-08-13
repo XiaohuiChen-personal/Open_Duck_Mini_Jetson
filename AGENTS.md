@@ -13,7 +13,7 @@ This is a fork of the [Open Duck Mini v2](https://github.com/apirrone/Open_Duck_
 
 ## Quick Reference
 
-- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, ~2.66 kg (after mod). Isaac now simulates 2.66 kg too — the PhysX phantom kilogram on the massless MJCF root was **fixed 2026-08-11** (PLANT-1). **Every policy through v5d was trained on the old 3.66 kg plant and its gate numbers are stale:** `docs/jetson-mod/known_issues.md`
+- **Robot:** Open Duck Mini v2, ~42cm tall bipedal duck, 14x Feetech STS3250 servos, **2.729 kg** (after mod; Task M4 rebuilt every inertial bottom-up per part on 2026-08-13, up from 2.657). Isaac simulates the same — the PhysX phantom kilogram on the massless MJCF root was **fixed 2026-08-11** (PLANT-1). **Every policy through v5d was trained on the old 3.66 kg plant and its gate numbers are stale:** `docs/jetson-mod/known_issues.md`
 - **Onboard computer:** NVIDIA Jetson Orin Nano Super (8 GB, 67 TOPS) — relocated from head to trunk
 - **Training hardware:** NVIDIA DGX Spark (Grace Blackwell)
 - **Simulation:** NVIDIA Isaac Sim (PhysX 5) — replacing MuJoCo
@@ -248,7 +248,7 @@ Total:                         ~7.7 GB  (fits)
 
 | Body | Original (g) | Modified (g) | Change |
 |---|---|---|---|
-| trunk_assembly | 698.5 | **1,164.1** | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +180 (batteries: 4 extra 18650 cells, 2→6 total) +5 (BMS) +15 (DC-DC) +37 (thermal partition assembly) +8 (wiring) **−13.95** (Part-2 CAD, **measured** per part at the chosen process — `fdm-asa`, 3 perim / 20 % infill: trunk_bottom −23.45, body_middle_bottom −1.72, body_front **+0.11**, body_back **+11.11**. PLANT-10 **FIXED 2026-08-12** by Task M2: the old −88.5 came from one assumed density of 1.116 g/cm³ applied to a volume difference, and was 74.53 g wrong. Mass is now whole-part measured — `scripts/part_mass_table.json` — with no density assumed anywhere. Note the two positive terms: cutting slots in `body_front` *adds* mass because the new walls print near-solid, which is why no single density could ever work) |
+| trunk_assembly | 698.5 | **1,188.9** | +176 (Jetson) +58.5 (3 servo upgrades STS3215→STS3250 in trunk: +19.5g each) +180 (batteries: 4 extra 18650 cells, 2→6 total) +5 (BMS) +15 (DC-DC) +37 (thermal partition assembly) +8 (wiring) **−13.95** (Part-2 CAD, **measured** per part at the chosen process — `fdm-asa`, 3 perim / 20 % infill: trunk_bottom −23.45, body_middle_bottom −1.72, body_front **+0.11**, body_back **+11.11**. PLANT-10 **FIXED 2026-08-12** by Task M2: the old −88.5 came from one assumed density of 1.116 g/cm³ applied to a volume difference, and was 74.53 g wrong. Mass is now whole-part measured — `scripts/part_mass_table.json` — with no density assumed anywhere. Note the two positive terms: cutting slots in `body_front` *adds* mass because the new walls print near-solid, which is why no single density could ever work) |
 | head_assembly | 352.6 | ~362.1 | -10 (Pi removed) +19.5 (head_roll servo upgrade) |
 | All 14 servos | 770 (14x55g) | 1,043 (14x74.5g) | +273 g total (+19.5g each x14: 3 in trunk, 1 in head, 10 in limb/neck bodies) |
 | Total robot | 2,062 | ~2,657 | +595 g (+28.9%) |

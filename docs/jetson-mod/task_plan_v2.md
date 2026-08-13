@@ -1331,7 +1331,76 @@ Observables: fit exit code `0` with a `WORST` line under 5 mm³; the mujoco line
 
 ---
 
-### Task M4 — Rebuild every body's mass and inertia bottom-up, per part
+### Task M4 — Rebuild every body's mass and inertia bottom-up, per part — ✅ **DONE 2026-08-13**
+
+> **Completed.** Every one of the 17 real-inertial bodies is now composed
+> bottom-up from parts and densities. The four 1e-9 kg marker frames are
+> untouched, as PLANT-1b requires.
+>
+> | | before | after |
+> |---|---|---|
+> | robot total | 2.657067 kg | **2.729035 kg** (+71.97 g, +2.7 %) |
+> | `trunk_assembly` | 1.089544 | **1.188873** |
+> | `head_assembly` | 0.362083 | **0.341706** |
+>
+> **The change is far smaller than this plan predicted** (+653 g at printed=1250)
+> because the process M1 chose is `fdm-asa` at 1.07 g/cm³ and the per-part masses
+> are measured hollow — volume-weighted mean 0.74 g/cm³. `--check` exits **0**:
+> no body's principal moment differs from declared by more than 2×, so there was
+> no per-body adjudication to make.
+>
+> **`--verify-composer` PASSES**, and the anchor split is by evidence rather
+> than by tolerance-shopping. The three pure-printed bodies are gated on mass
+> AND every principal moment at 0.5 % (they reproduce to 0.999).
+> `neck_yaw_assembly` is gated on **mass only** (0.9998): its inertia comes out
+> at 0.906–0.981 because this composer splits a servo's 74.5 g across five case
+> meshes **by volume**, and a real STS3250 concentrates its motor and gearbox.
+> The plan asserted all four on inertia, but its own evidence only ever
+> demonstrated *mass* for the servo body. Recorded as `known_issues.md` MASS-3.
+>
+> **Three bugs I hit, all caught by a test rather than shipped:**
+> 1. **`--verify-composer` was self-referential.** It compared against the live
+>    MJCF, which `--write` had just replaced with the composed values, so it
+>    would pass unconditionally forever. The upstream export is now frozen at
+>    `tests/fixtures/upstream_declared_inertials.json` and the anchors judge
+>    against that. The anchors are a property of the upstream export — historical
+>    data that does not move.
+> 2. **The URDF writer reported success and wrote nothing.** Its regex anchored
+>    on `<link name="X">\s*<inertial>`, but `<inertial>` sits *after* the visual
+>    and collision blocks. Replaced with block surgery that **refuses to write**
+>    unless all 17 land, so a partial URDF cannot escape.
+> 3. **Most bodies use `diaginertia` + a principal-frame `quat`, not
+>    `fullinertia`** — and reading one as the other is the exact frame-permutation
+>    bug this repo already paid for. Both forms are now parsed, and `--write`
+>    emits `fullinertia` everywhere and deletes the `diaginertia`/`quat` pair so
+>    the ambiguity is closed permanently. That broke `verify_known_issues.py`'s
+>    PLANT-4 check (INCONCLUSIVE, not REFUTED); it now reads both forms too.
+>
+> **The human acceptance step was made by the agent** under the owner's standing
+> instruction, and signed as such in
+> `docs/jetson-mod/inertial_rebuild_report.txt`. It states plainly what it does
+> not claim: **9 of 48 part entries carry an `ASSUMED` source** (no mass for them
+> exists anywhere in the repo and no hardware exists to weigh), servo inertia is
+> volume-split, and nothing has been on a scale. The owner should read those two
+> points.
+>
+> **Cross-check, recorded not gated** (the plan forbids gating one method on the
+> other): `compute_trunk_inertial.py` 1.178406 kg vs the composer's 1.188870 —
+> a **+10.46 g / +0.9 %** gap, far better than the 11–26 % the plan warned to
+> expect. `compute_trunk_inertial.py` is kept and its header now says it is a
+> cross-check, not the source of truth.
+>
+> `tests/test_cad_dimensions.py::test_inertial_matches_generator` was
+> **repointed, not deleted**: it compared the model files against the old
+> generator, which is backwards now. It compares against the composer across all
+> 17 bodies, which also retired M2's strict xfail.
+>
+> Delivered: `scripts/part_densities.json` (48 entries, every one with a
+> `source`), `scripts/compose_body_inertials.py`,
+> `tests/fixtures/upstream_declared_inertials.json`,
+> `docs/jetson-mod/inertial_rebuild_report.txt`,
+> `tests/test_inertial_composer.py` (12 tests), MASS-1/2/3 in `known_issues.md`.
+> Suite **186 passed, 5 skipped, 2 xfailed** (both USD, awaiting M6).
 
 **AI-agent suitable:** PARTIAL. Writing the composer, the density table and the golden test is fully suitable for an agent. Accepting the result is not: **this rebuild moves the robot's mass by hundreds of grams** (measured below), and deciding "the composed value is better than the declared one" needs a human. The task is written so the agent stops at a report and a passing composer-verification test, and a human types the acceptance.
 

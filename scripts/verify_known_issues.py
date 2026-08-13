@@ -146,11 +146,25 @@ def _():
         '"head": ImplicitActuatorCfg(', 1)[1].split("),", 1)[0]
     eff = re.search(r"effort_limit_sim=([\d.]+)", head).group(1)
     arm = float(re.search(r"armature=([\d.]+)", head).group(1))
+    # Task M4 rewrote every inertial as `fullinertia` (body-frame) and dropped
+    # the principal-frame `diaginertia`/`quat` pair, so read both forms. The
+    # comparison wants the largest PRINCIPAL moment, which for a fullinertia is
+    # the largest eigenvalue.
     inert = {}
     for b in mjcf_bodies().iter("body"):
-        if "antenna" in (b.get("name") or ""):
-            i = b.find("inertial")
-            inert[b.get("name")] = max(float(x) for x in i.get("diaginertia").split())
+        if "antenna" not in (b.get("name") or ""):
+            continue
+        i = b.find("inertial")
+        if i.get("diaginertia") is not None:
+            vals = [float(x) for x in i.get("diaginertia").split()]
+        else:
+            import numpy as _np
+            fi = [float(x) for x in i.get("fullinertia").split()]
+            M = _np.array([[fi[0], fi[3], fi[4]],
+                           [fi[3], fi[1], fi[5]],
+                           [fi[4], fi[5], fi[2]]])
+            vals = list(_np.linalg.eigvalsh(M))
+        inert[b.get("name")] = max(vals)
     biggest = max(inert.values())
     ok = ".*_antenna" in head and "SG90" in R("AGENTS.md")
     return ("CONFIRMED" if ok else "REFUTED"), [

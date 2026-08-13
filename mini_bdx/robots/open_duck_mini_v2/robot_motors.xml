@@ -69,7 +69,7 @@
     <worldbody>
         <body name="trunk_assembly" pos="0 0 0.17">
             <freejoint />
-                <inertial pos="-0.0635850 0.0000875 0.0339683" mass="1.089544" fullinertia="0.00221458 0.00542614 0.00481788 -2.19953810e-05 -1.17035388e-04 -6.88783258e-06" />
+                <inertial pos="-0.07002996 0.0002386085 0.03576229" mass="1.188873" fullinertia="0.0023090545 0.0070597633 0.0064235302 -1.5841655e-05 -0.00017273463 -3.3718916e-06" />
                 <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front" />
                 <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_front" contype="0" conaffinity="0" />
                 <geom pos="-0.1263 -0.0257 0.0576079" quat="0.5 0.5 -0.5 0.5" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="usb_c_charger" />
@@ -149,7 +149,7 @@
                     <inertial pos="0 0 0" mass="1e-09" diaginertia="0 0 0" />
                 </body>
                 <body name="hip_roll_assembly" pos="-0.019 0.035 0.0459409" quat="1 0 0 0">
-                    <inertial pos="0.000795081 -5.46541e-06 -0.03306" quat="0.70723 0.0130259 0.0134112 0.706737" mass="0.08598" diaginertia="3.64481e-05 3.16287e-05 1.84355e-05" />
+                    <inertial pos="0.0007400477 -1.262901e-06 -0.03396816" mass="0.08869128" fullinertia="3.0643911e-05 3.7880347e-05 2.0446624e-05 3.4137237e-09 -4.0485071e-07 -1.0356663e-08" />
                     <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" range="-0.523599 0.523599" />
                     <geom pos="0 -0.035 0.01905" quat="1 0 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="roll_motor_bottom" />
                     <geom pos="0 -0.035 0.01905" quat="1 0 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="roll_motor_bottom" contype="0" conaffinity="0" />
@@ -166,7 +166,7 @@
                     <geom pos="0.0125 0 -0.020515" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                     <geom pos="0.0125 0 -0.020515" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                     <body name="left_roll_to_pitch_assembly" pos="0.01905 0 -0.046015" quat="0.5 -0.5 -0.5 0.5">
-                        <inertial pos="0.0508042 -0.00041105 0.0204704" quat="0.549997 0.448819 0.449902 0.541898" mass="0.09466" diaginertia="5.21252e-05 3.55688e-05 3.16335e-05" />
+                        <inertial pos="0.05160759 -0.0003468874 0.02102225" mass="0.0960652" fullinertia="3.0570134e-05 5.1536569e-05 3.5267084e-05 1.0443502e-07 -9.0005872e-07 -1.353789e-07" />
                         <joint name="left_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
                         <geom pos="-0.035 -0.065 0.01905" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.909804 0.572549 0.164706 1" mesh="left_roll_to_pitch" />
                         <geom pos="-0.035 -0.065 0.01905" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.909804 0.572549 0.164706 1" mesh="left_roll_to_pitch" contype="0" conaffinity="0" />
@@ -181,7 +181,7 @@
                         <geom pos="0.0676 0 0.00961" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                         <geom pos="0.0676 0 0.00961" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                         <body name="knee_and_ankle_assembly" pos="0.07415 0 0.03511" quat="0 0.707107 0 -0.707107">
-                            <inertial pos="0.00253369 -0.0390636 0.0102776" quat="0.576793 0.413738 -0.51125 0.484515" mass="0.14357" diaginertia="0.000264416 0.000250672 8.13196e-05" />
+                            <inertial pos="0.00228764 -0.04156336 0.01108165" mass="0.1521747" fullinertia="0.00025222411 9.2913579e-05 0.00026343794 -3.0656264e-05 4.5168646e-06 2.5782949e-05" />
                             <joint name="left_hip_pitch" pos="0 0 0" axis="0 0 1" range="-1.22173 0.523599" />
                             <geom pos="0.01606 0.065 0.10915" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="left_cache" />
                             <geom pos="0.01606 0.065 0.10915" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="left_cache" contype="0" conaffinity="0" />
@@ -202,7 +202,7 @@
                             <geom pos="0 -0.05315 0.00665" quat="0.5 -0.5 -0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                             <geom pos="0 -0.05315 0.00665" quat="0.5 -0.5 -0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                             <body name="knee_and_ankle_assembly_2" pos="0 -0.07865 0.0001">
-                                <inertial pos="5.01859e-06 -0.0577465 0.0181136" quat="0.708422 0.705789 1.07934e-05 0.00022447" mass="0.09209" diaginertia="6.33777e-05 5.37818e-05 2.37577e-05" />
+                                <inertial pos="1.188146e-06 -0.05886701 0.01819415" mass="0.09510984" fullinertia="6.4092202e-05 2.5788283e-05 5.2006242e-05 1.1214749e-08 3.37041e-09 -2.0950624e-09" />
                                 <joint name="left_knee" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                                 <geom pos="0.01606 0.14365 0.10925" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="leg_spacer" />
                                 <geom pos="0.01606 0.14365 0.10925" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="leg_spacer" contype="0" conaffinity="0" />
@@ -221,7 +221,7 @@
                                 <geom pos="0 -0.05315 0.00665" quat="0.5 -0.5 -0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                                 <geom pos="0 -0.05315 0.00665" quat="0.5 -0.5 -0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                                 <body name="foot_assembly" pos="0 -0.07865 0.0001">
-                                    <inertial pos="0.0110718 -0.0246608 0.0190626" quat="0.506106 0.51004 0.489653 0.49392" mass="0.07524" diaginertia="6.74949e-05 6.06095e-05 1.86965e-05" />
+                                    <inertial pos="0.01120088 -0.02412225 0.01909975" mass="0.06709282" fullinertia="1.8893747e-05 6.2899711e-05 5.6110122e-05 1.6659195e-06 1.6692557e-09 -9.1697367e-09" />
                                     <joint name="left_ankle" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                                     <geom pos="0.01606 0.2223 0.10905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.980392 0.713726 0.00392157 1" mesh="foot_side" />
                                     <geom pos="0.01606 0.2223 0.10905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.980392 0.713726 0.00392157 1" mesh="foot_side" contype="0" conaffinity="0" />
@@ -240,7 +240,7 @@
                     </body>
                 </body>
                 <body name="neck_pitch_assembly" pos="0.001 0.01915 0.0900009" quat="0.707107 0.707107 0 0">
-                    <inertial pos="-5.63137e-06 0.0492968 0.0181786" quat="0.70651 0.707703 0.000283172 6.23387e-05" mass="0.08568" diaginertia="4.52424e-05 3.62558e-05 2.2039e-05" />
+                    <inertial pos="-1.408108e-06 0.05030077 0.01814527" mass="0.08641982" fullinertia="4.4480325e-05 2.3044359e-05 3.3699844e-05 1.0645975e-08 -3.2148229e-09 -1.6435503e-07" />
                     <joint name="neck_pitch" pos="0 0 0" axis="0 0 1" range="-0.349066 1.13446" />
                     <geom pos="-0.02 -0.02511 0.01905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.223529 0.219608 0.219608 1" mesh="neck_left_sheet" />
                     <geom pos="-0.02 -0.02511 0.01905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.223529 0.219608 0.219608 1" mesh="neck_left_sheet" contype="0" conaffinity="0" />
@@ -257,12 +257,12 @@
                     <geom pos="0 0.0405 0.00655" quat="0.5 -0.5 0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                     <geom pos="0 0.0405 0.00655" quat="0.5 -0.5 0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                     <body name="head_pitch_to_yaw" pos="0 0.066 0" quat="1 0 0 0">
-                        <inertial pos="-0.00766247 0.026015 0.0186681" quat="0.692632 0.709794 0.0901532 0.091239" mass="0.0169378" diaginertia="9.7861e-06 8.03124e-06 4.28979e-06" />
+                        <inertial pos="-0.007662272 0.02601726 0.01866813" mass="0.01275076" fullinertia="7.0979094e-06 3.4981892e-06 6.0433048e-06 1.0178166e-06 2.3033861e-08 -6.3438956e-08" />
                         <joint name="head_pitch" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" />
                         <geom pos="-0.02 -0.09111 0.01905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.4 0.4 0.4 1" mesh="head_pitch_to_yaw" />
                         <geom pos="-0.02 -0.09111 0.01905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.4 0.4 0.4 1" mesh="head_pitch_to_yaw" contype="0" conaffinity="0" />
                         <body name="neck_yaw_assembly" pos="0 0.057 0.01905" quat="0.707107 -0.707107 0 0">
-                            <inertial pos="0.00412907 3.95745e-06 -0.0222828" quat="-0.00110425 0.66693 -0.00105488 0.745118" mass="0.1113099" diaginertia="8.595e-05 8.42536e-05 3.71969e-05" />
+                            <inertial pos="0.007741546 1.204763e-06 -0.02026261" mass="0.09352642" fullinertia="2.7946489e-05 5.5377056e-05 5.016636e-05 9.8613302e-09 -3.1878789e-06 -3.6216081e-09" />
                             <joint name="head_yaw" pos="0 0 0" axis="0 0 1" range="-2.79253 2.79253" />
                             <geom pos="-0.02 0 -0.14821" quat="1 0 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="head_yaw_to_roll" />
                             <geom pos="-0.02 0 -0.14821" quat="1 0 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="head_yaw_to_roll" contype="0" conaffinity="0" />
@@ -277,7 +277,7 @@
                             <geom pos="0.0255 0 -0.00655" quat="0.707107 0.707107 0 0" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                             <geom pos="0.0255 0 -0.00655" quat="0.707107 0.707107 0 0" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                             <body name="head_assembly" pos="0.04095 0 -0.01915" quat="0.707107 0 -0.707107 0">
-                                <inertial pos="0.0072060 -0.0011494 0.0223904" mass="0.362083" fullinertia="0.00207359 0.00146894 0.00088770 1.05140407e-05 9.10371814e-05 -1.09250765e-05" />
+                                <inertial pos="0.009710097 -0.0002932171 0.0181747" mass="0.3417059" fullinertia="0.0020088472 0.0013730225 0.00091143141 2.2694591e-06 7.3293941e-05 -4.6213139e-06" />
                                 <joint name="head_roll" pos="0 0 0" axis="0 0 1" range="-0.523599 0.523599" />
                                 <geom pos="-0.12906 0 0.06095" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.411765 0.411765 0.411765 1" mesh="head_bot_sheet" />
                                 <geom pos="-0.12906 0 0.06095" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.411765 0.411765 0.411765 1" mesh="head_bot_sheet" contype="0" conaffinity="0" />
@@ -307,7 +307,7 @@
                                     <inertial pos="0 0 0" mass="1e-09" diaginertia="0 0 0" />
                                 </body>
                                 <body name="left_antenna_holder" pos="0.000704069 0.0606628 0.116435" quat="-0.372991 -0.626964 -0.488321 0.47889">
-                                    <inertial pos="-0.00493985 0.00813032 -0.00233374" quat="0.51481 0.48387 -0.510153 0.490495" mass="0.00421629" diaginertia="3.80836e-06 3.59678e-06 2.45273e-07" />
+                                    <inertial pos="-0.004937112 0.008104872 -0.002333201" mass="0.003615827" fullinertia="3.0694348e-06 2.1792077e-07 3.2576875e-06 -1.4469251e-07 1.3227461e-09 3.4191134e-08" />
                                     <joint name="left_antenna" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                                     <geom pos="0.0791392 -0.110974 -0.079315" quat="0.781957 -0.60904 -0.104704 -0.0815507" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="antenna" />
                                     <geom pos="0.0791392 -0.110974 -0.079315" quat="0.781957 -0.60904 -0.104704 -0.0815507" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="antenna" contype="0" conaffinity="0" />
@@ -315,7 +315,7 @@
                                     <geom pos="0.0296981 -0.110962 0.101994" quat="0.60904 -0.781957 -0.0815507 -0.104704" type="mesh" rgba="0.980392 0.713726 0.00392157 1" mesh="left_antenna_holder" contype="0" conaffinity="0" />
                                 </body>
                                 <body name="right_antenna_holder" pos="0.000704069 -0.0606628 0.116435" quat="-0.372991 0.626964 -0.488321 -0.47889">
-                                    <inertial pos="-0.00493986 -0.00826213 -0.00233374" quat="0.483867 0.514746 -0.490555 0.510162" mass="0.00421629" diaginertia="3.86998e-06 3.6585e-06 2.45146e-07" />
+                                    <inertial pos="-0.004937141 -0.008236226 -0.002333201" mass="0.003615827" fullinertia="3.1221173e-06 2.1791974e-07 3.310369e-06 1.4703096e-07 1.3226287e-09 -3.4745879e-08" />
                                     <joint name="right_antenna" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                                     <geom pos="0.0296981 0.110962 0.101994" quat="0.60904 0.781957 -0.0815507 0.104704" type="mesh" rgba="0.980392 0.713726 0.00392157 1" mesh="right_antenna_holder" />
                                     <geom pos="0.0296981 0.110962 0.101994" quat="0.60904 0.781957 -0.0815507 0.104704" type="mesh" rgba="0.980392 0.713726 0.00392157 1" mesh="right_antenna_holder" contype="0" conaffinity="0" />
@@ -327,7 +327,7 @@
                     </body>
                 </body>
                 <body name="hip_roll_assembly_2" pos="-0.019 -0.035 0.0459409" quat="1 0 0 0">
-                    <inertial pos="0.000795081 -5.46541e-06 -0.03306" quat="0.70723 0.0130259 0.0134112 0.706737" mass="0.08598" diaginertia="3.64481e-05 3.16287e-05 1.84355e-05" />
+                    <inertial pos="0.0007400477 -1.262901e-06 -0.03396816" mass="0.08869128" fullinertia="3.0643911e-05 3.7880347e-05 2.0446624e-05 3.4137237e-09 -4.0485071e-07 -1.0356663e-08" />
                     <joint name="right_hip_yaw" pos="0 0 0" axis="0 0 1" range="-0.523599 0.523599" />
                     <geom pos="0 -0.035 0.01905" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="roll_motor_bottom" />
                     <geom pos="0 -0.035 0.01905" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="roll_motor_bottom" contype="0" conaffinity="0" />
@@ -344,7 +344,7 @@
                     <geom pos="0.0125 0 -0.020515" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                     <geom pos="0.0125 0 -0.020515" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                     <body name="right_roll_to_pitch_assembly" pos="0.01905 0 -0.046015" quat="0.5 -0.5 -0.5 0.5">
-                        <inertial pos="-0.0508042 -0.000420742 0.0204704" quat="0.449467 0.542039 0.549858 0.449254" mass="0.09466" diaginertia="5.2125e-05 3.55684e-05 3.16326e-05" />
+                        <inertial pos="-0.05160759 -0.0003492455 0.02102225" mass="0.0960652" fullinertia="3.0569976e-05 5.153657e-05 3.5266927e-05 -1.1216127e-07 9.0005889e-07 -1.1424683e-07" />
                         <joint name="right_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
                         <geom pos="0.035 -0.065 0.01905" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.909804 0.572549 0.164706 1" mesh="right_roll_to_pitch" />
                         <geom pos="0.035 -0.065 0.01905" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.909804 0.572549 0.164706 1" mesh="right_roll_to_pitch" contype="0" conaffinity="0" />
@@ -359,7 +359,7 @@
                         <geom pos="-0.0676 0 0.00961" quat="0.5 -0.5 0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                         <geom pos="-0.0676 0 0.00961" quat="0.5 -0.5 0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                         <body name="knee_and_ankle_assembly_3" pos="-0.07415 0 0.03511" quat="0.707107 0 0.707107 0">
-                            <inertial pos="0.00253369 0.0390636 0.010809" quat="0.411107 0.577419 -0.487141 0.510169" mass="0.14357" diaginertia="0.00026474 0.000251777 8.21043e-05" />
+                            <inertial pos="0.00229414 0.04151417 0.01152429" mass="0.1524347" fullinertia="0.00025384267 9.410862e-05 0.00026426895 3.0778809e-05 4.6679257e-06 -2.6943219e-05" />
                             <joint name="right_hip_pitch" pos="0 0 0" axis="0 0 1" range="-0.523599 1.22173" />
                             <geom pos="0.01606 -0.065 0.1092" quat="0.707107 0.707107 0 0" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="right_cache" />
                             <geom pos="0.01606 -0.065 0.1092" quat="0.707107 0.707107 0 0" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="right_cache" contype="0" conaffinity="0" />
@@ -380,7 +380,7 @@
                             <geom pos="0 0.05315 0.03045" quat="0.5 0.5 -0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                             <geom pos="0 0.05315 0.03045" quat="0.5 0.5 -0.5 -0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                             <body name="knee_and_ankle_assembly_4" pos="0 0.07865 0.037" quat="0 1 0 0">
-                                <inertial pos="5.01859e-06 -0.0577465 0.0181136" quat="0.708422 0.705789 1.07934e-05 0.00022447" mass="0.09209" diaginertia="6.33777e-05 5.37818e-05 2.37577e-05" />
+                                <inertial pos="1.188146e-06 -0.05886701 0.01819415" mass="0.09510984" fullinertia="6.4092202e-05 2.5788283e-05 5.2006242e-05 1.1214749e-08 3.37041e-09 -2.0950624e-09" />
                                 <joint name="right_knee" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                                 <geom pos="0.01606 0.14365 0.10925" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="leg_spacer" />
                                 <geom pos="0.01606 0.14365 0.10925" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="leg_spacer" contype="0" conaffinity="0" />
@@ -399,7 +399,7 @@
                                 <geom pos="0 -0.05315 0.00665" quat="0.5 -0.5 -0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" />
                                 <geom pos="0 -0.05315 0.00665" quat="0.5 -0.5 -0.5 0.5" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="passive_palonier" contype="0" conaffinity="0" />
                                 <body name="foot_assembly_2" pos="0 -0.07865 0.0001">
-                                    <inertial pos="0.0110718 -0.0246608 0.0190626" quat="0.506106 0.51004 0.489653 0.49392" mass="0.07524" diaginertia="6.74949e-05 6.06095e-05 1.86965e-05" />
+                                    <inertial pos="0.01120088 -0.02412225 0.01909975" mass="0.06709282" fullinertia="1.8893747e-05 6.2899711e-05 5.6110122e-05 1.6659195e-06 1.6692557e-09 -9.1697367e-09" />
                                     <joint name="right_ankle" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                                     <geom pos="0.01606 0.2223 0.10905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.980392 0.713726 0.00392157 1" mesh="foot_side" />
                                     <geom pos="0.01606 0.2223 0.10905" quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.980392 0.713726 0.00392157 1" mesh="foot_side" contype="0" conaffinity="0" />

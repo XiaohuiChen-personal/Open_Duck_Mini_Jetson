@@ -740,6 +740,80 @@ touched, so the re-run is cheap.
 
 ---
 
+<a id="mass-1"></a>
+## MASS-1 · A uniform density per body inflates every tensor ~30 % — DOCUMENTED TRAP
+
+Not a defect in the repo — a trap that will catch the next person who rebuilds
+the mass model. Recorded by Task M4, 2026-08-12.
+
+Fusing a body's meshes and smearing its declared mass over them at one uniform
+density inflates the principal moments by a **median of 1.30x and up to 1.45x**:
+
+```
+body                            mass g   I_uniform / I_declared (desc)
+hip_roll_assembly                85.98      1.363  1.450  0.995
+left_roll_to_pitch_assembly      94.66      1.282  1.413  1.009
+neck_yaw_assembly               111.31      1.400  1.302  1.258
+head_assembly                   362.08      1.192  1.104  1.338
+head_pitch_to_yaw                16.94      1.000  1.000  1.000   <- anchor
+left_antenna_holder               4.22      1.000  1.000  0.999   <- anchor
+```
+
+The cause is physical, not numerical: the servos are dense masses sitting close
+to the joint axes and the printed shells are hollow relative to a fused mesh, so
+a uniform density moves mass outward. **A composer that assigns one density per
+body is wrong by ~30 % and looks entirely plausible while doing it.** The
+rebuild must be per-part with per-part densities, combined by parallel axes.
+
+<a id="mass-2"></a>
+## MASS-2 · The upstream export did not book printed parts at one density — DOCUMENTED TRAP
+
+Three bodies are pure printed parts whose declared inertia is *exactly*
+uniform-density inertia, and they pin the printed convention at **1250 kg/m³**:
+
+```
+head_pitch_to_yaw    m=0.0169378 kg / V=13.5490 cm³  ->  1250.11 kg/m³
+left_antenna_holder  m=0.00421629 kg / V=3.3694 cm³  ->  1251.33 kg/m³
+```
+
+A fourth anchor pins the servo at the same time: `neck_yaw_assembly` composed
+from printed meshes at 1250 plus **one servo at 74.5 g** gives 111.29 g against
+111.31 declared — 0.02 %.
+
+**But that convention does not hold across the robot.** `foot_assembly`'s
+declared mass implies **748 kg/m³** over its fused meshes and
+`hip_roll_assembly`'s printed remainder roughly **650**. So the upstream export
+booked some bodies at solid density and some at as-printed. **The four anchors
+verify a composer's arithmetic; they do not license "printed = 1250" as a model
+of the whole machine.**
+
+<a id="mass-3"></a>
+## MASS-3 · A servo's mass splits by volume; its INERTIA does not — DOCUMENTED TRAP
+
+`scripts/compose_body_inertials.py` divides one STS3250's 74.5 g across its five
+case meshes in proportion to volume. Measured 2026-08-12, that reproduces the
+servo's **total mass** (`neck_yaw_assembly` 111.29 g vs 111.31 declared, 0.02 %)
+but **not its inertia distribution**: the same body's principal moments come out
+at **0.906–0.981** of declared.
+
+A real servo concentrates its motor and gearbox; volume-splitting spreads them
+over the case. So `--verify-composer` gates `neck_yaw_assembly` on mass and only
+*reports* its inertia. Closing this needs a servo mass-distribution model the
+repo does not have — Task S.8 is where real hardware could supply one.
+
+Two related counting traps, both verified:
+
+- **De-duplicate on `(body, mesh, pos, quat)`.** The MJCF has 271 mesh geoms
+  collapsing to **137** unique instances. Keying without the body name collapses
+  the mirrored legs and silently deletes a leg's worth of mass; iterating raw
+  `<geom>` elements double-counts every collision/visual twin.
+- **Group servo meshes by `(body, quat)`, never by `(pos, quat)`.**
+  `passive_palonier` carries a different `pos` from the other four in **every**
+  servo, so a pos-based key splits it off as a phantom sixth part.
+  `(body, quat)` yields exactly 14 groups of exactly 5.
+
+---
+
 # CFG — configuration and reward-wiring defects
 
 <a id="cfg-1"></a>

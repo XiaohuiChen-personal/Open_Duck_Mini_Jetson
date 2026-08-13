@@ -1,0 +1,251 @@
+{
+ "_comment": "Task M4. One entry per mesh in robot_motors.xml's <asset> block. Consumed by scripts/compose_body_inertials.py. Every entry carries a `source`; entries whose source starts with ASSUMED are counted and printed at the top of the rebuild report so the human accepting it knows how much is guessed.",
+ "_generated_on": "2026-08-13",
+ "parts": {
+  "antenna": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "battery_pack_lid": {
+   "class": "printed",
+   "print_name": "battery_pack_lid",
+   "source": "measured in scripts/part_mass_table.json as `battery_pack_lid`"
+  },
+  "bms": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "bno055": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "board": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "body_back": {
+   "class": "printed",
+   "print_name": "body_back",
+   "source": "measured in scripts/part_mass_table.json as `body_back`"
+  },
+  "body_front": {
+   "class": "printed",
+   "print_name": "body_front",
+   "source": "measured in scripts/part_mass_table.json as `body_front`"
+  },
+  "body_middle_bottom": {
+   "class": "printed",
+   "print_name": "body_middle_bottom",
+   "source": "measured in scripts/part_mass_table.json as `body_middle_bottom`"
+  },
+  "body_middle_top": {
+   "class": "printed",
+   "print_name": "body_middle_top",
+   "source": "measured in scripts/part_mass_table.json as `body_middle_top`"
+  },
+  "cell": {
+   "class": "bought",
+   "mass_g": 45.0,
+   "source": "compute_trunk_inertial.py cells_extra_4x45g: 0.180 kg / 4 cells"
+  },
+  "dcdc_converter": {
+   "class": "bought",
+   "mass_g": 15.0,
+   "source": "compute_trunk_inertial.py dcdc_converter term"
+  },
+  "drive_palonier": {
+   "class": "servo_case",
+   "servo": "sts3250",
+   "mass_g": 74.5,
+   "source": "AGENTS.md Robot Physical Specs: 14x Feetech STS3250, 74.5 g each. Split across the five meshes of one servo instance by volume."
+  },
+  "foot_bottom_pla": {
+   "class": "printed",
+   "print_name": "foot_bottom_pla",
+   "source": "measured in scripts/part_mass_table.json as `foot_bottom_pla`"
+  },
+  "foot_bottom_tpu": {
+   "class": "printed",
+   "print_name": "foot_bottom_tpu",
+   "source": "measured in scripts/part_mass_table.json as `foot_bottom_tpu`"
+  },
+  "foot_side": {
+   "class": "printed",
+   "print_name": "foot_side",
+   "source": "measured in scripts/part_mass_table.json as `foot_side`"
+  },
+  "foot_top": {
+   "class": "printed",
+   "print_name": "foot_top",
+   "source": "measured in scripts/part_mass_table.json as `foot_top`"
+  },
+  "head": {
+   "class": "printed",
+   "print_name": "head",
+   "source": "measured in scripts/part_mass_table.json as `head`"
+  },
+  "head_bot_sheet": {
+   "class": "printed",
+   "print_name": "head_bot_sheet",
+   "source": "measured in scripts/part_mass_table.json as `head_bot_sheet`"
+  },
+  "head_pitch_to_yaw": {
+   "class": "printed",
+   "print_name": "head_pitch_to_yaw",
+   "source": "measured in scripts/part_mass_table.json as `head_pitch_to_yaw`"
+  },
+  "head_roll_mount": {
+   "class": "printed",
+   "print_name": "head_roll_mount",
+   "source": "measured in scripts/part_mass_table.json as `head_roll_mount`"
+  },
+  "head_yaw_to_roll": {
+   "class": "printed",
+   "print_name": "head_yaw_to_roll",
+   "source": "measured in scripts/part_mass_table.json as `head_yaw_to_roll`"
+  },
+  "holder": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "holder_6cell": {
+   "class": "printed",
+   "print_name": "holder_6cell",
+   "source": "measured in scripts/part_mass_table.json as `holder_6cell`"
+  },
+  "jetson_orin_nano": {
+   "class": "bought",
+   "mass_g": 176.0,
+   "source": "AGENTS.md design input carried in the MJCF. NVIDIA SP-11324-001 v1.3 \u00a74 publishes 175 g; 176 kept for continuity, discrepancy recorded here."
+  },
+  "left_antenna_holder": {
+   "class": "printed",
+   "print_name": "left_antenna_holder",
+   "source": "measured in scripts/part_mass_table.json as `left_antenna_holder`"
+  },
+  "left_cache": {
+   "class": "printed",
+   "print_name": "left_cache",
+   "source": "measured in scripts/part_mass_table.json as `left_cache`"
+  },
+  "left_knee_to_ankle_left_sheet": {
+   "class": "printed",
+   "print_name": "knee_to_ankle_left_sheet",
+   "source": "measured in scripts/part_mass_table.json as `knee_to_ankle_left_sheet`"
+  },
+  "left_knee_to_ankle_right_sheet": {
+   "class": "printed",
+   "print_name": "knee_to_ankle_right_sheet",
+   "source": "measured in scripts/part_mass_table.json as `knee_to_ankle_right_sheet`"
+  },
+  "left_roll_to_pitch": {
+   "class": "printed",
+   "print_name": "left_roll_to_pitch",
+   "source": "measured in scripts/part_mass_table.json as `left_roll_to_pitch`"
+  },
+  "leg_spacer": {
+   "class": "printed",
+   "print_name": "leg_spacer",
+   "source": "measured in scripts/part_mass_table.json as `leg_spacer`"
+  },
+  "neck_left_sheet": {
+   "class": "printed",
+   "print_name": "neck_left_sheet",
+   "source": "measured in scripts/part_mass_table.json as `neck_left_sheet`"
+  },
+  "neck_right_sheet": {
+   "class": "printed",
+   "print_name": "neck_right_sheet",
+   "source": "measured in scripts/part_mass_table.json as `neck_right_sheet`"
+  },
+  "passive_palonier": {
+   "class": "servo_case",
+   "servo": "sts3250",
+   "mass_g": 74.5,
+   "source": "AGENTS.md Robot Physical Specs: 14x Feetech STS3250, 74.5 g each. Split across the five meshes of one servo instance by volume."
+  },
+  "power_switch": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "right_antenna_holder": {
+   "class": "printed",
+   "print_name": "right_antenna_holder",
+   "source": "measured in scripts/part_mass_table.json as `right_antenna_holder`"
+  },
+  "right_cache": {
+   "class": "printed",
+   "print_name": "right_cache",
+   "source": "measured in scripts/part_mass_table.json as `right_cache`"
+  },
+  "right_roll_to_pitch": {
+   "class": "printed",
+   "print_name": "right_roll_to_pitch",
+   "source": "measured in scripts/part_mass_table.json as `right_roll_to_pitch`"
+  },
+  "roll_bearing": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "roll_motor_bottom": {
+   "class": "printed",
+   "print_name": "roll_motor_bottom",
+   "source": "measured in scripts/part_mass_table.json as `roll_motor_bottom`"
+  },
+  "roll_motor_top": {
+   "class": "printed",
+   "print_name": "roll_motor_top",
+   "source": "measured in scripts/part_mass_table.json as `roll_motor_top`"
+  },
+  "sg90": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "thermal_partition": {
+   "class": "bought",
+   "mass_g": 37.0,
+   "source": "compute_trunk_inertial.py partition ASSEMBLY budget: 2 mm wall + mica + rails, not the bare printed wall"
+  },
+  "trunk_bottom": {
+   "class": "printed",
+   "print_name": "trunk_bottom",
+   "source": "measured in scripts/part_mass_table.json as `trunk_bottom`"
+  },
+  "trunk_top": {
+   "class": "printed",
+   "print_name": "trunk_top",
+   "source": "measured in scripts/part_mass_table.json as `trunk_top`"
+  },
+  "usb_c_charger": {
+   "class": "printed",
+   "print_name": null,
+   "source": "ASSUMED \u2014 no measurement or datasheet in this repo as of 2026-08-13 \u2014 priced from mesh volume x the process density in print_process.json. `antenna` in particular MUST stay printed: left_antenna_holder's declared inertia only reproduces when both its meshes sit at ~1250 kg/m3 (composer anchor)."
+  },
+  "wj-wk00-0122topcabinetcase_95": {
+   "class": "servo_case",
+   "servo": "sts3250",
+   "mass_g": 74.5,
+   "source": "AGENTS.md Robot Physical Specs: 14x Feetech STS3250, 74.5 g each. Split across the five meshes of one servo instance by volume."
+  },
+  "wj-wk00-0123middlecase_56": {
+   "class": "servo_case",
+   "servo": "sts3250",
+   "mass_g": 74.5,
+   "source": "AGENTS.md Robot Physical Specs: 14x Feetech STS3250, 74.5 g each. Split across the five meshes of one servo instance by volume."
+  },
+  "wj-wk00-0124bottomcase_45": {
+   "class": "servo_case",
+   "servo": "sts3250",
+   "mass_g": 74.5,
+   "source": "AGENTS.md Robot Physical Specs: 14x Feetech STS3250, 74.5 g each. Split across the five meshes of one servo instance by volume."
+  }
+ }
+}

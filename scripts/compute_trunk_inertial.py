@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Compute trunk_assembly and head_assembly composite inertials (full-tensor).
+"""
+SUPERSEDED AS THE SOURCE OF TRUTH — 2026-08-12, Task M4.
+
+`scripts/compose_body_inertials.py` now owns every body's mass and inertia and
+is what writes the model files. This file is kept as a CROSS-CHECK and as the
+only record of the frame-permutation bug (upstream principal-frame diaginertia
+read as body-frame) and of the upstream baseline tensors.
+
+The two methods are structurally different — upstream-baseline-plus-signed-
+deltas here, bottom-up-per-part there — and task_plan_v2.md M4 step 3 forbids
+gating one on the other. `compose_body_inertials.py --check` prints both and
+their gap for the record. Measured 2026-08-13: trunk 1.178406 kg here against
+1.188870 there, a +10.46 g / +0.9 % gap.
+Compute trunk_assembly and head_assembly composite inertials (full-tensor).
 
 Reproducible source for the <inertial> values in robot.xml, robot_motors.xml
 and robot.urdf. Composes the original (upstream) body inertials with every

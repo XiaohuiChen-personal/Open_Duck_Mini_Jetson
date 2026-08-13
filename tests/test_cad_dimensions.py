@@ -384,50 +384,43 @@ class TestModelFileConsistency:
         )
         return float(inertial.get("mass")), com, tensor
 
-    @pytest.mark.parametrize(
-        "body,base,components,wiring",
-        [
-            pytest.param(
-                "trunk_assembly", "BASE_TRUNK", "TRUNK_COMPONENTS",
-                "TRUNK_WIRING",
-                marks=pytest.mark.xfail(
-                    strict=True,
-                    reason=(
-                        "EXPECTED DIVERGENCE, Task M2 -> M4. M2 (2026-08-12) "
-                        "fixed PLANT-10: the Part-2 CAD deltas are now "
-                        "whole-part MEASURED instead of one assumed density, "
-                        "so the generator emits 1.164076 kg where the model "
-                        "files still declare 1.089544 kg -- a gap of exactly "
-                        "0.074532 kg, the PLANT-10 error. M2 deliberately does "
-                        "NOT write the model files: Task M4 rewrites every "
-                        "body's inertial from one composer and consumes M2's "
-                        "output, and writing them twice would guarantee the "
-                        "two disagree. strict=True, so this flips to a FAILURE "
-                        "the moment M4 lands and the marker must then be "
-                        "deleted. Do not 'fix' this by loosening the "
-                        "tolerance."
-                    ),
-                ),
-            ),
-            ("head_assembly", "BASE_HEAD", "HEAD_COMPONENTS", "HEAD_WIRING"),
-        ],
-    )
-    def test_inertial_matches_generator(self, body, base, components, wiring):
-        """robot.xml inertials must equal the full-tensor generator output.
+    def test_inertials_match_the_bottom_up_composer(self):
+        """The model files must equal `compose_body_inertials.py`, which is the
+        source of truth for every body's inertial as of Task M4 (2026-08-12).
 
-        The generator's upstream base tensors are themselves frame-proofed at
-        import time (URDF full matrix == MJCF quat*diag*quatT self-check), so
-        this guards both value drift and the frame-permutation bug class.
+        This REPLACES a test that compared the model files against
+        `compute_trunk_inertial.py`. That comparison was correct while
+        compute_trunk_inertial wrote trunk_assembly and head_assembly, and is
+        wrong now: the two are structurally different methods -- upstream
+        baseline plus signed deltas, versus bottom-up per-part -- and
+        task_plan_v2.md M4 step 3 explicitly forbids gating one on the other.
+        compute_trunk_inertial.py is kept as a recorded cross-check; the gap is
+        printed by `--check` and is currently +10.46 g (+0.9 %) on the trunk.
         """
-        mod = self._load_generator()
-        mod.check_base(getattr(mod, base), body)
-        total, com, I = mod.compose(
-            getattr(mod, base), getattr(mod, components), getattr(mod, wiring)
-        )
-        xml_mass, xml_com, xml_I = self._xml_inertial(body)
-        assert abs(xml_mass - total) < 1e-6
-        assert np.allclose(xml_com, com, atol=1e-6), f"{body} CoM drift: {xml_com} vs {com}"
-        assert np.allclose(xml_I, I, atol=1e-7), f"{body} tensor drift:\n{xml_I}\nvs\n{I}"
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "cbi", os.path.join(REPO_ROOT, "scripts",
+                                "compose_body_inertials.py"))
+        cbi = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cbi)
+
+        rows, _, _ = cbi.run(golden=False)
+        checked = 0
+        for body, declared, composed in rows:
+            if composed is None:
+                continue
+            checked += 1
+            assert abs(declared["mass"] - composed["mass"]) < 1e-6, (
+                f"{body}: model file says {declared['mass']:.6f} kg but the "
+                f"composer produces {composed['mass']:.6f}. Re-run "
+                "`python3 scripts/compose_body_inertials.py --write`.")
+            assert np.allclose(declared["com"], composed["com"], atol=1e-6), (
+                f"{body} CoM drift: {declared['com']} vs {composed['com']}")
+            assert np.allclose(declared["I"], composed["I"], atol=1e-9), (
+                f"{body} tensor drift")
+        assert checked == 17, (
+            f"composed {checked} bodies, expected 17 real-inertial bodies "
+            "(21 total minus the four 1e-9 kg marker frames)")
 
     def test_inertial_principal_moments_match_fixture(self):
         """Independent cross-check: eigenvalues of the XML full tensors must

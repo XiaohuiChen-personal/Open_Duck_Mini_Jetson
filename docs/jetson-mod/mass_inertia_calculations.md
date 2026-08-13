@@ -1,3 +1,35 @@
+> # ⚠ SUPERSEDED METHOD — 2026-08-13, Task M4
+>
+> **This document describes the LUMPED method. The plant is no longer built that
+> way.** Every body's mass and inertia is now composed **bottom-up, per part**,
+> by `scripts/compose_body_inertials.py` from `scripts/part_densities.json`
+> (one entry per mesh, each with a `source`) and `scripts/part_mass_table.json`
+> (measured slicer mass at the chosen process).
+>
+> | | before M4 | after M4 |
+> |---|---|---|
+> | robot total | 2.657067 kg | **2.729035 kg** |
+> | `trunk_assembly` | 1.089544 kg | **1.188873 kg** |
+> | `head_assembly` | 0.362083 kg | **0.341706 kg** |
+> | method | upstream export + signed deltas on two bodies | per-part composition on all 17 |
+>
+> **Why the change.** The other fifteen real-inertial bodies carried inertials
+> inherited unchanged from an upstream Onshape export at densities nobody
+> recorded — and those densities are demonstrably not one convention:
+> `head_pitch_to_yaw` implies 1250 kg/m³, `foot_assembly` 748, and
+> `hip_roll_assembly`'s printed remainder about 650. Three conventions in one
+> robot. The rebuild makes the plant re-derivable after any print-process change
+> instead of requiring this analysis to be redone by hand.
+>
+> **Three traps, now recorded in `known_issues.md` as MASS-1/2/3:** a uniform
+> density per body inflates every tensor by ~30 %; the four composer anchors
+> validate arithmetic but do not license "printed = 1250" for the whole machine;
+> and a servo's mass splits by volume while its inertia does not.
+>
+> The acceptance decision and its caveats are in
+> [`inertial_rebuild_report.txt`](inertial_rebuild_report.txt). This file is
+> kept for the lumped-method history it records.
+
 # Mass and Inertia Calculations — Jetson Orin Nano Modification
 
 > **REVISION NOTICE (2026-07-06, layout v2.1).** Two classes of error in
