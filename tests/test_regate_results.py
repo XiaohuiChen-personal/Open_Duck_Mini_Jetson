@@ -162,13 +162,23 @@ class TestM2657IsTheCorrectedPlant:
                 "scripts/duck_init_pos.json — every exported action maps to "
                 "the wrong joint. See scripts/verify_action_contract.py.")
 
-    def test_usd_asset_hash_is_the_corrected_model(self):
-        hash_path = os.path.join(REPO_ROOT, "mini_bdx", "robots",
-                                 "open_duck_mini_v2", "usd", ".asset_hash")
-        current = open(hash_path).read().strip()
+    def test_usd_asset_hash_matches_the_directory_readme(self):
+        """Every JSON here must name the USD this DIRECTORY belongs to.
+
+        Compared against the hash the README declares, NOT against the live
+        repo. This directory is a historical record of the pre-Phase-M plant;
+        once Phase M regenerated the USD (Task M6) the live hash legitimately
+        moved on, and asserting against it would fail forever for the wrong
+        reason. What still needs catching is a JSON from a DIFFERENT model
+        landing in here, and the README hash catches exactly that.
+        """
+        readme = os.path.join(DOCS, self.DIRNAME, "README.md")
+        m = re.search(r"`usd_asset_hash`\s*\|\s*`([0-9a-f]+)`", open(readme).read())
+        assert m, f"{self.DIRNAME}/README.md does not declare a usd_asset_hash"
+        declared = m.group(1)
         for name, d in _require(self.DIRNAME):
             recorded = d["plant"].get("usd_asset_hash")
-            assert recorded == current, (
-                f"{name} was measured against USD {recorded!r} but the repo now "
-                f"holds {current!r}. Either the USD was regenerated after this "
-                "eval (the result is stale) or the result is from another model.")
+            assert recorded == declared, (
+                f"{name} was measured against USD {recorded!r} but "
+                f"{self.DIRNAME}/README.md declares {declared!r} — a result "
+                "from another robot model is in this directory.")

@@ -153,9 +153,26 @@ def main() -> int:
     if action_dim != args_cli.expect_action_dim:
         failures.append(
             f"action dim {action_dim} != {args_cli.expect_action_dim}")
-    if action_dim != len(expected_order):
+    # Since Task M0b the ARTICULATION has 16 joints but the POLICY commands 14.
+    # duck_init_pos.json carries both orders; compare each against its own.
+    action_order = data.get("action_joint_order")
+    if action_order is None:
         failures.append(
-            f"action dim {action_dim} != {len(expected_order)} contract joints")
+            "duck_init_pos.json has no `action_joint_order`. Since M0b the "
+            "action space is 14 of the articulation's 16 joints and the "
+            "runtime cannot build a target vector without knowing which.")
+    else:
+        if action_dim != len(action_order):
+            failures.append(f"action dim {action_dim} != "
+                            f"{len(action_order)} action_joint_order entries")
+        expected_action = [j for j in expected_order if "antenna" not in j]
+        if action_order != expected_action:
+            failures.append(
+                "action_joint_order is not the articulation order minus the "
+                f"antennas: {action_order} vs {expected_action}")
+        else:
+            print(f"action joint order MATCHES the articulation order minus "
+                  f"the antennas ({len(action_order)} joints)")
 
     # ---- 4. plant identity, for the record -------------------------------
     body_names = list(robot.data.body_names)

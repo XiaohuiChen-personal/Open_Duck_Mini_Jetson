@@ -1796,7 +1796,57 @@ Observable: the `TOTAL` gram column drops relative to the pre-shelling report sa
 
 ---
 
-### Task M6 — Regenerate the USD and re-run `audit_plant_mass.py` as the phase gate
+### Task M6 — Regenerate the USD and re-run `audit_plant_mass.py` as the phase gate — ✅ **DONE 2026-08-13** — 🚦 **PHASE M COMPLETE**
+
+> **THE PHASE GATE PASSED.**
+>
+> ```
+> TOTAL   MJCF 2.729035   PhysX 2.729035   +0.000000
+> VERDICT: PASS — simulated total is +0.000000 kg (+0.0%) versus the MJCF
+> AUDIT EXIT=0
+> ```
+>
+> The pipeline was re-run in order before the conversion and proved
+> **idempotent**: `--emit-table` → `generate_cad_mods.py` →
+> `--verify-composer` (PASS) → `--check` (exit 0, declared == composed ==
+> 2729.04 g, delta **+0.00 g**), with `git status` clean on every mesh and model
+> file. Only then was the USD regenerated. New asset hash
+> **`767f2415d1b3a056d95e9c310434dbbc`**, mesh manifest **48** entries;
+> `config.yaml`, `.asset_hash`, `.mesh_manifest.json` and the USD are all
+> committed together from one conversion run.
+>
+> **The strict xfails did their job.** Both USD staleness tests turned
+> `XPASS(strict)` the instant the USD was regenerated — a hard failure that
+> forced the markers' removal rather than letting them rot. Removed.
+>
+> **`verify_action_contract.py` then caught a real gap M0b left behind.**
+> `duck_init_pos.json` still declared 16 action joints while the policy now
+> commands 14, so the check failed — correctly. That file **is** the deployment
+> contract, so it now carries **both** orders explicitly:
+> `joint_order` (16, the articulation / state order) and
+> `action_joint_order` (14, what the policy commands), plus `action_dim`,
+> `obs_dim` and `action_scale`. The check compares each against its own and
+> passes:
+>
+> ```
+> joint order MATCHES duck_init_pos.json (16 joints)
+> action joint order MATCHES the articulation order minus the antennas (14 joints)
+> observation dim: 53   action dim: 14   mass 2.729035 kg
+> VERDICT: PASS
+> ```
+>
+> One more test needed repointing, not silencing:
+> `test_usd_asset_hash_is_the_corrected_model` compared the archived
+> `eval_results_m2657/` JSONs against the **live** repo hash. That directory is a
+> historical record of the pre-Phase-M plant, so once M6 regenerated the USD the
+> live hash legitimately moved on. It now compares against the hash the
+> directory's own README declares, which still catches the thing that matters —
+> a result from a different model landing in there.
+>
+> Suite **204 passed, 5 skipped, 0 xfailed**. Verifier **CONFIRMED 20 / 21**.
+>
+> **Training is now unblocked.** Task R2 may run.
+
 
 **AI-agent suitable:** YES. It needs a GPU and an Isaac Lab install; both are present (`~/IsaacLab/isaaclab.sh` exists, GPU is an NVIDIA GB10). There is no purchase and no physical step.
 
