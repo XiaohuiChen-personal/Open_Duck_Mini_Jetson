@@ -3287,7 +3287,7 @@ into `m2657_regate.md`.
 
 ---
 
-### Task R2 — Train the robust seed on the post-Phase-M plant (`v6_robust`)
+### Task R2 — Train the robust seed on the post-Phase-M plant (`v6_robust`) — ✅ **DONE 2026-08-13** — gate 6/6, 0.000 % falls
 
 **AI-agent suitable:** YES — long unattended GPU job; launch detached, monitor,
 report proactively.
@@ -3661,7 +3661,7 @@ models).
 
 ---
 
-### Task R3 — Export the ONNX and verify the deployment contract
+### Task R3 — Export the ONNX and verify the deployment contract — ✅ **DONE 2026-08-13** — verifier 10/10, exit 0
 
 **AI-agent suitable:** YES
 
