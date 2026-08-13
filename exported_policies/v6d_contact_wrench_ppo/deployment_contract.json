@@ -1,0 +1,59 @@
+{
+  "obs_dim": 53,
+  "obs_layout": [
+    "base_ang_vel(3)",
+    "projected_gravity(3)",
+    "velocity_commands(3)",
+    "joint_pos_rel(14)",
+    "joint_vel_rel(14)",
+    "actions(14)",
+    "gait_phase(2)"
+  ],
+  "action_dim": 14,
+  "action_scale": 0.25,
+  "action_formula": "q_target = q_default + action_scale * action",
+  "joint_order": [
+    "left_hip_yaw",
+    "neck_pitch",
+    "right_hip_yaw",
+    "left_hip_roll",
+    "head_pitch",
+    "right_hip_roll",
+    "left_hip_pitch",
+    "head_yaw",
+    "right_hip_pitch",
+    "left_knee",
+    "head_roll",
+    "right_knee",
+    "left_ankle",
+    "right_ankle"
+  ],
+  "q_default_rad": [
+    0.002,
+    0.0,
+    -0.003,
+    0.053,
+    0.0,
+    -0.065,
+    -0.63,
+    0.0,
+    0.635,
+    1.368,
+    0.0,
+    1.379,
+    -0.784,
+    -0.796
+  ],
+  "joint_pos_obs_is_relative": true,
+  "normalizer_epsilon": 0.01,
+  "onnx_batch_dim": 1,
+  "plant_mass_kg": 2.7290353775024414,
+  "usd_asset_hash": "767f2415d1b3a056d95e9c310434dbbc",
+  "mjcf_sha256": "c444493a651b4745eafe5f52a84783ae02e2ed14abd5f24bd3eb2117039931a5",
+  "checkpoint": "model_5998.pt",
+  "checkpoint_md5": "37da88d08bf5d593a3febf74bce96dbe",
+  "onnx_md5": "976c09f31ecb41642c8c9c10007a3e1e",
+  "unmeasurable_obs_dims": {
+    "note": "EMPTY BY CONSTRUCTION. DEPLOY-3 was closed by Task M0b, which removed the two antenna joints from the action and observation spaces (16->14 actions, 59->53 obs). Every remaining dim is measurable on hardware. This is not an oversight."
+  }
+}

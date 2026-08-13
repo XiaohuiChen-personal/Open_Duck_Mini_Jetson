@@ -107,7 +107,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [ART-2](#art-2) | `exported_policies/v4_robust/` was never created | MEDIUM | provenance |
 | [ART-3](#art-3) | `usd/config.yaml` records a deleted worktree as the asset source | LOW | **FIXED 2026-08-11** by the USD regen |
 | [ART-4](#art-4) | `.gitignore` ignores `*.txt` repo-wide — any future prompt library or fixture is silently untracked | MEDIUM | Phase 4/5 |
-| [DEPLOY-1](#deploy-1) | The ONNX omits `action_scale` and `q_default` entirely | HIGH | Phase 4 |
+| [DEPLOY-1](#deploy-1) | The ONNX omits `action_scale` and `q_default` entirely | HIGH | **MITIGATED 2026-08-13** (R3: sidecar ships with the policy; graph unchanged) |
 | [DEPLOY-2](#deploy-2) | The normalizer epsilon is in the graph but not in the checkpoint | MEDIUM | Phase 4 |
 | [DEPLOY-3](#deploy-3) | 4 of the 59 observation dims cannot be measured on hardware | HIGH | **FIXED 2026-08-13** (M0/M0b) |
 | [DEPLOY-4](#deploy-4) | Exported ONNX has a hard-fixed batch dimension of 1 | LOW | offline tooling |
@@ -1205,6 +1205,20 @@ with the measured cost of each mistake.
 
 <a id="deploy-1"></a>
 ## DEPLOY-1 · The ONNX omits `action_scale` and `q_default` — HIGH
+
+> **MITIGATED 2026-08-13 by Task R3 — NOT fixed, and the check stays.** A
+> sidecar now ships with the policy:
+> `exported_policies/v6d_contact_wrench_ppo/deployment_contract.json`, generated
+> by `scripts/make_deployment_contract.py` from the repo's own sources and
+> machine-checked by `scripts/verify_deployment_contract.py` (10 checks, exit 0).
+> It carries `action_scale`, `q_default_rad`, the joint order, the normaliser
+> epsilon and the batch-dim constraint.
+>
+> **The ONNX graph itself is unchanged.** Re-measured against the v6d export:
+> **0 of 193,784** initializer scalars equal 0.25, and the closest action-width
+> tensor (`mlp.6.bias`) differs from `q_default` by **1.374409 rad**. A runtime
+> that ignores the sidecar and commands the graph output directly is still wrong
+> by a 4x gain and the whole standing pose. Do not retire this check.
 
 **Evidence** — exhaustive enumeration of the graph:
 ```

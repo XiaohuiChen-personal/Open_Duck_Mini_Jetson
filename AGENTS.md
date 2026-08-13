@@ -679,7 +679,7 @@ Isaac Lab (DGX Spark) → .pt checkpoint → ONNX export → TensorRT engine →
 - `isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl` — 240 polynomial walking gaits
 - `isaac_lab_env/open_duck_mini_v2/agents/rsl_rl_ppo_cfg.py` — PPO hyperparameters
 - `isaac_lab_env/open_duck_mini_v2/robot_cfg.py` — Robot articulation config
-- `exported_policies/<name>/policy.onnx` — Exported policies (currently only `v5d_contact_wrench_ppo/`; `*.onnx` is gitignored)
+- `exported_policies/<name>/policy.onnx` — Exported policies (`v6d_contact_wrench_ppo/` is current, obs 53 / action 14 on the 2.729 kg plant; `v5d_contact_wrench_ppo/` is the superseded 59/16 archive). `*.onnx` is gitignored, so each dir's `README.md` md5 is the only provenance. **`deployment_contract.json` is required to deploy** — `action_scale` and `q_default` are not in the graph.
 - `experiments/v2/params_sts3250_id008.json` — BAM motor identification parameters (STS3250)
 - `mini_bdx/mini_bdx/utils/rl_utils.py` — Joint order conversion, action scaling
 
@@ -725,14 +725,33 @@ They share the GPU. Locomotion takes <1 ms, Cosmos takes ~300-500 ms. They time-
 trtexec --onnx=policy.onnx --saveEngine=policy.trt --fp16
 
 # Inference wrapper: jetson_runtime/trt_infer.py
-# Input: 59-dim float32 observation vector — v4_robust actor layout, exact
-# order (see the RL Training section of AGENTS.md "v4 Tracks"): base_ang_vel(3),
-# projected_gravity(3), velocity_commands(3), joint_pos_rel(16),
-# joint_vel_rel(16), actions(16), gait_phase(2).
-#   joint_pos_rel = q - q_default (robot_cfg.py init_state.joint_pos), NOT raw
-#   encoder angles. Sending absolute angles offsets 16 inputs by the whole
-#   standing pose. (Historical: v3's obs was 62-dim incl. base_lin_vel.)
-# Output: 16-dim float32 action vector
+#
+# READ exported_policies/v6d_contact_wrench_ppo/deployment_contract.json FIRST.
+# It is generated with the policy and machine-checked by
+# scripts/verify_deployment_contract.py; the numbers below are a summary of it,
+# and the JSON wins if they ever disagree.
+#
+# Input: 53-dim float32 — v6d actor layout, exact order: base_ang_vel(3),
+# projected_gravity(3), velocity_commands(3), joint_pos_rel(14),
+# joint_vel_rel(14), actions(14), gait_phase(2).
+#   joint_pos_rel = q - q_default, NOT raw encoder angles. Absolute angles put
+#   the knees 13-14 sigma outside the training distribution (DEPLOY-2).
+# Output: 14-dim float32 action vector.  Batch dim is HARD-FIXED at 1.
+#
+# THE GRAPH IS NOT THE POLICY (known_issues.md DEPLOY-1, measured on this very
+# export): action_scale = 0.25 appears in 0 of 193,784 initializer scalars, and
+# q_default is absent -- the closest action-width tensor differs by 1.374409 rad.
+#   q_target = q_default + 0.25 * action
+# lives inside Isaac Lab's JointPositionAction. Commanding the ONNX output
+# directly is wrong by a 4x gain AND the whole standing pose: total, silent
+# failure. Take both from the contract.
+# The normaliser epsilon (0.01) is likewise not in the checkpoint; a
+# reimplementation that divides by _std alone is off by 28.0 % on one channel.
+#
+# Joint counts are 14, not 16: Task M0b removed the two antenna joints from the
+# action and observation spaces, which also closed DEPLOY-3.
+# (Historical: v4/v5 were 59-dim obs / 16-dim action; v3 was 62-dim incl.
+# base_lin_vel. Those checkpoints no longer load.)
 # Latency: <1 ms
 ```
 
