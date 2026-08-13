@@ -60,6 +60,8 @@ pieces.
 from __future__ import annotations
 
 import argparse
+import datetime
+import json
 import os
 import re
 import shutil
@@ -74,7 +76,41 @@ GUIDE = os.path.join(REPO, "docs", "print_guide.md")
 # Baseline the CAD mods were cut from; see generate_cad_mods.py BASELINE_COMMIT.
 CAD_BASELINE_COMMIT = "adbc082"
 CAD_MOD_PARTS = ("body_front", "body_middle_bottom", "trunk_bottom", "body_back")
-BOOKED_CAD_DELTA_G = -88.48  # scripts/cad_mod_deltas.json
+DELTAS_JSON = os.path.join(REPO, "scripts", "cad_mod_deltas.json")
+PROCESS_JSON = os.path.join(REPO, "scripts", "print_process.json")
+_BOOKED_FALLBACK_G = -88.48   # the pre-M2 hard-coded value, history only
+
+
+def booked_cad_delta_g() -> tuple[float, str]:
+    """What cad_mod_deltas.json currently books for the Part-2 CAD mods, in g.
+
+    Task M2 deleted the single assumed density this used to be derived from, so
+    reading the file is the only way to stay truthful: `--cad-delta` must
+    compare the measurement against what the model ACTUALLY books, not against
+    a constant someone forgot to update. Returns (grams, provenance).
+    """
+    try:
+        with open(DELTAS_JSON) as fh:
+            data = json.load(fh)
+        g = sum(t["mass"] for t in data["terms"]) * 1000.0
+        return g, f"summed from {os.path.basename(DELTAS_JSON)}"
+    except (OSError, KeyError, ValueError) as exc:
+        print(f"WARNING: could not read {DELTAS_JSON} ({exc}); falling back to "
+              f"the pre-M2 constant {_BOOKED_FALLBACK_G:+.2f} g, which is "
+              f"almost certainly stale.", file=sys.stderr)
+        return _BOOKED_FALLBACK_G, "STALE pre-M2 constant (file unreadable)"
+
+
+def process_defaults() -> dict:
+    """The chosen process/profile from scripts/print_process.json (Task M1).
+
+    Returns {} when the file is absent so this CLI still works standalone.
+    """
+    try:
+        with open(PROCESS_JSON) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
 
 # As-built densities, g/cm^3. Solid-process figures are finished-part densities
 # (including porosity), not powder bulk density -- using bulk density here is a
@@ -209,6 +245,151 @@ def mass_for_part(name: str, cfg: dict, args, slicer: str | None,
     return None, "slice-failed"
 
 
+def _baseline_stl(part: str, dest_dir: str) -> str | None:
+    """Extract print/<part>.stl as it was at CAD_BASELINE_COMMIT."""
+    blob = subprocess.run(
+        ["git", "-C", REPO, "show", f"{CAD_BASELINE_COMMIT}:print/{part}.stl"],
+        capture_output=True)
+    if blob.returncode != 0:
+        return None
+    path = os.path.join(dest_dir, f"{part}.stl")
+    with open(path, "wb") as fh:
+        fh.write(blob.stdout)
+    return path
+
+
+def emit_table(args) -> int:
+    """Write the per-part mass table generate_cad_mods.py books against.
+
+    Task M2. Before this existed, `generate_cad_mods.py` derived CAD-mod mass
+    from ONE assumed density (1116 kg/m^3, "0.9 x solid"), which measured 13x
+    wrong -- the booked -88.48 g against a true -6.60 g at the documented FDM
+    profile (known_issues.md PLANT-10).
+
+    One density cannot work on FDM: material REMOVED comes from bulky interiors
+    that are mostly infill (0.28x solid, measured on trunk_bottom), while
+    material ADDED is thin vents and bosses that print nearly solid. At 2
+    perimeters / 15% infill the signs even disagree -- cutting the inlet slots
+    in body_front INCREASES its sliced mass, because the new slot walls add
+    perimeters and solid skins worth more than the infill they displace. No
+    single scalar reproduces a sign flip.
+
+    So the fix is not a better constant. It is to stop deriving mass from
+    volume at all: measure every part as printed, and measure the four CAD-mod
+    parts at the baseline commit too, so a delta is the difference of two
+    measurements rather than a density times a volume difference.
+
+    `effective_density_g_cm3 = mass_g / volume_cm3` is recorded per part and is
+    an OUTPUT, never an input.
+    """
+    cfg = PROCESS[args.process]
+    slicer = find_slicer(args.slicer)
+    if cfg["kind"] == "fdm" and slicer is None:
+        print("ERROR: --emit-table on an FDM profile needs PrusaSlicer.",
+              file=sys.stderr)
+        return 2
+
+    workdir = tempfile.mkdtemp(prefix="ducktable-")
+    base_dir = os.path.join(workdir, "baseline")
+    os.makedirs(base_dir, exist_ok=True)
+    qty = part_quantities()
+
+    profile = ({"perimeters": args.perimeters, "infill_pct": args.infill}
+               if cfg["kind"] == "fdm" else
+               {"perimeters": None, "infill_pct": None})
+    out = {
+        "_comment": ("Per-part as-printed mass. Written by "
+                     "scripts/measure_print_mass.py --emit-table; consumed by "
+                     "scripts/generate_cad_mods.py. Do NOT hand-edit. "
+                     "effective_density_g_cm3 is an OUTPUT (mass/volume), not "
+                     "an input -- see PLANT-10."),
+        "process": args.process,
+        "kind": cfg["kind"],
+        "process_density_g_cm3": cfg["density"],
+        "generated_on": args.today,
+        "baseline_commit": CAD_BASELINE_COMMIT,
+        "slicer": (subprocess.run([slicer, "--help"], capture_output=True,
+                                  text=True).stdout.splitlines()[0]
+                   if slicer else None),
+        "parts": {},
+        "baseline": {},
+    }
+    out.update(profile)
+
+    def measure(name, stl_path):
+        v = solid_volume_cm3(stl_path)
+        is_tpu = name == TPU_PART
+        rho = TPU_DENSITY if is_tpu else cfg["density"]
+        if cfg["kind"] == "solid":
+            return v, v * rho, "solid"
+        infill = TPU_INFILL_DEFAULT if is_tpu else args.infill
+        g = slice_mass_g(slicer, stl_path, args.perimeters, infill, rho, workdir)
+        how = "sliced"
+        if g is None:
+            for axis, tag in (("z", "sliced:on-bed"), ("x", "sliced:rot-x"),
+                              ("y", "sliced:rot-y")):
+                alt = _reoriented(stl_path, workdir, axis)
+                g = slice_mass_g(slicer, alt, args.perimeters, infill, rho, workdir)
+                if g is not None:
+                    how = tag
+                    break
+        return v, g, how
+
+    failed = []
+    print(f"process : {args.process} ({cfg['kind']})", end="")
+    print(f", {args.perimeters} perim / {args.infill}% infill"
+          if cfg["kind"] == "fdm" else " (solid)")
+    print(f"{'part':30s}{'vol cm3':>10s}{'mass g':>10s}{'rho_eff':>9s}  how")
+    for name in sorted(qty):
+        v, g, how = measure(name, os.path.join(PRINT_DIR, f"{name}.stl"))
+        if g is None:
+            failed.append(name)
+            print(f"{name:30s}{v:10.2f}{'--':>10s}{'--':>9s}  {how}")
+            continue
+        out["parts"][name] = {
+            "volume_cm3": round(v, 4), "mass_g": round(g, 4),
+            "qty": qty[name], "how": how,
+            "effective_density_g_cm3": round(g / v, 5) if v else None,
+        }
+        print(f"{name:30s}{v:10.2f}{g:10.2f}{g / v:9.3f}  {how}")
+
+    print()
+    print(f"baseline @ {CAD_BASELINE_COMMIT}:")
+    for name in CAD_MOD_PARTS:
+        bpath = _baseline_stl(name, base_dir)
+        if bpath is None:
+            print(f"{name:30s}{'not at that commit':>29s}")
+            failed.append(f"{name}@baseline")
+            continue
+        v, g, how = measure(name, bpath)
+        if g is None:
+            failed.append(f"{name}@baseline")
+            print(f"{name:30s}{v:10.2f}{'--':>10s}{'--':>9s}  {how}")
+            continue
+        out["baseline"][name] = {
+            "volume_cm3": round(v, 4), "mass_g": round(g, 4), "how": how,
+            "effective_density_g_cm3": round(g / v, 5) if v else None,
+        }
+        print(f"{name:30s}{v:10.2f}{g:10.2f}{g / v:9.3f}  {how}")
+
+    shutil.rmtree(workdir, ignore_errors=True)
+    if failed:
+        print(f"\nERROR: no mass for {failed}. The table would be incomplete and "
+              f"generate_cad_mods.py would book a wrong delta, so it is NOT "
+              f"written.", file=sys.stderr)
+        return 1
+
+    net = sum(out["parts"][p]["mass_g"] - out["baseline"][p]["mass_g"]
+              for p in CAD_MOD_PARTS)
+    out["cad_mod_net_delta_g"] = round(net, 4)
+    with open(args.emit_table, "w") as fh:
+        json.dump(out, fh, indent=1, sort_keys=False)
+        fh.write("\n")
+    print(f"\nwrote {args.emit_table}: {len(out['parts'])} parts, "
+          f"{len(out['baseline'])} baseline, CAD-mod net {net:+.2f} g")
+    return 0
+
+
 def report(args) -> int:
     cfg = PROCESS[args.process]
     qty = part_quantities()
@@ -298,9 +479,9 @@ def cad_delta(args) -> int:
         print(f"{p:26s}{a:12.2f}{b:12.2f}{b - a:+10.2f}")
     print("-" * 60)
     print(f"{'MEASURED delta':26s}{'':>24s}{total:+10.2f}")
-    print(f"{'BOOKED  delta':26s}{'':>24s}{BOOKED_CAD_DELTA_G:+10.2f}"
-          f"   (generate_cad_mods.py PLA_EFFECTIVE_DENSITY=1116)")
-    print(f"{'error in the model':26s}{'':>24s}{total - BOOKED_CAD_DELTA_G:+10.2f}"
+    booked, provenance = booked_cad_delta_g()
+    print(f"{'BOOKED  delta':26s}{'':>24s}{booked:+10.2f}   ({provenance})")
+    print(f"{'error in the model':26s}{'':>24s}{total - booked:+10.2f}"
           f"   <- trunk_assembly is this much heavier than booked")
     shutil.rmtree(work, ignore_errors=True)
     return 0
@@ -330,23 +511,41 @@ def sweep(args) -> int:
 
 
 def main() -> int:
+    # Defaults come from the Task-M1 decision record when it exists, so this
+    # tool and the mass model cannot silently disagree about which process is
+    # being built. An explicit CLI flag still wins.
+    dflt = process_defaults()
+    d_process = dflt.get("process") or "fdm-pla"
+    d_perim = dflt.get("perimeters") if dflt.get("perimeters") is not None else 2
+    d_infill = dflt.get("infill_pct") if dflt.get("infill_pct") is not None else 15
+    src = (f"scripts/print_process.json ({d_process}"
+           + (f", {d_perim} perim / {d_infill}% infill)" if dflt.get("kind") == "fdm"
+              else ")")) if dflt else "built-in fallback"
+
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--process", default="fdm-pla", choices=sorted(PROCESS),
-                    help="how the parts are made (default: fdm-pla)")
-    ap.add_argument("--perimeters", type=int, default=2,
-                    help="FDM only. print_guide.md does NOT specify this and it is "
-                         "worth ~150 g on the robot (default: 2)")
-    ap.add_argument("--infill", type=int, default=15,
-                    help="FDM only, percent (default: 15, per print_guide.md)")
+    ap.add_argument("--process", default=d_process, choices=sorted(PROCESS),
+                    help=f"how the parts are made (default from {src})")
+    ap.add_argument("--perimeters", type=int, default=d_perim,
+                    help=f"FDM only, wall loops (default {d_perim} from {src}). "
+                         f"One extra perimeter is worth ~130 g on this set.")
+    ap.add_argument("--infill", type=int, default=d_infill,
+                    help=f"FDM only, percent (default {d_infill} from {src})")
     ap.add_argument("--slicer", default=None, help="path to prusa-slicer")
     ap.add_argument("--cad-delta", action="store_true",
                     help="measure the Part-2 CAD-mod mass delta (PLANT-10)")
     ap.add_argument("--sweep", action="store_true",
                     help="run --cad-delta across several profiles")
+    ap.add_argument("--emit-table", metavar="PATH", default=None,
+                    help="write the per-part mass table generate_cad_mods.py "
+                         "books against (normally scripts/part_mass_table.json)")
+    ap.add_argument("--today", default=datetime.date.today().isoformat(),
+                    help="date stamped into --emit-table output")
     args = ap.parse_args()
     if args.sweep:
         return sweep(args)
+    if args.emit_table:
+        return emit_table(args)
     if args.cad_delta:
         return cad_delta(args)
     return report(args)

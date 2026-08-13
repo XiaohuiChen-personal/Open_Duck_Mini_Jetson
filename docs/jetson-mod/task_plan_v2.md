@@ -923,7 +923,73 @@ Observable: exit code 0, and a `TOTAL` line whose piece column reads `52` and wh
 
 ---
 
-### Task M2 — Replace `generate_cad_mods.py`'s assumed density with the measured per-part mass (PLANT-10)
+### Task M2 — Replace `generate_cad_mods.py`'s assumed density with the measured per-part mass (PLANT-10) — ✅ **DONE 2026-08-12**
+
+> **Completed. PLANT-10 is FIXED.** The assumed density is not replaced by a
+> better constant — it is **gone**. `generate_cad_mods.py` no longer derives mass
+> from volume at all.
+>
+> **Measured at the chosen process** (`fdm-asa`, 3 perim / 20 % infill, from
+> `scripts/print_process.json`):
+>
+> | part | baseline g | current g | delta g |
+> |---|---|---|---|
+> | `trunk_bottom` | 36.99 | 13.54 | **−23.45** |
+> | `body_middle_bottom` | 93.30 | 91.58 | −1.72 |
+> | `body_front` | 68.06 | 68.17 | **+0.11** |
+> | `body_back` | 74.63 | 85.74 | **+11.11** |
+> | **net** | | | **−13.95** vs the booked **−88.48** |
+>
+> **`trunk_assembly` was 74.53 g light** — inside the 54–82 g band this plan
+> predicted. `compute_trunk_inertial.py` now emits **1.164076 kg**, against
+> 1.089544 kg. Predicted before running, as the plan demands:
+> `1.089544 + (−0.01395 + 0.0884824) = 1.1640764`. Matched to the digit.
+>
+> **Two of the four deltas are POSITIVE**, which is the whole argument made
+> visible: cutting the inlet slots in `body_front` removes 7.2 cm³ and *adds*
+> 0.11 g, because the new slot walls print near-solid. No scalar density times a
+> volume difference can change sign.
+>
+> Measured effective densities span **0.452** (`trunk_top`) to **1.102 g/cm³**
+> (`knee_to_ankle_right_sheet`) — a factor of 2.4 against the single 1.116 that
+> stood in for all of them. Volume-weighted mean **0.7399 g/cm³ (69.2 % of
+> filament)**.
+>
+> **A measurement artefact worth carrying to M4:** five thin parts measure
+> *above* the 1.07 g/cm³ filament density, worst 1.1021. That is real slicer
+> behaviour — at 3 perimeters a ~2 mm sheet asks ~2.7 mm of wall per side, so
+> walls pack solid and overlap, and PrusaSlicer reports mass from extruded
+> filament length. It is not a leak of a solid figure; the aggregate test proves
+> that.
+>
+> Delivered: `--emit-table` on `measure_print_mass.py` (defaults now read from
+> `print_process.json`), `BOOKED_CAD_DELTA_G` replaced by `booked_cad_delta_g()`
+> which reads `cad_mod_deltas.json` so `--cad-delta` now self-reports
+> `error in the model −0.00`, `whole_part_terms()` replacing
+> `signed_delta_terms()`, `scripts/part_mass_table.json`, and
+> `tests/test_cad_mod_deltas.py` (11 tests).
+>
+> **Verified:** STL bytes unmoved (`git status --porcelain` empty for both mesh
+> dirs, after two consecutive runs), `cad_mod_deltas.json` byte-identical across
+> re-runs (md5 `2d37399c…`), suite **164 passed / 5 skipped / 1 xfailed**.
+>
+> **The model files are deliberately UNTOUCHED** — `robot_motors.xml`,
+> `robot.xml`, `robot.urdf` and `expected_values.json` still declare 1.089544 kg
+> and a 2.657067 kg robot. **Task M4 rewrites every inertial from one composer**
+> and consumes this output; writing them twice would guarantee they disagree.
+> Applying the M2 delta alone would put the robot at **2.731599 kg**.
+>
+> Consequently `tests/test_cad_dimensions.py::test_inertial_matches_generator`
+> now carries a **`strict=True` xfail** for `trunk_assembly`, naming M4 and the
+> exact 0.074532 kg gap. Strict means it becomes a hard FAILURE the moment M4
+> lands, forcing the marker's removal. **Do not close it by loosening a
+> tolerance.**
+>
+> **Provisional-profile caveat.** These masses sit on Protolabs Network's
+> *published* profile, not a vendor-confirmed one
+> (`profile_confirmed_with_vendor: false`). One extra perimeter is ~130 g across
+> the set. If a quote contradicts the published standard, re-run `--emit-table`,
+> `generate_cad_mods.py` and M4 — no geometry is touched, so it is cheap.
 
 **AI-agent suitable:** YES, with one caveat: if M1 chose an FDM process, every step here needs PrusaSlicer on `PATH`, which this machine does not have (M1 Trap 3). On a solid process no slicer is needed and the task is fully local.
 

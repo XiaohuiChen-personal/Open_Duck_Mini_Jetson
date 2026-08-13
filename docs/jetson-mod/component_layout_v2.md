@@ -58,7 +58,7 @@ the combined effect.
 | Battery pack 6× 18650 (3S2P) + BMS | hump + **declared rear extension** | — | 2 original cells at the modeled positions; **4 extra cells do NOT fit as a 2×2 grid: the declared block at (-0.145, 0, 0.0306) (38×38×65 mm) overlaps each modeled cell by ~11.9 cm³; the bore behind the existing pair is only 28.4 mm deep = one 18 mm column (2 cells), so the 6-cell pack needs a deeper hump or the existing pair moved forward** (seated on the extension bore floor at z=−2) inside the Part-2 hump extension (current hump interior is only ~18 mm deep behind the lid and tapers — it cannot take more than the 2 existing cells) |
 
 Whole-robot mass after the Part-2 shell mods: **2.657067 kg** (the CAD cuts
-removed ~88.5 g of PLA; see "Part-2 status" below). Frame-correct inertials
+removed **13.95 g** measured, not the ~88.5 g once assumed; see "Part-2 status" below). Frame-correct inertials
 (from `compute_trunk_inertial.py`, which loads the exact signed shell-delta
 tensors from `scripts/cad_mod_deltas.json`; MJCF `fullinertia`, URDF full
 matrix):
@@ -133,14 +133,28 @@ All cuts below were applied by `scripts/generate_cad_mods.py` (trimesh +
 manifold3d booleans; **idempotent — restores pristine meshes from
 BASELINE_COMMIT adbc082 before every run**) to the sim meshes AND mm-scale
 print/ copies; every modified part remains a single watertight component.
-Exact signed volume/tensor deltas are written to
-`scripts/cad_mod_deltas.json` and consumed by `compute_trunk_inertial.py`
-(printed-PLA effective density 1.116 g/cm³ — a consistency choice with the
-unknown upstream export density, ±10-30 g band on the bulky spine region;
-weigh old/new prints in Phase 4). Deltas: spine cut −60.3 cm³ (−67.3 g),
-body_middle_bottom −4.1 +2.5 cm³, body_front −7.2 cm³, hump extension
-−37.4 +27.3 cm³. **Trunk is now 1.089544 kg; total robot 2.657067 kg
-(−88.5 g vs the pre-Part-2 model).** Standing CoM ≈ −6.3 mm aft of the
+Volume/tensor deltas are written to `scripts/cad_mod_deltas.json` and consumed
+by `compute_trunk_inertial.py`.
+
+> **Rewritten 2026-08-12 by Task M2 (PLANT-10 fix).** These used to be signed
+> *diff-solid* terms whose mass came from one assumed printed-PLA density of
+> 1.116 g/cm³ with a claimed ±10–30 g band. That was 74.53 g wrong. They are now
+> **whole-part measured** terms: each modified part is sliced at the chosen
+> process (`fdm-asa`, 3 perim / 20 % infill — `scripts/print_process.json`)
+> both at baseline commit `adbc082` and as-is, and the two measurements are
+> booked directly. No density is assumed anywhere; the measured spread across
+> this part set is **0.45–1.05 g/cm³**, a factor of 2.3.
+>
+> **Measured per-part deltas** (g): trunk_bottom **−23.45**,
+> body_middle_bottom **−1.72**, body_front **+0.11**, body_back **+11.11** —
+> net **−13.95 g**. The two positive terms are the point: cutting the inlet
+> slots in `body_front` *removes* 7.2 cm³ yet *adds* mass, because the new slot
+> walls print near-solid and outweigh the infill they displace. No single
+> density can reproduce a sign flip.
+
+**Trunk is now 1.164076 kg** (was booked 1.089544 kg), **total robot
+≈ 2.731599 kg** (was 2.657067 kg), i.e. **−13.95 g vs the pre-Part-2 model**
+rather than the −88.5 g once claimed. Standing CoM ≈ −6.3 mm aft of the
 foot origins.
 
 As-built details (post-review corrections): +y port opening

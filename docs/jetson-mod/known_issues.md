@@ -89,7 +89,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [PLANT-7](#plant-7) | No latency model of any kind | MEDIUM | all |
 | [PLANT-8](#plant-8) | The yaw command is a heading servo, never an open-loop rate | MEDIUM | teleop / VLM consumers |
 | [PLANT-9](#plant-9) | The push curriculum is sized against a "0.17 m CoM height"; 0.17 m is the root spawn height and the measured CoM is 0.203 m | LOW | v5a/v5b only |
-| [PLANT-10](#plant-10) | CAD-mod mass deltas are booked at 0.9× solid PLA; measured as-printed is 0.28–0.53×, so `trunk_assembly` is 54–82 g light | HIGH | v4_robust, v5a–v5d, hardware |
+| [PLANT-10](#plant-10) | CAD-mod mass deltas were booked at 0.9× solid PLA; `trunk_assembly` was **74.53 g light** | HIGH | **FIXED 2026-08-12** (Task M2) — mass is now whole-part measured, no density assumed |
 | [CFG-1](#cfg-1) | `torque_z_range` is silently discarded — a dead configured parameter | MEDIUM | all v5 arms incl. v5d |
 | [CFG-2](#cfg-2) | Obstacles are placed twice per episode, with two independent draws | MEDIUM | v5a–v5d, ObstacleEval |
 | [CFG-3](#cfg-3) | In v5c/v5d the disturbance gate is maintained every step and read by nothing | LOW | v5c, v5d |
@@ -588,7 +588,7 @@ the robot when it is not one.
 than hard-coding either number.
 
 <a id="plant-10"></a>
-## PLANT-10 · CAD-mod mass deltas are booked at a density the parts are not printed at — HIGH
+## PLANT-10 · CAD-mod mass deltas are booked at a density the parts are not printed at — HIGH — ✅ **FIXED 2026-08-12**
 
 `scripts/generate_cad_mods.py:51` converts Part-2 CAD volume deltas to mass with
 
@@ -658,14 +658,85 @@ and auto-reorients parts whose authored pose gives the slicer a knife-edge first
 layer. Whole-set totals it produces: **1158 g** FDM PLA at 2 perim/15%,
 **1598 g** MJF PA12 (solid — powder processes have no infill parameter).
 
-`PLA_EFFECTIVE_DENSITY` is deliberately **left unchanged** for now. Correcting it
-moves the plant, and the right value depends on the print process, which is an
-open decision. It should be fixed in the same change that re-derives the trunk
-inertial and retrains — not before, and not separately from PLANT-1's retrain.
+~~`PLA_EFFECTIVE_DENSITY` is deliberately **left unchanged** for now.~~
+**Superseded — see the FIXED block below.** That reasoning was right at the time:
+the correction moves the plant and the right value depended on the print process,
+which was open. Task M1 settled the process on 2026-08-12 and Task M2 applied the
+correction the same day, ahead of the R2/R2b retrain, exactly as this paragraph
+asked.
 
 > **Scope caution.** The 698.5 g upstream trunk booking carries its own unknown
 > density, so this fix corrects the *delta*, not the absolute baseline. The
 > absolute number is only settled by the bottom-up rebuild or by weighing.
+
+### FIXED 2026-08-12 — Task M2
+
+**The assumed density is gone, not replaced.** `scripts/generate_cad_mods.py` no
+longer derives mass from volume at all. Each modified part now contributes two
+**measured whole-part** terms — `<name>_baseline` at negative mass and
+`<name>_current` at positive mass — taken from `scripts/part_mass_table.json`,
+which `scripts/measure_print_mass.py --emit-table` produces by slicing every
+part at the process recorded in `scripts/print_process.json`, including the four
+CAD-mod parts as they were at baseline commit `adbc082`.
+
+The net is therefore the measured delta by construction, and the two tensors of
+a pair cancel over the regions the edit did not touch.
+
+**Measured at the chosen process (`fdm-asa`, 3 perimeters / 20 % infill):**
+
+| part | baseline g | current g | delta g |
+|---|---|---|---|
+| `trunk_bottom` | 36.99 | 13.54 | **−23.45** |
+| `body_middle_bottom` | 93.30 | 91.58 | −1.72 |
+| `body_front` | 68.06 | 68.17 | **+0.11** |
+| `body_back` | 74.63 | 85.74 | **+11.11** |
+| **net** | | | **−13.95** |
+
+against the **−88.48 g** previously booked. **`trunk_assembly` was 74.53 g
+light**, inside the 54–82 g band this entry predicted.
+`scripts/compute_trunk_inertial.py` now emits **1.164076 kg** for
+`trunk_assembly`, against 1.089544 kg before.
+
+**Why no constant could have worked, now visible in the data.** Two of the four
+deltas are **positive**. Cutting the inlet slots in `body_front` removes
+7.2 cm³ of geometry and *adds* 0.11 g, because the new slot walls contribute
+perimeters and solid skins worth more than the infill they displace. A scalar
+density times a volume difference cannot change sign. The measured effective
+densities across this part set span **0.452 g/cm³** (`trunk_top`) to
+**1.102 g/cm³** (`knee_to_ankle_right_sheet`) — a factor of 2.4 against the
+single 1.116 that stood in for all of them.
+
+Five thin parts measure *above* the 1.07 g/cm³ filament density. That is real
+slicer behaviour, not an error: at 3 perimeters a ~2 mm sheet asks for ~2.7 mm
+of wall per side, so the walls pack solid and overlap, and PrusaSlicer reports
+mass from extruded filament length. The volume-weighted mean across the set is
+**0.7399 g/cm³ (69.2 % of filament)**, which is what confirms infill is actually
+being applied.
+
+**Guarded by** `tests/test_cad_mod_deltas.py` (11 tests): the booked per-part
+sum must equal the measured difference to 1e-6 kg; `generate_cad_mods` must not
+regain the constant (an attribute check, not a grep); `cad_mod_deltas.json` must
+record the same process as `print_process.json`; positive-mass tensors must be
+positive-definite and satisfy the triangle inequality; and the set must not be
+secretly solid.
+
+**Two things this fix deliberately does NOT do.**
+1. **The model files are untouched.** `robot_motors.xml`, `robot.xml`,
+   `robot.urdf` and `tests/fixtures/expected_values.json` still declare the old
+   trunk inertial and a 2.657067 kg robot. **Task M4 rewrites every body's
+   inertial from one composer** and consumes this output; writing it twice would
+   guarantee the two disagree. Applying the M2 delta alone would put the robot
+   at **2.731599 kg**.
+2. **The absolute baseline is still unsettled.** The scope caution above stands:
+   the 698.5 g upstream trunk booking carries its own unknown density, so this
+   corrects the *delta*, not the absolute. M4 owns that.
+
+**The provisional-profile caveat.** The masses above are measured at Protolabs
+Network's *published* profile, not at a profile a vendor has confirmed for this
+order (`print_process.json: profile_confirmed_with_vendor: false`). One extra
+perimeter is worth ~130 g across the set. If a quote contradicts the published
+standard, re-run `--emit-table`, `generate_cad_mods.py` and M4. No geometry is
+touched, so the re-run is cheap.
 
 ---
 

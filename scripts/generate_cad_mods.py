@@ -43,31 +43,45 @@ OFF = np.array([-0.019, 0.0, 0.0648909])  # body = local + OFF
 # are applied to THESE, so re-running the script is idempotent.
 BASELINE_COMMIT = "adbc082"
 
-# Effective density for booking printed-PLA volume deltas as mass.
-# NOTE (review finding): this is a consistency choice with the unknown
-# density baked into the upstream 698.5 g trunk booking, NOT a measured
-# value — the spine region is bulky (not thin-wall), so the true delta
-# carries a +/-10-30 g band. True-up by weighing old/new prints in Phase 4.
+# Per-part AS-PRINTED mass, measured by
+#   python3 scripts/measure_print_mass.py --emit-table scripts/part_mass_table.json
+# and consumed here. Task M2 / known_issues.md PLANT-10.
 #
-# !!! MEASURED WRONG 2026-08-11 — see docs/jetson-mod/known_issues.md#plant-10.
-# The band above is far too optimistic. Slicing the adbc082 baseline geometry
-# against the current geometry with identical settings measures the delta as
-# -6.60 g, not the -88.48 g this constant books, i.e. trunk_assembly is 54-82 g
-# heavier than the model says. The error keeps its sign across 2-3 perimeters
-# and 15-40% infill. Reproduce with:
+# What this replaces, and why a constant could never work. Until 2026-08-12 this
+# file booked CAD-mod mass as a single assumed density (1116 kg/m^3, "0.9 x
+# solid") times a volume difference. Measured against the real geometry that is
+# 13x wrong: -88.48 g booked against -6.60 g true at the documented FDM profile.
 #
-#     python3 scripts/measure_print_mass.py --cad-delta --sweep
+# One density cannot describe both sides of a diff. Material REMOVED comes from
+# bulky interiors that are mostly infill (0.28x solid, measured on
+# trunk_bottom); material ADDED is thin vents and bosses that print nearly
+# solid. At 2 perimeters / 15% infill the signs even disagree -- cutting the
+# inlet slots in body_front INCREASES its sliced mass, because the new slot
+# walls add perimeters and solid skins worth more than the infill they displace.
+# No scalar reproduces a sign flip.
 #
-# Why one density cannot work: material REMOVED came from bulky interiors that
-# are mostly infill (0.28x solid measured on trunk_bottom), while material ADDED
-# is thin vents/bosses that print nearly solid. Both errors push the same way.
+# The measured spread across this part set is 0.45 to 1.05 g/cm^3 -- a factor of
+# 2.3 against the single value that used to stand in for all of it.
 #
-# The constant is deliberately NOT changed here. Correcting it moves the plant,
-# and the right value depends on the print process, which is still an open
-# decision (FDM at ~1158 g vs MJF PA12 at ~1598 g for the same geometry — for
-# powder processes there is no infill at all). Fix it in the same change that
-# re-derives the trunk inertial and retrains, not before.
-PLA_EFFECTIVE_DENSITY = 1116.0  # kg/m^3 (0.9 x solid)
+# So mass is no longer derived from volume at all. Each modified part
+# contributes TWO whole-part terms: the baseline part at negative mass and the
+# current part at positive mass, each measured. The net is the measured delta by
+# construction, and the two tensors cancel over the unchanged regions.
+PART_MASS_TABLE = os.path.join(REPO, "scripts", "part_mass_table.json")
+
+
+def load_part_masses():
+    """The measured table, or a clear instruction on how to produce it."""
+    try:
+        with open(PART_MASS_TABLE) as fh:
+            return json.load(fh)
+    except FileNotFoundError:
+        raise SystemExit(
+            f"{PART_MASS_TABLE} not found.\n"
+            "Run this first:\n"
+            "    python3 scripts/measure_print_mass.py "
+            "--emit-table scripts/part_mass_table.json\n"
+            "It reads the chosen process from scripts/print_process.json.")
 
 DELTAS_JSON = os.path.join(REPO, "scripts", "cad_mod_deltas.json")
 
@@ -110,34 +124,50 @@ def save(name, mesh):
     pm.export(os.path.join(PRINT_DIR, f"{name}.stl"))
 
 
-def signed_delta_terms(name, before, after):
-    """Exact inertia bookkeeping: one term for removed material (negative
-    mass) and one for added material (positive), each with the diff solid's
-    exact tensor about its own centroid (body frame)."""
+def whole_part_terms(name, before, after, table):
+    """Book the measured mass of the whole part, before and after.
+
+    Two terms per modified part rather than two diff terms:
+
+      <name>_baseline   negative mass, the measured baseline part
+      <name>_current    positive mass, the measured current part
+
+    The net is the measured delta by construction, and the two tensors cancel
+    exactly over the regions the edit did not touch. This is what removes the
+    density assumption -- see the PART_MASS_TABLE block above.
+
+    Sign convention, load-bearing: BOTH tensors are emitted POSITIVE.
+    compute_trunk_inertial.py::_load_shell_deltas negates the tensor whenever
+    mass < 0, so a pre-negated tensor would be double-negated.
+    """
     terms = []
-    for label, a, b, sign in [
-        (f"{name}_removed", before, after, -1.0),
-        (f"{name}_added", after, before, +1.0),
+    for label, mesh, grams, rho, sign in [
+        (f"{name}_baseline", before, table["baseline"][name]["mass_g"],
+         table["baseline"][name]["effective_density_g_cm3"], -1.0),
+        (f"{name}_current", after, table["parts"][name]["mass_g"],
+         table["parts"][name]["effective_density_g_cm3"], +1.0),
     ]:
-        diff = boolean(a, b, "difference")
-        if diff.is_empty or abs(diff.volume) < 1e-9:
-            continue
-        diff.density = PLA_EFFECTIVE_DENSITY
-        com_body = diff.center_mass + OFF
-        # moment_inertia is about the mesh CoM in mesh (== local == body-
-        # aligned) axes; store the full symmetric tensor.
-        I = diff.moment_inertia
+        m = mesh.copy()
+        # Uniform density equal to the part's MEASURED effective density, so the
+        # tensor is consistent with the mass being booked. g/cm^3 -> kg/m^3.
+        m.density = rho * 1000.0
+        com_body = m.center_mass + OFF
+        I = m.moment_inertia
         terms.append(
             dict(
                 name=label,
-                mass=sign * diff.mass,
+                mass=sign * grams / 1000.0,
                 pos=[float(v) for v in com_body],
                 tensor=[[float(I[r][c]) for c in range(3)] for r in range(3)],
-                volume_cm3=sign * diff.volume * 1e6,
+                volume_cm3=sign * m.volume * 1e6,
+                effective_density_g_cm3=rho,
+                source="measured",
             )
         )
-        print(f"  {label}: {sign*diff.volume*1e6:+.3f} cm^3 = {sign*diff.mass*1000:+.2f} g "
-              f"at body ({com_body[0]:.4f}, {com_body[1]:.4f}, {com_body[2]:.4f})")
+    v0, v1 = -terms[0]["volume_cm3"], terms[1]["volume_cm3"]
+    m0, m1 = -terms[0]["mass"] * 1000.0, terms[1]["mass"] * 1000.0
+    print(f"  {name}: {v0:.2f} -> {v1:.2f} cm^3, {m0:.2f} -> {m1:.2f} g "
+          f"({m1 - m0:+.2f} g)")
     return terms
 
 
@@ -192,13 +222,20 @@ def check_partition_fit(wall_mm, shells):
 
 
 def main():
+    table = load_part_masses()
+    kind = table.get("kind")
+    prof = (f'{table.get("perimeters")} perim / {table.get("infill_pct")}% infill'
+            if kind == "fdm" else "solid")
+    print(f'part mass table: {PART_MASS_TABLE}')
+    print(f'process        : {table.get("process")} ({prof})')
+    print(f'generated on   : {table.get("generated_on")}\n')
     all_terms = []
 
     # ------------------------------------------------------------------ 1
     tb0 = baseline_mesh("trunk_bottom")
     tb = boolean(tb0, body_box([-0.044, -0.016, -0.0136], [0.021, 0.017, 0.051]), "difference")
     print("trunk_bottom (spine cut):")
-    all_terms += signed_delta_terms("trunk_bottom", tb0, tb)
+    all_terms += whole_part_terms("trunk_bottom", tb0, tb, table)
     save("trunk_bottom", tb)
 
     # ------------------------------------------------------------------ 2
@@ -209,7 +246,7 @@ def main():
     for x, y in [(-0.075, 0.038), (-0.075, -0.038), (0.015, 0.038), (0.015, -0.038)]:
         bmb = boolean(bmb, body_cyl((x, y), -0.0245, -0.0115, 0.004), "union")
     print("body_middle_bottom (port x[-80,-58] z[-16.5,24] + 2 louvers + 4 bosses):")
-    all_terms += signed_delta_terms("body_middle_bottom", bmb0, bmb)
+    all_terms += whole_part_terms("body_middle_bottom", bmb0, bmb, table)
     save("body_middle_bottom", bmb)
 
     # ------------------------------------------------------------------ 3
@@ -219,7 +256,7 @@ def main():
         for yc in (-0.026, 0.0, 0.026):
             bf = boolean(bf, body_box([0.031, yc - 0.010, z_lo], [0.051, yc + 0.010, z_hi]), "difference")
     print("body_front (inlet slots):")
-    all_terms += signed_delta_terms("body_front", bf0, bf)
+    all_terms += whole_part_terms("body_front", bf0, bf, table)
     save("body_front", bf)
 
     # ------------------------------------------------------------------ 4
@@ -227,7 +264,7 @@ def main():
     bb = boolean(bb0, body_box([-0.170, -0.024, -0.005], [-0.134, 0.024, 0.070]), "union")
     bb = boolean(bb, body_box([-0.167, -0.0205, -0.002], [-0.125, 0.0205, 0.067]), "difference")
     print("body_back (hump extension):")
-    all_terms += signed_delta_terms("body_back", bb0, bb)
+    all_terms += whole_part_terms("body_back", bb0, bb, table)
     save("body_back", bb)
 
     # ------------------------------------------------------------------ 5
@@ -243,7 +280,11 @@ def main():
         json.dump(
             dict(
                 baseline_commit=BASELINE_COMMIT,
-                density_kg_m3=PLA_EFFECTIVE_DENSITY,
+                process=table.get("process"),
+                perimeters=table.get("perimeters"),
+                infill_pct=table.get("infill_pct"),
+                part_mass_table_generated_on=table.get("generated_on"),
+                method="whole-part measured mass (Task M2); no assumed density",
                 terms=all_terms,
             ),
             f,

@@ -122,9 +122,24 @@ TRUNK_COMPONENTS = [
 ]
 
 # Part-2 shell/chassis mesh deltas: loaded from scripts/cad_mod_deltas.json
-# (written by scripts/generate_cad_mods.py), one signed term per
-# removed/added diff solid with its EXACT tensor about its own centroid.
-# Density assumption + uncertainty band documented in generate_cad_mods.py.
+# (written by scripts/generate_cad_mods.py).
+#
+# CHANGED BY TASK M2 (2026-08-12). These used to be signed DIFF-SOLID terms
+# whose mass came from one assumed density. They are now MEASURED WHOLE-PART
+# replacements: per modified part, a `<name>_baseline` term at negative mass and
+# a `<name>_current` term at positive mass, each mass taken from
+# scripts/part_mass_table.json (sliced at the process in
+# scripts/print_process.json) and each tensor computed at that part's own
+# measured effective density.
+#
+# The schema is unchanged -- name / mass / pos / tensor / volume_cm3 -- so
+# nothing here needed rewriting. The net is now the measured delta by
+# construction rather than a density times a volume difference, and the two
+# tensors of a pair cancel over the regions the edit did not touch.
+#
+# Why it mattered: the old constant booked -88.48 g where the true delta is
+# -13.95 g at the chosen profile, so trunk_assembly was 74.53 g light. See
+# docs/jetson-mod/known_issues.md PLANT-10.
 _DELTAS_JSON = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "cad_mod_deltas.json"
 )

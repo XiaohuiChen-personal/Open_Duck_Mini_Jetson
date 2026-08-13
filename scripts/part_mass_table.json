@@ -1,0 +1,299 @@
+{
+ "_comment": "Per-part as-printed mass. Written by scripts/measure_print_mass.py --emit-table; consumed by scripts/generate_cad_mods.py. Do NOT hand-edit. effective_density_g_cm3 is an OUTPUT (mass/volume), not an input -- see PLANT-10.",
+ "process": "fdm-asa",
+ "kind": "fdm",
+ "process_density_g_cm3": 1.07,
+ "generated_on": "2026-08-12",
+ "baseline_commit": "adbc082",
+ "slicer": "PrusaSlicer-2.7.2+linux-arm64-GTK3-202402291318 based on Slic3r (with GUI support)",
+ "parts": {
+  "battery_pack_lid": {
+   "volume_cm3": 23.6401,
+   "mass_g": 16.46,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.69627
+  },
+  "body_back": {
+   "volume_cm3": 95.4468,
+   "mass_g": 85.74,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.8983
+  },
+  "body_front": {
+   "volume_cm3": 135.436,
+   "mass_g": 68.17,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.50334
+  },
+  "body_middle_bottom": {
+   "volume_cm3": 145.805,
+   "mass_g": 91.58,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.6281
+  },
+  "body_middle_top": {
+   "volume_cm3": 76.2599,
+   "mass_g": 73.88,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.96879
+  },
+  "bulb": {
+   "volume_cm3": 1.6949,
+   "mass_g": 1.76,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.03843
+  },
+  "flash_light_module": {
+   "volume_cm3": 12.5201,
+   "mass_g": 8.03,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.64137
+  },
+  "flash_reflector_interface": {
+   "volume_cm3": 2.2077,
+   "mass_g": 2.37,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.07353
+  },
+  "foot_bottom_pla": {
+   "volume_cm3": 15.8845,
+   "mass_g": 9.23,
+   "qty": 2,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.58107
+  },
+  "foot_bottom_tpu": {
+   "volume_cm3": 23.5978,
+   "mass_g": 18.39,
+   "qty": 2,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.77931
+  },
+  "foot_side": {
+   "volume_cm3": 21.4493,
+   "mass_g": 14.97,
+   "qty": 2,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.69792
+  },
+  "foot_top": {
+   "volume_cm3": 39.6533,
+   "mass_g": 24.5,
+   "qty": 2,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.61786
+  },
+  "head": {
+   "volume_cm3": 229.3502,
+   "mass_g": 190.69,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.83144
+  },
+  "head_bot_sheet": {
+   "volume_cm3": 65.9074,
+   "mass_g": 52.41,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.79521
+  },
+  "head_pitch_to_yaw": {
+   "volume_cm3": 13.5482,
+   "mass_g": 12.75,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.94108
+  },
+  "head_roll_mount": {
+   "volume_cm3": 13.3676,
+   "mass_g": 11.37,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.85056
+  },
+  "head_yaw_to_roll": {
+   "volume_cm3": 29.4218,
+   "mass_g": 19.02,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.64646
+  },
+  "knee_to_ankle_left_sheet": {
+   "volume_cm3": 8.2605,
+   "mass_g": 7.91,
+   "qty": 4,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.95757
+  },
+  "knee_to_ankle_right_sheet": {
+   "volume_cm3": 6.5418,
+   "mass_g": 7.21,
+   "qty": 4,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.10214
+  },
+  "left_antenna_holder": {
+   "volume_cm3": 2.9341,
+   "mass_g": 3.15,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.07357
+  },
+  "left_cache": {
+   "volume_cm3": 64.609,
+   "mass_g": 57.06,
+   "qty": 1,
+   "how": "sliced:rot-x",
+   "effective_density_g_cm3": 0.88316
+  },
+  "left_eye": {
+   "volume_cm3": 1.4276,
+   "mass_g": 1.56,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.09277
+  },
+  "left_roll_to_pitch": {
+   "volume_cm3": 29.6353,
+   "mass_g": 21.75,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.73392
+  },
+  "leg_spacer": {
+   "volume_cm3": 7.0507,
+   "mass_g": 5.49,
+   "qty": 4,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.77865
+  },
+  "neck_left_sheet": {
+   "volume_cm3": 8.0601,
+   "mass_g": 6.13,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.76054
+  },
+  "neck_right_sheet": {
+   "volume_cm3": 6.1618,
+   "mass_g": 5.79,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.93966
+  },
+  "right_antenna_holder": {
+   "volume_cm3": 2.9341,
+   "mass_g": 3.15,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.07357
+  },
+  "right_cache": {
+   "volume_cm3": 64.609,
+   "mass_g": 57.32,
+   "qty": 1,
+   "how": "sliced:rot-x",
+   "effective_density_g_cm3": 0.88718
+  },
+  "right_eye": {
+   "volume_cm3": 4.6288,
+   "mass_g": 4.83,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.04347
+  },
+  "right_roll_to_pitch": {
+   "volume_cm3": 29.6353,
+   "mass_g": 21.75,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.73392
+  },
+  "roll_motor_bottom": {
+   "volume_cm3": 8.495,
+   "mass_g": 7.31,
+   "qty": 2,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.86051
+  },
+  "roll_motor_top": {
+   "volume_cm3": 9.1755,
+   "mass_g": 6.88,
+   "qty": 2,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.74983
+  },
+  "speaker_interface": {
+   "volume_cm3": 1.8039,
+   "mass_g": 1.88,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.0422
+  },
+  "speaker_stand": {
+   "volume_cm3": 6.9861,
+   "mass_g": 6.93,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.99197
+  },
+  "thermal_partition": {
+   "volume_cm3": 13.068,
+   "mass_g": 13.66,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 1.0453
+  },
+  "trunk_bottom": {
+   "volume_cm3": 22.2399,
+   "mass_g": 13.54,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.60882
+  },
+  "trunk_top": {
+   "volume_cm3": 144.679,
+   "mass_g": 65.41,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.4521
+  }
+ },
+ "baseline": {
+  "body_front": {
+   "volume_cm3": 142.6374,
+   "mass_g": 68.06,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.47715
+  },
+  "body_middle_bottom": {
+   "volume_cm3": 147.4937,
+   "mass_g": 93.3,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.63257
+  },
+  "trunk_bottom": {
+   "volume_cm3": 82.5624,
+   "mass_g": 36.99,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.44802
+  },
+  "body_back": {
+   "volume_cm3": 105.5256,
+   "mass_g": 74.63,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.70722
+  }
+ },
+ "perimeters": 3,
+ "infill_pct": 20,
+ "cad_mod_net_delta_g": -13.95
+}

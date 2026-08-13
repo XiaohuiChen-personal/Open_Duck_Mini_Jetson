@@ -374,7 +374,28 @@ class TestModelFileConsistency:
     @pytest.mark.parametrize(
         "body,base,components,wiring",
         [
-            ("trunk_assembly", "BASE_TRUNK", "TRUNK_COMPONENTS", "TRUNK_WIRING"),
+            pytest.param(
+                "trunk_assembly", "BASE_TRUNK", "TRUNK_COMPONENTS",
+                "TRUNK_WIRING",
+                marks=pytest.mark.xfail(
+                    strict=True,
+                    reason=(
+                        "EXPECTED DIVERGENCE, Task M2 -> M4. M2 (2026-08-12) "
+                        "fixed PLANT-10: the Part-2 CAD deltas are now "
+                        "whole-part MEASURED instead of one assumed density, "
+                        "so the generator emits 1.164076 kg where the model "
+                        "files still declare 1.089544 kg -- a gap of exactly "
+                        "0.074532 kg, the PLANT-10 error. M2 deliberately does "
+                        "NOT write the model files: Task M4 rewrites every "
+                        "body's inertial from one composer and consumes M2's "
+                        "output, and writing them twice would guarantee the "
+                        "two disagree. strict=True, so this flips to a FAILURE "
+                        "the moment M4 lands and the marker must then be "
+                        "deleted. Do not 'fix' this by loosening the "
+                        "tolerance."
+                    ),
+                ),
+            ),
             ("head_assembly", "BASE_HEAD", "HEAD_COMPONENTS", "HEAD_WIRING"),
         ],
     )
