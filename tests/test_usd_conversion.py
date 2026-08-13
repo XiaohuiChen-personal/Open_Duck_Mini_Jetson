@@ -33,6 +33,21 @@ class TestUSDConversion:
         script = os.path.join(REPO_ROOT, "scripts", "convert_mjcf_to_usd.py")
         assert os.path.exists(script)
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "EXPECTED STALENESS, Phase M -> Task M6. M2 (PLANT-10) and M3 "
+            "(six 18650 cells + a deepened body_back hump) changed "
+            "robot_motors.xml and its meshes, and M4 will rewrite every "
+            "inertial next. The USD is GENERATED, never authored, and "
+            "task_plan_v2.md makes regenerating it Task M6, the Phase-M gate, "
+            "so that it is rebuilt ONCE at the end rather than after every "
+            "edit. strict=True, so this becomes a hard FAILURE the moment M6 "
+            "regenerates the USD and the marker must then be deleted. "
+            "NOTHING MAY TRAIN BEFORE M6: Isaac Lab loads the USD, not the "
+            "MJCF, so a stale USD trains a policy on the old plant silently."
+        ),
+    )
     def test_usd_not_stale(self):
         """The USD must have been generated from the CURRENT robot_motors.xml.
 
@@ -74,6 +89,21 @@ class TestUSDConversion:
             "Re-run: cd ~/IsaacLab && ./isaaclab.sh -p scripts/convert_mjcf_to_usd.py"
         )
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "EXPECTED STALENESS, Phase M -> Task M6. M2 (PLANT-10) and M3 "
+            "(six 18650 cells + a deepened body_back hump) changed "
+            "robot_motors.xml and its meshes, and M4 will rewrite every "
+            "inertial next. The USD is GENERATED, never authored, and "
+            "task_plan_v2.md makes regenerating it Task M6, the Phase-M gate, "
+            "so that it is rebuilt ONCE at the end rather than after every "
+            "edit. strict=True, so this becomes a hard FAILURE the moment M6 "
+            "regenerates the USD and the marker must then be deleted. "
+            "NOTHING MAY TRAIN BEFORE M6: Isaac Lab loads the USD, not the "
+            "MJCF, so a stale USD trains a policy on the old plant silently."
+        ),
+    )
     def test_usd_meshes_not_stale(self):
         """Every STL referenced by robot_motors.xml must match the manifest
         written at conversion time.

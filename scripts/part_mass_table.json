@@ -3,7 +3,7 @@
  "process": "fdm-asa",
  "kind": "fdm",
  "process_density_g_cm3": 1.07,
- "generated_on": "2026-08-12",
+ "generated_on": "2026-08-13",
  "baseline_commit": "adbc082",
  "slicer": "PrusaSlicer-2.7.2+linux-arm64-GTK3-202402291318 based on Slic3r (with GUI support)",
  "parts": {
@@ -15,11 +15,11 @@
    "effective_density_g_cm3": 0.69627
   },
   "body_back": {
-   "volume_cm3": 95.4468,
-   "mass_g": 85.74,
+   "volume_cm3": 99.6177,
+   "mass_g": 100.07,
    "qty": 1,
    "how": "sliced",
-   "effective_density_g_cm3": 0.8983
+   "effective_density_g_cm3": 1.00454
   },
   "body_front": {
    "volume_cm3": 135.436,
@@ -125,6 +125,13 @@
    "qty": 1,
    "how": "sliced",
    "effective_density_g_cm3": 0.64646
+  },
+  "holder_6cell": {
+   "volume_cm3": 22.4945,
+   "mass_g": 22.03,
+   "qty": 1,
+   "how": "sliced",
+   "effective_density_g_cm3": 0.97935
   },
   "knee_to_ankle_left_sheet": {
    "volume_cm3": 8.2605,
@@ -295,5 +302,5 @@
  },
  "perimeters": 3,
  "infill_pct": 20,
- "cad_mod_net_delta_g": -13.95
+ "cad_mod_net_delta_g": 0.38
 }

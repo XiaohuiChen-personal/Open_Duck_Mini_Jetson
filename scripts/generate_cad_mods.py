@@ -261,9 +261,40 @@ def main():
 
     # ------------------------------------------------------------------ 4
     bb0 = baseline_mesh("body_back")
-    bb = boolean(bb0, body_box([-0.170, -0.024, -0.005], [-0.134, 0.024, 0.070]), "union")
-    bb = boolean(bb, body_box([-0.167, -0.0205, -0.002], [-0.125, 0.0205, 0.067]), "difference")
-    print("body_back (hump extension):")
+    # Hump DEEPENED by Task M3 to take a 3x2 array of 18650s (6 cells, 3S2P).
+    #
+    # Measured with scripts/measure_battery_bay.py. The pre-M3 bore was
+    # 42 (x) x 41 (y) x 69 (z) mm and all four layouts the plan lists failed
+    # against it -- best case 2384 mm^3 of interference. A 2-wide row of Ø18
+    # cells at 20.6 mm pitch spans 38.6 mm and fits the existing 41 mm y-bore;
+    # a 3-deep row spans 59.2 mm and does not fit the 42 mm x-bore. So one axis
+    # has to grow, and the choice is which.
+    #
+    # WIDENING was tried first and rejected. `bms` (y -28.5..-24.9) and
+    # `usb_c_charger` (y -30.9..-25.7) hug the old bore's -y wall, so a 3-wide
+    # array lands on both of them and they have no obvious home elsewhere in a
+    # trunk this full. Widening asymmetrically to dodge them would offset the
+    # 270 g pack +6.6 mm in y -> ~0.65 mm of LATERAL CoM shift.
+    #
+    # DEEPENING keeps the pack 2 wide, so it clears bms and usb_c_charger
+    # untouched, and stays laterally symmetric. It costs ~1.6 mm of AFT CoM
+    # shift and 22 mm of rearward protrusion.
+    #
+    # Aft is the safer error: sagittal CoM shift is along the walking direction
+    # the gait already manages, while lateral shift biases frontal-plane
+    # balance, which is the harder axis for a biped and the one this policy
+    # falls on.
+    #
+    #   bore  x [-167,-125] -> [-190,-123]  (42 -> 67 mm)
+    #   outer x -170 -> -193 mm  (3 mm rear wall retained)
+    # The bore is 67 mm for a 62.8 mm tray: 4.2 mm of slack. A tighter
+    # bore left a 1 mm-wide window in which the pack cleared, which is
+    # not a clearance, it is a coincidence.
+    #   bore  y ±20.5 -> ±22.0 mm, so the 42.2 mm tray clears with 1.8 mm
+    #   outer y unchanged at ±24.0, so `bms` at y -24.9 keeps its clearance
+    bb = boolean(bb0, body_box([-0.193, -0.024, -0.005], [-0.134, 0.024, 0.070]), "union")
+    bb = boolean(bb, body_box([-0.190, -0.022, -0.002], [-0.123, 0.022, 0.067]), "difference")
+    print("body_back (hump extension, deepened for the 6-cell pack):")
     all_terms += whole_part_terms("body_back", bb0, bb, table)
     save("body_back", bb)
 

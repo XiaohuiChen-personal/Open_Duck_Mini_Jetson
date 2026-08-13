@@ -1115,7 +1115,84 @@ Observables:
 
 ---
 
-### Task M3 — Model the four missing 18650 cells as real geometry
+### Task M3 — Model the four missing 18650 cells as real geometry — ✅ **DONE 2026-08-12**
+
+> **Completed.** All six 18650s are real geometry and the pack is **proved** to
+> fit, not asserted to.
+>
+> **The bore was measured, ending the repo's two-answer disagreement.**
+> `scripts/measure_battery_bay.py` (new) reports the pre-M3 bore as
+> **42 (x) × 41 (y) × 69 (z) mm** — this document gave 28.4 mm in one place and
+> implied 26.4 mm in another. Every layout the plan lists (3×2, 2×3, 6×1, 1×6)
+> failed against it, best case **2384 mm³** of interference.
+>
+> **The hump was DEEPENED, not widened, and that reversed my first choice.**
+> Widening looked cheaper until the measurement showed `bms` (y −28.5…−24.9)
+> and `usb_c_charger` (y −30.9…−25.7) hugging the old bore's −y wall, with no
+> obvious home elsewhere in the trunk. Dodging them asymmetrically would offset
+> the 270 g pack +6.6 mm in y ≈ **0.65 mm lateral CoM shift**; deepening keeps
+> the pack 2 wide, clears both untouched, stays laterally symmetric, and costs
+> ~**1.6 mm aft CoM shift** plus 23 mm of rear protrusion. Aft is the safer
+> error — sagittal shift is along the walking direction the gait manages, while
+> lateral shift biases frontal-plane balance, the axis a biped actually falls on.
+>
+> | | before | after |
+> |---|---|---|
+> | bore x | −167 … −125 (42 mm) | **−190 … −123 (67 mm)** |
+> | bore y | ±20.5 (41 mm) | **±22.0 (44 mm)** |
+> | outer x | −170 mm | **−193 mm** |
+> | outer y | ±24.0 | unchanged, so `bms` keeps its clearance |
+>
+> **Result: `measure_battery_bay.py --from-mjcf` exits 0 with WORST = 0.00 mm³**
+> — better than the shipped 2-cell layout, which fouls `battery_pack_lid` by
+> 384.69 mm³ and whose `holder` fouls `body_back` by 513.67 mm³. Those
+> pre-existing interferences are recorded in
+> `docs/jetson-mod/battery_bay_before.txt`.
+>
+> Pack: 3 (x) × 2 (y) at 20.6 mm pitch, centred (−156.5, 0, +32.5) mm.
+> New `holder_6cell` — 62.8 × 42.2 × 22 mm, Ø18.6 bores, 2.0 mm webs,
+> watertight, single-component, binary STL, byte-identical on re-run.
+>
+> **Two traps I hit that the plan did not name:**
+> 1. **Sweeping cells alone found a 6 mm-wide "clear" band the 62.8 mm tray did
+>    not share.** The tray must be in the sweep. The final bore carries 4.2 mm
+>    of slack because a 1 mm window is a coincidence, not a clearance.
+> 2. **Sizing the tray as `ROWS × PITCH + 2 × WALL`** adds a full pitch of empty
+>    material at each end and gave 65.8 × 45.2 mm, which did not fit. It is
+>    sized to the cells: `(ROWS−1) × PITCH + BORE + 2 × WALL`.
+>
+> **Deviation from the plan, deliberate:** the old 2-cell `holder` **geom** is
+> removed rather than "retained alongside" the new tray. A robot has one battery
+> tray; keeping both adds a phantom 7.5 cm³ part and double-books it. The
+> `holder` mesh asset and `holder.stl` both remain for the 2-cell configuration.
+> So the unique-instance count is **133 − 3 + 7 = 137**, not the 140 the plan
+> predicted.
+>
+> **Mass moved twice and both moves are booked.** The deepened hump adds 25.44 g
+> of `body_back` shell, so the Part-2 CAD delta went from M2's **−13.95 g** to
+> **+0.38 g**, and the trunk from 1.164076 to **1.178406 kg**. The set is now
+> **53 pieces / 1598.61 cm³ / 1199.50 g** (was 52 / 1571.94 / 1163.14):
+> `part_mass_table.json`, `cad_mod_deltas.json`, `print_process.json`,
+> `print_guide.md` and `EXPECTED_PIECES` were all re-run or bumped in this
+> commit.
+>
+> **`cells_extra_4x45g` is kept with a `TODO(M4)`**, per the plan's branch for
+> "M4 has not landed": its position and tensor are corrected from the phantom
+> (−0.145, 0, 0.0306) / 38×38×65 mm to the measured (−0.1565, 0, 0.0325) /
+> 59.2×38.6×65 mm. `tests/test_battery_pack.py` asserts the marker is present
+> while the lump is, so M4 cannot silently double-book 180 g.
+>
+> **USD is now stale, by design.** Both `test_usd_not_stale` and
+> `test_usd_meshes_not_stale` carry `strict=True` xfails naming **Task M6**,
+> which is the Phase-M gate that regenerates it once at the end. **Nothing may
+> train before M6** — Isaac Lab loads the USD, not the MJCF.
+>
+> Suite: **174 passed, 5 skipped, 3 xfailed**.
+>
+> **Still owner-facing** (the plan's PARTIAL): confirming a real 6-cell pack
+> plus BMS and wiring physically goes in. Cell diameter varies 18.3–18.6 mm with
+> the wrap (the bore is cut for the max) and **the wiring loom is not modelled
+> at all**.
 
 **AI-agent suitable:** PARTIAL. The measurement, the new holder mesh, the interference proof and the MJCF/URDF edits are all scriptable and the agent should do all of them. What needs a human: confirming that a real 6-cell pack plus BMS plus wiring physically goes into the resulting bay (cell diameter varies 18.3–18.6 mm with the wrap, and the wiring loom is not modelled at all), and approving any hump enlargement, which changes the robot's silhouette and its printed cost.
 

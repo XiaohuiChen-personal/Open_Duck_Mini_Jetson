@@ -24,8 +24,8 @@
   "_profile_gate": "SOFT GATE, not a blocker. M2 and M4 proceed on the published standard above and book masses as PROVISIONAL. The re-run trigger is a quote that contradicts it: re-run `measure_print_mass.py --emit-table` and M4, then M6. No geometry is touched, so the re-run is cheap. Residual risk at this vendor is +/-0 g from profile because both axes are pinned by publication; at any other vendor it is +38 to +212 g. Three things remain unverified even here and are listed in print_vendors.md: whether the Prototyping ASA tier is enclosed/heated, whether the 3-shell standard applies identically on the Stratasys Industrial tier, and which branch of the '3 shells OR 1.2 mm' disjunction governs a given part.",
   "fallback_process": "mjf-pa12",
   "_fallback_note": "Changed from fdm-abs. If the chosen bureau will not state a shell count AND an infill percentage, switch to mjf-pa12: 1597.57 g, mass = volume x density, deterministic with no promise from anyone. Do NOT fall back to fdm-pla -- its ~60 C HDT sits inside the 55-80 C Jetson heatsink range in the trunk cavity these parts enclose. fdm-abs remains an acceptable material substitute at the same profile if ASA is out of stock (~90 C HDT, same enclosed machines).",
-  "measured_set_mass_g": 1163.14,
-  "_measured_set_mass_note": "52 pieces, 1571.94 cm3 solid volume, TPU sole exempted at 1.22 g/cm3. PrusaSlicer 2.7.2 linux-arm64, supports/brim/skirt/raft/wipe-tower all off. Reproduce: python3 scripts/measure_print_mass.py --process fdm-asa --perimeters 3 --infill 20",
+  "measured_set_mass_g": 1199.5,
+  "_measured_set_mass_note": "53 pieces, 1598.61 cm3 solid volume, TPU sole exempted at 1.22 g/cm3. UPDATED by Task M3 2026-08-12: was 1163.14 g / 52 pieces / 1571.94 cm3 before M3 added holder_6cell (22.49 cm3) and deepened the body_back hump for the 6-cell pack. PrusaSlicer 2.7.2 linux-arm64, supports/brim/skirt/raft/wipe-tower all off. Reproduce: python3 scripts/measure_print_mass.py --process fdm-asa --perimeters 3 --infill 20",
   "mass_dr_band_kg": [
     2.5,
     2.76

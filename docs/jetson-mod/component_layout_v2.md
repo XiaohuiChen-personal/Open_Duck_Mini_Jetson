@@ -55,7 +55,7 @@ the combined effect.
 | DC-DC converter | (**-0.060, 0.025, 0.0355**) | [28.5, 42.5] | Under-plate mount (foam pad), rear corner of the plenum, off the fan axis; short 19 V run |
 | BNO055 IMU | (**-0.100**, 0, 0.0418) | [41.8, 44.8] | Battery-side pocket between partition and lid: cool, stable temperature, away from Jetson EMI |
 | Servo-driver board | **unchanged** (-0.06349, 0.0165, 0.0604) | [58.8, 60.4] | First-pass move REVERTED: the shortened partition (top 44.35) no longer reaches the board's z-band, and the board's original trunk_top tray pocket is the only verified-clear mount (the moved position was inside solid trunk_top) |
-| Battery pack 6× 18650 (3S2P) + BMS | hump + **declared rear extension** | — | 2 original cells at the modeled positions; **4 extra cells do NOT fit as a 2×2 grid: the declared block at (-0.145, 0, 0.0306) (38×38×65 mm) overlaps each modeled cell by ~11.9 cm³; the bore behind the existing pair is only 28.4 mm deep = one 18 mm column (2 cells), so the 6-cell pack needs a deeper hump or the existing pair moved forward** (seated on the extension bore floor at z=−2) inside the Part-2 hump extension (current hump interior is only ~18 mm deep behind the lid and tapers — it cannot take more than the 2 existing cells) |
+| Battery pack 6× 18650 (3S2P) + BMS | rear hump, **deepened by Task M3** | — | **RESOLVED 2026-08-12 (Task M3).** All six cells are now real geometry: a 3 (x) × 2 (y) array at 20.6 mm pitch centred on trunk-frame **(−156.5, 0, +32.5) mm**, held by a new `holder_6cell` tray (62.8 × 42.2 × 22 mm, Ø18.6 bores, 2.0 mm webs). `scripts/measure_battery_bay.py --from-mjcf` measures **0.00 mm³** of interference against every shell and every payload part — better than the shipped 2-cell layout, which fouled `battery_pack_lid` by 384.69 mm³. See the Part-2 status note below for the bore numbers and why the hump was deepened rather than widened. |
 
 Whole-robot mass after the Part-2 shell mods: **2.657067 kg** (the CAD cuts
 removed **13.95 g** measured, not the ~88.5 g once assumed; see "Part-2 status" below). Frame-correct inertials
@@ -152,9 +152,50 @@ by `compute_trunk_inertial.py`.
 > walls print near-solid and outweigh the infill they displace. No single
 > density can reproduce a sign flip.
 
-**Trunk is now 1.164076 kg** (was booked 1.089544 kg), **total robot
-≈ 2.731599 kg** (was 2.657067 kg), i.e. **−13.95 g vs the pre-Part-2 model**
-rather than the −88.5 g once claimed. Standing CoM ≈ −6.3 mm aft of the
+> ### Battery bay, measured — Task M3, 2026-08-12
+>
+> This document previously gave the usable bore **two different depths** (28.4 mm
+> in the Layout table, 26.4 mm implied by cut-list item 4) and declared a 4-cell
+> block at (−0.145, 0, 0.0306) that overlapped each existing cell by ~11.9 cm³.
+> All three are superseded by a measurement.
+>
+> `scripts/measure_battery_bay.py` measured the pre-M3 bore at
+> **42 (x) × 41 (y) × 69 (z) mm**. A 2-wide row of Ø18 cells at 20.6 mm pitch
+> spans 38.6 mm and fits the y-bore; a 3-deep row spans 59.2 mm and did not fit
+> the x-bore. Every layout the plan lists — 3×2, 2×3, 6×1, 1×6 — failed against
+> the old bay, best case **2384 mm³** of interference.
+>
+> **The hump was DEEPENED, not widened**, and the reason is worth keeping.
+> Widening was tried first: `bms` (y −28.5…−24.9) and `usb_c_charger`
+> (y −30.9…−25.7) hug the old bore's −y wall, so a 3-wide array lands on both
+> and they have no obvious home in a trunk this full. Dodging them
+> asymmetrically would offset the 270 g pack +6.6 mm in y — about **0.65 mm of
+> lateral CoM shift**. Deepening keeps the pack 2 wide, clears both parts
+> untouched and stays laterally symmetric, at the cost of ~**1.6 mm of aft CoM
+> shift** and 23 mm of rearward protrusion. Aft is the safer error: sagittal
+> shift is along the walking direction the gait already manages, while lateral
+> shift biases frontal-plane balance, which is the harder axis for a biped.
+>
+> | | before | after |
+> |---|---|---|
+> | bore x | −167 … −125 mm (42) | **−190 … −123 mm (67)** |
+> | bore y | ±20.5 mm (41) | **±22.0 mm (44)** |
+> | outer x | −170 mm | **−193 mm** |
+> | outer y | ±24.0 mm | ±24.0 mm (unchanged, so `bms` keeps its clearance) |
+> | `body_back` volume | 95.45 cm³ | **99.62 cm³** |
+>
+> The 67 mm bore holds the 62.8 mm tray with 4.2 mm of slack. A tighter bore
+> left a 1 mm-wide window in which the pack cleared, which is a coincidence
+> rather than a clearance.
+
+**Trunk is now 1.178406 kg** (was booked 1.089544 kg), **total robot
+≈ 2.745929 kg** (was 2.657067 kg). The Part-2 CAD delta is **+0.38 g** against
+the pre-Part-2 model, not the −88.5 g once claimed: M2's measurement put it at
+−13.95 g, and M3's deepened hump then added 25.44 g of shell back.
+
+*(The model files still declare 1.089544 kg / 2.657067 kg. Task M4 rewrites
+every body's inertial from one composer and consumes this output; writing them
+twice would guarantee they disagree.)* Standing CoM ≈ −6.3 mm aft of the
 foot origins.
 
 As-built details (post-review corrections): +y port opening

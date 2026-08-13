@@ -23,21 +23,34 @@ NESTING_WHITELIST = {
     frozenset(p)
     for p in [
         ("battery_pack_lid", "bms"),
-        ("battery_pack_lid", "cell"),
-        ("battery_pack_lid", "cell_2"),
         ("battery_pack_lid", "holder"),
-        ("cell", "cell_2"),
-        ("cell", "holder"),
-        ("cell_2", "holder"),
         ("bms", "holder"),
-        ("bms", "cell"),
-        ("bms", "cell_2"),
         ("usb_c_charger", "holder"),
         ("usb_c_charger", "bms"),
-        ("usb_c_charger", "cell"),
-        ("usb_c_charger", "cell_2"),
         ("power_switch", "holder"),
     ]
+    # Task M3 (2026-08-12): the pack went 2 -> 6 cells, so the cell names
+    # `_trunk_geoms()` derives from robot.xml are now cell .. cell_6, and the
+    # tray they nest in is `holder_6cell`.
+    #
+    # A cell sitting in its bore IS an AABB overlap -- 7.13 cm^3 each, measured
+    # -- and that is containment, not collision. This test compares AABBs and
+    # cannot tell the two apart, which is the whole reason this whitelist
+    # exists. The exact-boolean proof is `scripts/measure_battery_bay.py
+    # --from-mjcf`, which reports **0.00 mm^3** for this layout and is run by
+    # tests/test_battery_pack.py.
+} | {
+    frozenset(p)
+    for p in (
+        [(f"cell{'' if i == 1 else f'_{i}'}", "holder_6cell") for i in range(1, 7)]
+        + [(f"cell{'' if i == 1 else f'_{i}'}", other)
+           for i in range(1, 7)
+           for other in ("battery_pack_lid", "bms", "usb_c_charger")]
+        + [(f"cell{'' if i == 1 else f'_{i}'}", f"cell_{j}")
+           for i in range(1, 7) for j in range(2, 7) if i < j]
+        + [("holder_6cell", other) for other in
+           ("bms", "usb_c_charger", "power_switch", "battery_pack_lid", "holder")]
+    )
 }
 
 # The robot's own structure: excluded from the component pairwise check

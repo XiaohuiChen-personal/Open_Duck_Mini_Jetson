@@ -79,6 +79,7 @@ You can find the `.stl` files under the `print/` directory at the root of this r
 - body_middle_top.stl x1
 - body_back.stl x1
 - battery_pack_lid.stl x1
+- holder_6cell.stl x1
 - bulb.stl x1
 - flash_light_module.stl x1
 - flash_reflector_interface.stl x1

@@ -16,6 +16,7 @@
     <mesh name="board" file="board.stl"/>
     <mesh name="cell" file="cell.stl"/>
     <mesh name="holder" file="holder.stl"/>
+        <mesh name="holder_6cell" file="holder_6cell.stl"/>
     <mesh name="wj-wk00-0123middlecase_56" file="wj-wk00-0123middlecase_56.stl"/>
     <mesh name="drive_palonier" file="drive_palonier.stl"/>
     <mesh name="wj-wk00-0124bottomcase_45" file="wj-wk00-0124bottomcase_45.stl"/>
@@ -80,6 +81,13 @@
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_middle_bottom"/>
         <geom pos="-0.12034 0 0.0899126" quat="0.901303 0 -0.433189 0" type="mesh" rgba="0.901961 0.901961 0.901961 1" mesh="power_switch"/>
         <geom pos="-0.0752028 -0.0249 0.0294899" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="bms"/>
+        <geom pos="-0.1771 -0.0103 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
+        <geom pos="-0.1771 0.0103 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
+        <geom pos="-0.1565 -0.0103 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
+        <geom pos="-0.1565 0.0103 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
+        <geom pos="-0.1359 -0.0103 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
+        <geom pos="-0.1359 0.0103 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
+        <geom pos="-0.1565 0 0.0325" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="holder_6cell"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="battery_pack_lid"/>
         <geom pos="-0.019 0 0.0648909" type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="body_middle_top"/>
         <geom pos="-0.100 0 0.0417909" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="bno055"/>
@@ -94,9 +102,6 @@
         <geom pos="-0.06 0.025 0.0355" type="mesh" rgba="0.9 0.8 0.1 1" mesh="dcdc_converter" contype="0" conaffinity="0"/>
         <geom pos="-0.06349 0.0165 0.0603909" quat="0 0 0 -1" type="mesh" rgba="0 0.501961 0 1" mesh="board"/>
         <geom pos="-0.019 -0.07 0.0648909" type="mesh" rgba="0.6 0.6 0.6 1" mesh="roll_bearing"/>
-        <geom pos="-0.129625 -0.0105 0.0650134" quat="0 -0.457466 -0.889227 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
-        <geom pos="-0.139625 -0.0635245 0.031455" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="holder"/>
-        <geom pos="-0.129625 0.0105 1.34322e-05" quat="0.930459 0 0 0.366396" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cell"/>
         <geom pos="0.001 0.0097 0.0645009" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.247059 0.243137 0.243137 1" mesh="wj-wk00-0123middlecase_56"/>
         <geom pos="0.001 0.0097 0.0645009" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.623529 0.666667 0.701961 1" mesh="drive_palonier"/>
         <geom pos="0.001 0.0097 0.0645009" quat="0.707107 0 0.707107 0" type="mesh" rgba="0.247059 0.243137 0.243137 1" mesh="wj-wk00-0124bottomcase_45"/>

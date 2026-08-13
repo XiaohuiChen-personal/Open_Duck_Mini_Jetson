@@ -88,10 +88,14 @@ POINT = np.zeros((3, 3))
 
 # ---------------------------------------------------------------------------
 # TRUNK components: (name, mass_delta_kg, position_m, tensor_about_own_com).
-# Ledger: 0.698526 + 0.0585 + 0.176 + 0.180 + 0.005 + 0.015 + 0.037 + 0.008
-#       = 1.178026 kg pre-Part-2; the Part-2 shell deltas appended from
-#       cad_mod_deltas.json bring the trunk to its current total (printed
-#       below when run).
+# Ledger: 0.698526 + 0.0585 (3 servo upgrades) + 0.176 (Jetson) + 0.180
+#       (4 extra cells) + 0.005 (BMS) + 0.015 (DC-DC) + 0.037 (partition)
+#       + 0.008 (wiring) = 1.178026 kg pre-Part-2. The Part-2 shell deltas are
+#       appended from cad_mod_deltas.json -- MEASURED per part since Task M2,
+#       no assumed density -- and bring the trunk to the total printed below.
+#
+# The 0.180 cell term is a TODO(M4) placeholder: M3 made those cells real
+# geometry, and M4's composer will take their mass from the geometry instead.
 # ---------------------------------------------------------------------------
 TRUNK_COMPONENTS = [
     # 3x STS3215->STS3250 upgrades, at the servo-case AABB centers (mesh-measured).
@@ -101,10 +105,22 @@ TRUNK_COMPONENTS = [
     # Jetson Orin Nano Super dev kit, low mount (z-span [-11.4, 23.4] mm).
     # CoM approximated at the envelope center (module/heatsink bias not modeled).
     ("jetson_dev_kit", 0.176, [-0.03, 0.0, 0.006], box_tensor(0.176, 0.103, 0.0905, 0.03477)),
-    # 4 extra 18650 cells (pack goes 2 -> 6 = 2S1P -> 3S2P): 2x2 vertical grid
-    # in the rear hump extension (Part-2 body_back change), seated on the
-    # bore floor at z=-2 mm (a Phase-3/4 cradle/shim retains them).
-    ("cells_extra_4x45g", 0.180, [-0.145, 0.0, 0.0306], box_tensor(0.180, 0.038, 0.038, 0.065)),
+    # 4 extra 18650 cells (pack goes 2 -> 6 = 2S1P -> 3S2P).
+    #
+    # TODO(M4): DELETE this entry. Task M3 (2026-08-12) made all six cells real
+    # geometry -- six `cell` geoms plus `holder_6cell` in robot_motors.xml,
+    # robot.xml and robot.urdf -- so once compose_body_inertials.py builds the
+    # trunk from geometry, this lump double-books 180 g. It is kept only because
+    # M4 has not landed yet and deleting it now would lose the mass entirely.
+    #
+    # Position and tensor CORRECTED by M3 from the old placeholder
+    # [-0.145, 0, 0.0306] / 38 x 38 x 65 mm, which did not correspond to any
+    # geometry and overlapped each existing cell by ~11.9 cm^3. The pack is now
+    # a measured 3 (x) x 2 (y) array at 20.6 mm pitch centred on
+    # x = -156.5 mm; the four "extra" cells are its two outer rows, spanning
+    # 59.2 x 38.6 x 65.0 mm about the same centroid.
+    ("cells_extra_4x45g", 0.180, [-0.1565, 0.0, 0.0325],
+     box_tensor(0.180, 0.0592, 0.0386, 0.065)),
     # BMS upgrade delta, at the modeled BMS location in the hump.
     ("bms_delta", 0.005, [-0.1263, -0.0267, 0.0189], POINT),
     # DC-DC boost converter, under-plate mount beside the fan plenum.

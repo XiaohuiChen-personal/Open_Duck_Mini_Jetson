@@ -271,7 +271,7 @@
             </geometry>
         </collision>
         <visual>
-            <origin xyz="-0.12962456815639683549 -0.010499999999999986774 0.065013432174047369738" rpy="-3.141592653589793116 7.1750566777276333942e-17 2.1913059978610238687" />
+            <origin xyz="-0.17710000000000001 -0.0103 0" rpy="0 0 0" />
             <geometry>
                 <mesh filename="cell.stl"/>
             </geometry>
@@ -280,39 +280,99 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.12962456815639683549 -0.010499999999999986774 0.065013432174047369738" rpy="-3.141592653589793116 7.1750566777276333942e-17 2.1913059978610238687" />
+            <origin xyz="-0.17710000000000001 -0.0103 0" rpy="0 0 0" />
             <geometry>
                 <mesh filename="cell.stl"/>
             </geometry>
         </collision>
         <visual>
-            <origin xyz="-0.13962456815639684438 -0.063524458557367310951 0.031454953764361824609" rpy="-1.3044563776959597654e-16 1.570796326794896336 0" />
+            <origin xyz="-0.17710000000000001 0.0103 0" rpy="0 0 0" />
             <geometry>
-                <mesh filename="holder.stl"/>
+                <mesh filename="cell.stl"/>
             </geometry>
-            <material name="holder_material">
+            <material name="cell_material">
+                <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.17710000000000001 0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.1565 -0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+            <material name="cell_material">
+                <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.1565 -0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.1565 0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+            <material name="cell_material">
+                <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.1565 0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.13589999999999999 -0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+            <material name="cell_material">
+                <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.13589999999999999 -0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.13589999999999999 0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+            <material name="cell_material">
+                <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.13589999999999999 0.0103 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="cell.stl"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.1565 0 0.032500000000000001" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="holder_6cell.stl"/>
+            </geometry>
+            <material name="holder_6cell_material">
                 <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>
             </material>
         </visual>
         <collision>
-            <origin xyz="-0.13962456815639684438 -0.063524458557367310951 0.031454953764361824609" rpy="-1.3044563776959597654e-16 1.570796326794896336 0" />
+            <origin xyz="-0.1565 0 0.032500000000000001" rpy="0 0 0" />
             <geometry>
-                <mesh filename="holder.stl"/>
-            </geometry>
-        </collision>
-        <visual>
-            <origin xyz="-0.12962456815639683549 0.010500000000000004122 1.3432174047381232902e-05" rpy="8.3177805134519239719e-17 2.7557624392889133747e-16 0.75026546877138966529" />
-            <geometry>
-                <mesh filename="cell.stl"/>
-            </geometry>
-            <material name="cell_material">
-                <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
-            </material>
-        </visual>
-        <collision>
-            <origin xyz="-0.12962456815639683549 0.010500000000000004122 1.3432174047381232902e-05" rpy="8.3177805134519239719e-17 2.7557624392889133747e-16 0.75026546877138966529" />
-            <geometry>
-                <mesh filename="cell.stl"/>
+                <mesh filename="holder_6cell.stl"/>
             </geometry>
         </collision>
         <visual>

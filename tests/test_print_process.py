@@ -27,8 +27,8 @@ GUIDE = os.path.join(REPO_ROOT, "docs", "print_guide.md")
 PRINT_DIR = os.path.join(REPO_ROOT, "print")
 
 # Bump this in the SAME COMMIT that adds a row to docs/print_guide.md.
-# M3 adds holder_6cell and takes it to 53.
-EXPECTED_PIECES = 52
+# M3 added holder_6cell (2026-08-12), taking 52 -> 53.
+EXPECTED_PIECES = 53
 
 import scripts.measure_print_mass as m  # noqa: E402
 
@@ -161,11 +161,20 @@ class TestPieceAccounting:
             f"{got} pieces, expected {EXPECTED_PIECES}. Bump EXPECTED_PIECES "
             "in the same commit that adds a row to docs/print_guide.md.")
 
+    # Bump in the SAME COMMIT as any geometry change. 1571.94 was the pre-M3
+    # figure; M3 (2026-08-12) added holder_6cell (22.49 cm3) and deepened the
+    # body_back hump for the 6-cell pack.
+    EXPECTED_SET_VOLUME_CM3 = 1598.61
+
     def test_solid_volume_is_the_documented_total(self):
-        """1571.94 cm3 anchors every mass in print_process_decision.md."""
+        """The set volume anchors every mass in print_process_decision.md."""
         total = sum(m.solid_volume_cm3(os.path.join(PRINT_DIR, f"{n}.stl")) * q
                     for n, q in m.part_quantities().items())
-        assert abs(total - 1571.94) < 0.5, f"set volume is now {total:.2f} cm3"
+        assert abs(total - self.EXPECTED_SET_VOLUME_CM3) < 0.5, (
+            f"set volume is now {total:.2f} cm3, expected "
+            f"{self.EXPECTED_SET_VOLUME_CM3}. If a part was intentionally "
+            "added or reshaped, bump EXPECTED_SET_VOLUME_CM3 and re-run "
+            "measure_print_mass.py --emit-table plus generate_cad_mods.py.")
 
 
 @pytest.mark.phase3
