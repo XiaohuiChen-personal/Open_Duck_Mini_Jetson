@@ -1,5 +1,60 @@
 # Print-process decision
 
+> # ⚠ AMENDED 2026-08-12 — read this before the sections below
+>
+> **The process choice stands. The recorded profile and mass did not survive
+> vendor research, and have been corrected.**
+>
+> | | original | **amended** |
+> |---|---|---|
+> | process | `fdm-asa` | **`fdm-asa`** (unchanged) |
+> | perimeters / infill | 2 / 15 % | **3 / 20 %** |
+> | set mass | 1004.29 g | **1163.14 g** |
+> | reference vendor | — | **Protolabs Network (hubs.com)** |
+>
+> **Why.** "2 perimeters / 15 % infill" is a hobbyist slicer profile and is not
+> orderable anywhere. Seven bureaus were examined against their own published
+> pages: **zero of six expose a wall-count field at all**, and **15 % is below
+> every published infill floor** (20 % at Protolabs Network, Craftcloud and
+> PCBWay; Xometry sells tiers, not percentages). Sections 1, 3, 4 and 6 below
+> were written before that was known and are superseded where they conflict.
+>
+> **What replaces it.** Protolabs Network is the only bureau that **publishes an
+> unconditional shell count** — *"All parts are printed with 3 outline /
+> perimeter shells or a wall thickness of 1.2 mm"* — alongside a closed infill
+> enumeration `[20, 30, 40, 60, 80]`. Both axes of the mass model are therefore
+> pinned **by publication, before the order is placed**. 3 shells / 20 % infill
+> measures **1163.14 g** with zero residual profile uncertainty. Full shortlist
+> and the quote question list: [`print_vendors.md`](print_vendors.md).
+>
+> **The sensitivity that decided it.** One extra perimeter costs **+130.39 g**;
+> five more infill points cost **+37.66 g**. **82 % of the exposure sits on the
+> perimeter axis — the one no vendor lets you choose.** §4 below argued that
+> pinning infill would close the risk. It would not: it removes ~18 % of it. A
+> *published* shell count outranks an adjustable infill slider.
+>
+> **Two errors in the original text, corrected.** (1) It described `body_front`
+> as a near-solid slab; at 2 perim / 15 % it is ~38 % dense. (2) A working note
+> cited a "JLC3DP default 50 % infill" — **that figure is unsubstantiated**, its
+> source being a customer Q&A page with zero answers. JLC3DP is in any case
+> disqualified: 20 of 37 distinct parts fall under its published 30 × 30 × 15 mm
+> minimum build size.
+>
+> **Not reverted to `mjf-pa12`.** The §4 trigger — "if the bureau will not commit
+> to a profile" — is satisfiable, just not in the form written there. A vendor
+> committed in public, in writing, ahead of the order. `fdm-asa` at 1163.14 g is
+> still **434 g** under MJF PA12's 1597.57 g, and ASA remains the only commodity
+> FDM material inside the 90–100 °C window the Jetson cavity needs. `mjf-pa12`
+> is now the recorded **fallback**, displacing `fdm-abs`.
+>
+> **One recommendation carried to Task M0/R2:** R2/R2b retrain before any part
+> physically exists, so the plant should carry a **mass DR band of roughly
+> 2.50–2.76 kg** (the p2/i15 → p4/i20 span) rather than a point value. Given a
+> phantom 1.000 kg root mass and a 54–82 g CAD-mod delta already in this
+> project's history, a policy brittle to ±5 % plant mass will not survive
+> Phase S whoever prints the parts. Recorded in `print_process.json` as
+> `mass_dr_band_kg`.
+
 **Task M1 of `docs/jetson-mod/task_plan_v2.md`. Measured and drafted
 2026-08-12.** Every mass in this document was produced by
 `scripts/measure_print_mass.py` on this machine on that date; the per-process

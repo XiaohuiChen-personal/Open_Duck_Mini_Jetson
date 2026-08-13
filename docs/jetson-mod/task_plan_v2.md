@@ -724,7 +724,47 @@ M4 must come after every task that changes geometry or per-part density, because
 
 ---
 
-### Task M1 — Choose the print process and record it as a machine-readable decision — ✅ **DONE 2026-08-12** (quote pending owner)
+### Task M1 — Choose the print process and record it as a machine-readable decision — ✅ **DONE 2026-08-12** (amended same day; quote pending owner)
+
+> ## ⚠ AMENDED after vendor research — the profile below the fold is superseded
+>
+> **`fdm-asa` stands. `2 perimeters / 15 % infill = 1004.29 g` does not.**
+>
+> Seven bureaus were checked against their own published pages. **Zero of six
+> expose a wall-count field**, and **15 % infill is below every published floor**
+> (20 % at Protolabs Network, Craftcloud and PCBWay; Xometry sells tiers, not
+> percentages). The booked profile was a hobbyist slicer default that is not
+> orderable anywhere.
+>
+> **Amended to 3 perimeters / 20 % infill = 1163.14 g**, on
+> **Protolabs Network**'s published standard — *"All parts are printed with
+> 3 outline / perimeter shells or a wall thickness of 1.2 mm"* plus a closed
+> infill enumeration. It is the only bureau found that pins **both** axes by
+> publication, so the mass is exact **before** the order. Shortlist and quote
+> questions: [`print_vendors.md`](print_vendors.md).
+>
+> **Why not just pin infill:** one extra perimeter is **+130.39 g**, five infill
+> points are **+37.66 g** — **82 % of the exposure is the perimeter axis**, the
+> one nobody sells. Pinning infill removes ~18 % of the risk.
+>
+> **Why not revert to `mjf-pa12`:** at 1163.14 g `fdm-asa` is still **434 g**
+> under MJF, and ASA is the only commodity FDM material inside the 90–100 °C
+> window the Jetson cavity needs. `mjf-pa12` becomes the **fallback** (displacing
+> `fdm-abs`) for the case where a vendor states neither axis.
+>
+> **Corrections to the original M1 write-up:** `body_front` was described as a
+> near-solid slab — at 2 perim/15 % it is ~38 % dense; and a "JLC3DP default
+> 50 % infill" figure was quoted that is **unsubstantiated** (source Q&A page has
+> zero answers). JLC3DP is separately disqualified: 20 of 37 distinct parts fall
+> under its published 30 × 30 × 15 mm minimum build size.
+>
+> **Carried to Task M0/R2:** R2/R2b retrain before any part exists, so the plant
+> should carry a **mass DR band of ~2.50–2.76 kg** rather than a point value.
+> Recorded as `mass_dr_band_kg` in `print_process.json`.
+>
+> **`profile_confirmed_with_vendor` is now a SOFT gate**: M2/M4 proceed on the
+> published standard and book masses as provisional; the re-run trigger is a
+> quote that contradicts it. No geometry is touched, so the re-run is cheap.
 
 > **DECISION: `fdm-asa`, 2 perimeters, 15 % infill. NOT PLA, and not a powder
 > process.** Machine-readable record: `scripts/print_process.json`. Reasoning:

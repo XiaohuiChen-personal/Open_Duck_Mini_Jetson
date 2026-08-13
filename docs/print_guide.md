@@ -15,31 +15,34 @@ You can find the `.stl` files under the `print/` directory at the root of this r
 > | field | value |
 > |---|---|
 > | process | **`fdm-asa`** (ASA, not PLA) |
-> | perimeters | **2** |
-> | infill | **15 %** |
+> | perimeters | **3** (Protolabs Network's published house standard) |
+> | infill | **20 %** (the lowest any researched bureau offers) |
 > | TPU sole | unchanged — `foot_bottom_tpu` ×2 in TPU 95A at 40 % |
-> | measured set mass | **1004.29 g** (52 pieces, 1571.94 cm³) |
+> | measured set mass | **1163.14 g** (52 pieces, 1571.94 cm³) |
 >
 > **Why not PLA.** The trunk parts *are* the cavity enclosing the Jetson Orin
 > Nano, whose heatsink reaches **55–80 °C**. PLA's heat-deflection temperature
 > is ~60 °C and it creeps under sustained load well below that. ASA is ~91 °C
 > **and** 154 g lighter than PLA at the same profile — better on both axes.
 >
-> **Perimeter count is now specified: 2.** That resolves the TODO this block
-> used to carry. It matters more than the material: at 15 % infill in ASA,
-> 2 perimeters gives **1004.29 g** and 3 perimeters / 20 % infill gives
-> **1163.14 g** — a **158.85 g** swing, nearly twice the error
-> [PLANT-10](jetson-mod/known_issues.md#plant-10) records.
+> **Perimeter count is now specified: 3.** That resolves the TODO this block
+> used to carry, and it is set to what a bureau will actually print rather than
+> to a hobbyist default. It matters more than the material: one extra perimeter
+> is **+130.39 g** and five infill points are **+37.66 g**, so **82 % of the
+> mass exposure sits on the perimeter axis** — and **no researched bureau lets a
+> customer choose it**. See [`print_vendors.md`](jetson-mod/print_vendors.md).
 >
 > **If you are buying these parts from a printing service** — which is the plan;
-> there is no printer — then **confirm the bureau's actual perimeter count and
-> infill before anyone books a mass**, and re-run
+> there is no printer — the profile above comes from **Protolabs Network's
+> published standard** (*"All parts are printed with 3 outline / perimeter
+> shells or a wall thickness of 1.2 mm"*, infill selectable from
+> `[20,30,40,60,80]`), so the mass is pinned **before** ordering. If you order
+> elsewhere, re-run
 > `python3 scripts/measure_print_mass.py --process fdm-asa --perimeters N --infill M`
-> with the real numbers. `scripts/print_process.json` carries
-> `profile_confirmed_with_vendor: false` until that happens, and it is a hard
-> gate on Tasks M2 and M4. Many services print to a fixed house profile and will
-> not accept a customer perimeter count; if yours will not commit, the decision
-> reverts to `mjf-pa12`.
+> with that vendor's real numbers and re-run M2/M4. If a vendor will state
+> neither, the decision reverts to `mjf-pa12`, whose mass is volume × density
+> and needs no promise. Vendor shortlist and the quote question list:
+> [`print_vendors.md`](jetson-mod/print_vendors.md).
 >
 > For a powder process, infill stops being a lever — MJF/SLS parts are solid —
 > and the same geometry lands at **1,598 g** in MJF PA12. (Not 1,588 g: that
