@@ -445,29 +445,13 @@ def _():
 
 
 # -------------------------------------------------------------------- DOC
-@issue("DOC-2", "experiment_journal.md has zero v5 entries")
-def _():
-    # The results-doc half was discharged on 2026-08-11 (v5_contact_results.md
-    # now exists). The JOURNAL half is still open, so the predicate is now the
-    # journal alone -- otherwise half a fix turns the check green, which is the
-    # failure mode this register exists to prevent.
-    j = R("docs/jetson-mod/experiment_journal.md")
-    hits = {k: j.count(k) for k in ("v5a_gated_ft", "v5b_ungated_ft", "v5c_contact_only",
-                                    "v5d_contact_wrench", "v5_smoke")}
-    ex = os.path.exists(P("docs/jetson-mod/v5_contact_results.md"))
-    return ("CONFIRMED" if sum(hits.values()) == 0 else "REFUTED"), [
-        f"v5 run names in the journal: {hits}",
-        f"v5_contact_results.md exists: {ex}  (results-doc half DONE 2026-08-11)",
-        "AGENTS.md requires an entry per training run; five runs have none.",
-    ]
-
-
-# DOC-4 was FIXED on 2026-08-11. All four axes are closed: the 56-dim TensorRT
-# spec (2026-08-09), the "0.5->1.3 m/s" push ramp, the "0.8-4.8 N at ~1.6 kg"
-# wrench sizing, and Task 2.8's PLANNED status after four arms shipped a winner.
-# Check retired per this script's convention.
-
-
+# DOC-2 FIXED 2026-08-13 (Task R4). experiment_journal.md now carries Runs
+# 17-21 for v5_smoke, v5a_gated_ft, v5b_ungated_ft, v5c_contact_only and
+# v5d_contact_wrench, each with last-100-iteration TensorBoard means from
+# scripts/tb_summary.py (rule 1 forbids console greps), its gate JSON path,
+# a verdict naming the gate, and a 3.657 kg plant banner. The results
+# document docs/jetson-mod/v5_contact_results.md now exists too.
+# Per this script's convention a fixed issue carries no check.
 # -------------------------------------------- verified refutations (regression)
 @issue("NOT-AN-ISSUE-1", "The wrench gate DOES exercise rotation-under-load")
 def _():

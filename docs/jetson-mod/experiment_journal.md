@@ -49,6 +49,11 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 14 | `amp_v6` | AMP | 2026-07-11 | motion library -> 22 physically-consistent clips recorded from ppo_v3 rollouts (0 dead AMP dims) | **FAIL (gate 0/5)** — stands upright; but discriminator ENGAGED all run (no tells): data fix healed the adversarial game without producing locomotion; exploration ceiling promoted |
 | 15 | `amp_v7` | AMP | 2026-07-11 | exploration: initial_log_std -2.9 -> -1.9 (sigma 0.055 -> 0.15), on the recorded clips | **PASS — first acceptable AMP gait of the study.** Gate 4/5, falls 0.34%, vel tracking 0.0219 m/s (best of ALL policies incl. PPO), upright walking on video |
 | 16 | `amp_v8_seed` | AMP | 2026-07-11 | none — run-15 config verbatim, --seed 123 (reproducibility) | **Walks again (mechanism reproduces), bar marginally missed:** gate 3/5 (two conditions over the duty band by 1.4-2.7 pp), falls 0.06%, vel err 0.0207; upright walking on video |
+| 17 | `v5_smoke` | PPO | 2026-07-28 | contact track opens: fall-only terminations | PASS — 100-iter validation |
+| 18 | `v5a_gated_ft` | PPO | 2026-07-28 | disturbance-**gated** rewards | **FAIL** — gait 0/6, a standing policy |
+| 19 | `v5b_ungated_ft` | PPO | 2026-07-28 | gate removed | **FAIL** — gait 3/6, asymmetric shuffle |
+| 20 | `v5c_contact_only` | PPO | 2026-07-29 | obstacles, no sustained wrench | gait PASS 6/6, **wrench 100.000 % falls** |
+| 21 | `v5d_contact_wrench` | PPO | 2026-07-29 | **sustained wrench added** | **PASS — SHIPPED**, beats v4_robust on all four contact gates |
 
 ---
 
@@ -669,6 +674,14 @@ gate condition). Archived: `exported_policies/amp_v7_run15_command/`.
 **Compute accounting:** 12 AMP training runs x ~2.6 h ~= 31 GPU-hours vs
 PPO's 2 x ~1.8 h; plus 9 full 3,200-episode evals and 8 video audits.
 
+## Run 16 — `amp_v8_seed` (`2026-07-11_06-36-47_amp_torch`, seed 123) — reproducibility: walks, bar marginally missed
+
+> **Structural note, Task R4 (2026-08-13).** This run was recorded only as an
+> addendum inside Run 15 while the index table promised a Run 16 heading, so
+> `tests/test_journal_completeness.py` reported an index row with no entry.
+> The heading is added here; the substance below is the original addendum,
+> unchanged.
+
 **Seed-confirmation ADDENDUM (run 16, `amp_v8_seed`,
 `2026-07-11_09-59-47_amp_torch`, --seed 123, config verbatim):** the
 **mechanism reproduces** — the second seed also walks (upright dynamic
@@ -852,3 +865,203 @@ tuples abort during startup. PhysX startup warnings (root-prim inertia
 approximation for `/base`, an env_1 collision-path lookup) appear in healthy
 runs on this USD and are benign — the same USD passed the full 3,200-episode
 gated eval.
+
+---
+
+## Run 17 — `v5_smoke` (`open_duck_ppo_v5/2026-07-28_03-10-51`) — 100-iter validation: PASS
+
+**Backfilled 2026-08-13 by Task R4.** DOC-2: five executed v5 runs, including the
+one that shipped, existed only inside a file titled "Execution Plan".
+
+> **Plant banner.** Measured on the **3.657 kg** plant (PLANT-1 present — PhysX
+> substituted 1.000 kg on the massless MJCF root). Re-gated on the corrected
+> 2.657 kg plant — see [`m2657_regate.md`](m2657_regate.md).
+
+**One-lever delta:** contact-rich track opens. Fall-only terminations replace
+v4's "any trunk contact above 1 N", which the config itself records as having
+"taught contact = death and never taught recovery".
+
+**Training signals** (`scripts/tb_summary.py`, last-100 means — AGENTS.md rule 1
+forbids console greps):
+
+| tag | last-100 mean | final | peak @ step |
+|---|---|---|---|
+| `Train/mean_reward` | 92.9604 | 125.8398 | 137.2043 @ 3095 |
+| `Train/mean_episode_length` | 430.0404 | 580.1300 | 629.5600 @ 3095 |
+| `Episode_Reward/imitation_reward` | 0.2162 | 0.2617 | 0.3150 @ 3045 |
+| `Episode_Reward/alive_bonus` | 4.2672 | 5.6587 | — |
+
+Wall clock **0:05:02** (2026-07-28T03:15:15 → 03:20:18), 100 iterations logged
+from step 2999.
+
+**Gate:** smoke only — no `evaluate_policies.py` run. Verdict **PASS**: reward
+and episode length both rising, no collapse, proceed to the full arms.
+
+**Artifacts:** `~/IsaacLab/logs/rsl_rl/open_duck_ppo_v5/2026-07-28_03-10-51/`,
+final `model_3098.pt`.
+
+---
+
+## Run 18 — `v5a_gated_ft` (`open_duck_ppo_v5/2026-07-28_03-25-43`) — gated rewards: **FAIL**
+
+> **Plant banner.** Measured on the **3.657 kg** plant (PLANT-1 present).
+> Re-gated on the corrected 2.657 kg plant — see [`m2657_regate.md`](m2657_regate.md).
+
+**One-lever delta:** disturbance-**gated** rewards — tracking terms suppressed
+while a disturbance is active, so the policy is not punished for being pushed.
+
+**Training signals** (last-100 means):
+
+| tag | last-100 mean | final |
+|---|---|---|
+| `Train/mean_reward` | 197.7106 | 195.2749 |
+| `Train/mean_episode_length` | 977.4597 | 964.9400 |
+| `Episode_Reward/imitation_reward` | **−0.0159** | 0.0078 |
+| `Episode_Reward/flat_orientation_deadzone` | −0.4036 | −0.3870 |
+| `Episode_Reward/track_lin_vel_xy_exp` | 0.6405 | 0.6366 |
+
+Wall clock **2:12:58**, 3,000 iterations (step 2999 → 5998).
+
+**Gate evaluation** — `docs/jetson-mod/eval_results_v5/v5a_gated_ft.json`,
+field `aggregate`:
+
+| metric | value |
+|---|---|
+| gait-valid conditions | **0 / 6** |
+| fall rate | 0.000 % |
+| ref tracking RMS | 6.183° |
+
+**Verdict: FAIL on G-R1 (gait gate 0/6).** Zero falls with zero valid gait is
+the signature of a **standing policy** — it survives by not walking. The
+negative last-100 `imitation_reward` is the same story from the training side:
+the gate suppressed the very term that teaches the gait.
+
+**Artifacts:** `.../2026-07-28_03-25-43/`, `model_5998.pt`.
+
+---
+
+## Run 19 — `v5b_ungated_ft` (`open_duck_ppo_v5/2026-07-28_22-54-19`) — gate removed: **FAIL**
+
+> **Plant banner.** Measured on the **3.657 kg** plant (PLANT-1 present).
+> Re-gated on the corrected 2.657 kg plant — see [`m2657_regate.md`](m2657_regate.md).
+
+**One-lever delta:** the reward gate from Run 18 removed; everything else held.
+
+**Training signals** (last-100 means):
+
+| tag | last-100 mean | final |
+|---|---|---|
+| `Train/mean_reward` | 209.4017 | 217.3630 |
+| `Train/mean_episode_length` | 944.9213 | 979.7900 |
+| `Episode_Reward/imitation_reward` | **0.8696** | 0.9240 |
+| `Episode_Reward/action_rate_l2` | −0.6273 | −0.6459 |
+
+Wall clock **2:09:18**, 3,000 iterations.
+
+**Gate evaluation** — `eval_results_v5/v5b_ungated_ft.json`:
+
+| metric | value |
+|---|---|
+| gait-valid conditions | **3 / 6** |
+| fall rate | 0.000 % |
+| ref tracking RMS | 4.790° |
+
+**Verdict: FAIL on G-R1 (3/6, bar is ≥5/6).** Removing the gate recovered the
+imitation reward (−0.016 → 0.870) and half the gait, which isolates the gate as
+the cause of Run 18's failure. Still an asymmetric shuffle. The `action_rate_l2`
+penalty is the largest of any v5 arm at −0.6273, i.e. the policy is paying
+heavily for jitter.
+
+**Artifacts:** `.../2026-07-28_22-54-19/`, `model_5998.pt`.
+
+---
+
+## Run 20 — `v5c_contact_only` (`open_duck_ppo_v5/2026-07-29_01-46-04`) — contact curriculum: PASS gait, **FAIL wrench**
+
+> **Plant banner.** Measured on the **3.657 kg** plant (PLANT-1 present).
+> Re-gated on the corrected 2.657 kg plant — see [`m2657_regate.md`](m2657_regate.md).
+
+**One-lever delta:** contact curriculum — obstacles present, but **no sustained
+wrench**.
+
+**Training signals** (last-100 means):
+
+| tag | last-100 mean | final |
+|---|---|---|
+| `Train/mean_reward` | 246.4866 | 245.9300 |
+| `Train/mean_episode_length` | 988.7220 | 988.3200 |
+| `Gait/duty_in_band_frac` | **0.9896** | 0.9883 |
+| `Episode_Reward/imitation_reward` | 1.5483 | 1.5329 |
+
+Wall clock **2:00:15**, 3,000 iterations.
+
+**Gate evaluation** — five JSONs in `eval_results_v5/`:
+
+| battery | gait | fall rate |
+|---|---|---|
+| open field | **6 / 6** | 0.000 % |
+| push, v4 rule | 6/6 | 0.286 % |
+| push, v5 rule | 6/6 | 3.698 % |
+| **sustained wrench** | 6/6 | **100.000 %** |
+| obstacle graze | 6/6 | 6.224 % |
+
+**Verdict: gait PASS, G-R4 FAIL — 100.000 % under sustained wrench.** Every
+episode fell. Training on obstacles alone does not teach standing up to a
+persistent push; the curriculum has to contain the disturbance it is meant to
+survive. That finding is what motivated Run 21.
+
+**Artifacts:** `.../2026-07-29_01-46-04/`, `model_5998.pt`.
+
+---
+
+## Run 21 — `v5d_contact_wrench` (`open_duck_ppo_v5/2026-07-29_08-59-25`) — sustained wrench added: **PASS, SHIPPED**
+
+> **Plant banner.** Measured on the **3.657 kg** plant (PLANT-1 present).
+> Re-gated on the corrected 2.657 kg plant — see [`m2657_regate.md`](m2657_regate.md),
+> where it passes every gate while `v4_robust` collapses to 24.167 % open-field falls.
+
+**One-lever delta:** a **sustained wrench** added to Run 20's contact curriculum
+— a persistent force at 0.2 × body weight rather than an instantaneous kick.
+
+**Training signals** (last-100 means):
+
+| tag | last-100 mean | final | peak @ step |
+|---|---|---|---|
+| `Train/mean_reward` | 237.5003 | 236.3308 | 244.8354 @ 5791 |
+| `Train/mean_episode_length` | 976.4817 | 969.7200 | 1000.0 @ 5791 |
+| `Gait/duty_in_band_frac` | **0.9836** | 0.9817 | 0.9893 @ 5486 |
+| `Episode_Reward/imitation_reward` | 1.3548 | 1.3948 | 1.4548 @ 5613 |
+| `Episode_Reward/track_lin_vel_xy_exp` | 0.8761 | 0.8820 | 0.9001 @ 5791 |
+
+Wall clock **2:05:02** (2026-07-29T09:03:49 → 11:08:52), 3,000 iterations.
+
+**Gate evaluation** — five JSONs in `eval_results_v5/`, and the comparison that
+decided the campaign (v5d vs the `v4_robust` control, same protocol, same plant):
+
+| battery | v5d | v4_robust | verdict |
+|---|---|---|---|
+| open field, gait | **6 / 6** | 6/6 | PASS |
+| open field, falls | **0.000 %** | 0.000 % | PASS |
+| push, v4 rule | **1.068 %** | 6.354 % | **beats control** |
+| push, v5 rule | **0.000 %** | 11.120 % | **beats control** |
+| sustained wrench | **47.109 %** | 100.000 % | **beats control** |
+| obstacle graze | **0.312 %** | 32.604 % | **beats control** |
+
+**Verdict: PASS. Beats `v4_robust` on all four contact gates and shipped** to
+`exported_policies/v5d_contact_wrench_ppo/`. Adding the sustained wrench took
+the wrench battery from Run 20's 100.000 % to 47.109 % — the single largest
+improvement in the campaign, and direct evidence that the curriculum must
+contain the disturbance it is meant to survive.
+
+**Two caveats that were live during this run and are NOT reflected in its
+"one-lever" description:**
+- **CFG-1** — `torque_z_range` was silently discarded by the warp kernel, so the
+  "wrench" applied **no yaw torque at all**. The lever was weaker than intended.
+- **CFG-3** — the disturbance gate is maintained every step and read by nothing
+  in this arm.
+
+Both are fixed by Task M0; neither was known when this ran.
+
+**Artifacts:** `.../2026-07-29_08-59-25/`, `model_5998.pt`
+(md5 `0333e68a4cd9ed3817310ed80f6715e4`), shipped copy at
+`exported_policies/v5d_contact_wrench_ppo/`.

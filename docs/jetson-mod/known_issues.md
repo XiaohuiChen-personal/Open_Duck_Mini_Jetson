@@ -30,7 +30,7 @@ Two verification passes exist, and both are runnable:
 `numpy` and `mujoco`, the same dependencies `tests/` already uses. Current state:
 
 ```
-CONFIRMED 20 / 21
+CONFIRMED 19 / 20
 INCONCLUSIVE -> could not be evaluated here: ['DEPLOY-1']
    the ONNX checks need an interpreter with `onnx` installed, e.g.
    ~/IsaacLab/_isaac_sim/python.sh scripts/verify_known_issues.py DEPLOY-1
@@ -1376,7 +1376,26 @@ clamped pose, term 2 for the velocity of the unclamped one.
 # DOC — documentation defects
 
 <a id="doc-2"></a>
-## DOC-2 · The experiment journal has zero v5 entries — MEDIUM
+## DOC-2 · The experiment journal has zero v5 entries — MEDIUM — ✅ **FIXED 2026-08-13**
+
+> ### FIXED 2026-08-13 — Task R4
+>
+> `experiment_journal.md` carries **Runs 17–21** (`v5_smoke`,
+> `v5a_gated_ft`, `v5b_ungated_ft`, `v5c_contact_only`,
+> `v5d_contact_wrench`), each with last-100-iteration TensorBoard means
+> from `scripts/tb_summary.py` — **not** console greps, per AGENTS.md
+> rule 1 — its gate JSON path, a verdict naming the gate, artifact
+> paths, and a **3.657 kg plant banner** pointing at `m2657_regate.md`.
+> The run-index table gained five rows.
+>
+> `docs/jetson-mod/v5_contact_results.md` now exists, with the campaign's
+> finding stated plainly: **the curriculum has to contain the disturbance
+> it is meant to survive** — `v5c` (obstacles, no wrench) fell in 100 % of
+> wrench episodes, identically to the control, and adding the wrench took
+> `v5d` to 47.109 %.
+>
+> Check retired; the entry stays here.
+
 
 ```
 v5 run names in experiment_journal.md: v5a_gated_ft=0, v5b_ungated_ft=0,

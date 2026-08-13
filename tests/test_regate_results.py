@@ -105,8 +105,9 @@ class TestPlantProvenance:
                 "plant. It belongs in eval_results_v5/, not here.")
 
     def test_mass_matches_the_directory_readme(self, dirname):
-        expected = _expected_mass(dirname)
-        for name, d in _require(dirname):
+        entries = _require(dirname)      # skip first: an empty dir has nothing
+        expected = _expected_mass(dirname)   # to disagree with
+        for name, d in entries:
             mass = d["plant"]["simulated_total_mass_kg"]
             assert abs(mass - expected) < 1e-3, (
                 f"{dirname}/{name} reports {mass:.6f} kg but "
