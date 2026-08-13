@@ -322,19 +322,32 @@ def _():
         from onnx import numpy_helper
     except ImportError:
         return "INCONCLUSIVE", ["onnx not importable in this interpreter; skipped"]
-    p = P("exported_policies/v5d_contact_wrench_ppo/policy.onnx")
-    if not os.path.exists(p):
-        return "INCONCLUSIVE", [f"{p} absent (it is gitignored -- see ART-1)"]
+    # Check the CURRENT export, not a frozen one. Pinned at
+    # v5d_contact_wrench_ppo this check would keep reporting CONFIRMED off a
+    # superseded archive even if a newer export embedded the constants -- the
+    # same blindness that let PLANT-3 and SHELL-1 pass their own fixes.
+    candidates = ["exported_policies/v6d_contact_wrench_ppo/policy.onnx",
+                  "exported_policies/v5d_contact_wrench_ppo/policy.onnx"]
+    p = next((P(c) for c in candidates if os.path.exists(P(c))), None)
+    if p is None:
+        return "INCONCLUSIVE", [f"none of {candidates} present (gitignored -- see ART-1)"]
     m = onnx.load(p)
     inits = {i.name: numpy_helper.to_array(i) for i in m.graph.initializer}
     tot = sum(a.size for a in inits.values())
     n025 = sum(int(np.isclose(a, 0.25, atol=1e-6).sum()) for a in inits.values())
-    sixteen = [k for k, a in inits.items() if a.size == 16]
+    # Action width READ OFF THE GRAPH. Hardcoding 16 finds nothing on a 14-action
+    # policy, so the "could hold q_default" line would silently go empty and read
+    # as stronger evidence than it is.
+    out_dims = [d.dim_value for d in m.graph.output[0].type.tensor_type.shape.dim]
+    n_act = out_dims[-1] if out_dims else 0
+    same_width = [k for k, a in inits.items() if a.size == n_act]
     return ("CONFIRMED" if n025 == 0 else "REFUTED"), [
+        f"export under test: {os.path.relpath(p, P('.'))}",
         f"nodes: {[n.op_type for n in m.graph.node]}",
         f"total initializer scalars: {tot}; values equal to 0.25: {n025}",
-        f"16-element tensors that could hold q_default: {sixteen}",
+        f"{n_act}-element tensors that could hold q_default: {same_width}",
         "-> q_target = q_default + 0.25*a lives in Isaac Lab's JointPositionAction, not the graph",
+        "-> MITIGATED by the deployment_contract.json sidecar (Task R3); the graph is unchanged",
     ]
 
 
