@@ -286,3 +286,33 @@ cd ~/IsaacLab && ./isaaclab.sh -p <repo>/scripts/measure_joint_torque.py \
 # the decision record and its schema
 python3 -m pytest tests/test_print_process.py -v
 ```
+
+---
+
+## Task M5 (shell the thick parts) — **N/A, and this is the record M5 asks for**
+
+`task_plan_v2.md` Task M5 gates itself on `scripts/print_process.json`'s `kind`
+field, testing the **kind and not the process name** so a future FDM entry named
+anything still routes correctly. Measured:
+
+```
+$ python3 -c "import json; print(json.load(open('scripts/print_process.json'))['kind'])"
+fdm
+```
+
+**`kind` is `fdm`, so M5 does not run.** FDM infill already hollows the
+interior: the booked profile is **3 perimeters / 20 % infill**, so the thick
+parts M5 would have targeted (`trunk_top` T_eff 7.99 mm, `body_front`
+7.52 mm — an 86 %-of-AABB solid slab) are printed as a 1.2 mm-ish perimeter
+shell around a 20 % lattice. Shelling them in mesh would remove material the
+slicer is already not depositing, and would then double-count the saving in
+`compose_body_inertials.py`, which derives mass from the same profile.
+
+`max_wall_mm` is `null` for the same reason — it is a solid-process parameter
+and there is nothing for it to bound.
+
+**Two consequences worth carrying forward.** M5's powder-trap warning does not
+apply: no part in the set has more than one shell, and since nothing is being
+hollowed, no enclosed void is created. And if the process is ever changed to a
+solid one (`mjf-pa12-gb`, `sla-tough`), **M5 becomes live again** and the plant
+must be rebuilt through M4 → M6 before any gate number is quoted.

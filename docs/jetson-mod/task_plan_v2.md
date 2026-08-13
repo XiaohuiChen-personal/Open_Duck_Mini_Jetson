@@ -1632,7 +1632,7 @@ Observables: `--verify-composer` exits 0 and its four anchor rows show ratios of
 
 ---
 
-### Task M5 — Shell the thick parts (solid-process branch only)
+### Task M5 — Shell the thick parts (solid-process branch only) — ⏭️ **N/A 2026-08-13** — `print_process.json` `kind` is `fdm`; recorded in `print_process_decision.md`
 
 **AI-agent suitable:** PARTIAL. The boolean geometry, the drain holes and the mass measurement are scriptable and the agent should do them. What needs a human: judging that a hollowed part is still stiff enough to carry servo loads, and getting a DFM check from the printing bureau. A hollowed shell that cracks under a servo mount is not something either the mass model or the simulator will catch.
 
