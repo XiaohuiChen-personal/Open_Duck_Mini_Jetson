@@ -55,6 +55,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 20 | `v5c_contact_only` | PPO | 2026-07-29 | obstacles, no sustained wrench | gait PASS 6/6, **wrench 100.000 % falls** |
 | 21 | `v5d_contact_wrench` | PPO | 2026-07-29 | **sustained wrench added** | **PASS — SHIPPED**, beats v4_robust on all four contact gates |
 | 22 | `v6_robust` | PPO | 2026-08-13 | **the post-Phase-M plant** (2.729 kg, 53/14, 4.903 N·m ceiling, 0-40 ms latency); v4_robust recipe from scratch | PASS — reward 244.83, in-training falls 3.6 % |
+| 23 | `v6_smoke` | PPO | 2026-08-13 | contact-wrench curriculum switched on over the Run-22 seed, 100 iters | PASS (smoke) — wrench scaled to the measured 2.729 kg plant; no gate by design |
 
 ---
 
@@ -1130,6 +1131,91 @@ encouraging; it is not a controlled improvement and must not be reported as one.
 fine-tuned — a seed that does not walk must not be fine-tuned, which is the
 2.22 GPU-hours the v5a arm spent proving.
 
+**Gate evaluation** — the open-field grid, run *after* this entry's training
+block and recorded here so the verdict is measured rather than asserted.
+Source: `docs/jetson-mod/eval_results_rebuild/v6_robust_grid6.json`,
+field `aggregate`. 6 conditions x 10 windows x 64 envs x 30 s =
+**3,840 episodes**, seed 42, deterministic, pushes off.
+
+| field | value | bar |
+|---|---|---|
+| `gait_valid_conditions` | **6 / 6** | >= 5 / 6 |
+| `fall_rate_pct` | **0.000 %** | <= 5 % |
+| `reference_tracking_rms_deg` | 4.612 deg | context |
+| `stance_duty_asymmetry_pp` | 2.593 pp | context |
+| `lin_vel_xy_error_mps` | 0.1652 m/s | context |
+| `falls` / `episodes` | 0 / 3,840 | — |
+
+The JSON's own `plant` block reads **2.729035 kg**,
+obs **53** / action **14**, USD hash
+`767f2415d1b3a056d95e9c310434dbbc` — i.e. the gate ran on the plant this entry
+claims, which is the check whose absence let PLANT-1 survive three policy
+generations.
+
 **Artifacts:** `~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/2026-08-13_01-05-40_v6_robust/`,
 final `model_2999.pt`; seed copy at
 `~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/0000-00-00_v6robust_seed/` for R2b.
+
+## Run 23 — `v6_smoke` (`open_duck_ppo_v6/2026-08-13_03-36-47_v6_smoke`) — 100-iter validation of the contact track on the rebuilt plant: PASS
+
+> **Plant banner.** The **post-Phase-M** plant: **2.729035 kg**, obs **53** /
+> action **14**, USD asset hash `767f2415d1b3a056d95e9c310434dbbc`. Results dir
+> `eval_results_rebuild/`; **nothing may be copied to or from
+> `eval_results_m2657/`.**
+
+**One-lever delta: the contact-wrench curriculum, switched on.** Same seed and
+same plant as Run 22 — `--resume` from
+`0000-00-00_v6robust_seed/model_2999.pt`, 100 iterations (final `model_3098.pt`),
+4,096 envs, 20 s episodes. This is the v5 campaign's `v5_smoke` step repeated on
+the rebuilt plant: it validates that the track *runs*, not that a policy is good.
+Config read back from the run's own `params/agent.yaml`
+(`max_iterations 100`, `resume True`, `load_run 0000-00-00_v6robust_seed`,
+`load_checkpoint model_2999.pt`), not from the launch command.
+
+**The check this run exists for** — the curriculum must scale its disturbance to
+the *rebuilt* robot, not to a remembered one:
+
+```
+[v5] ContactRegimeEvent: measured robot weight 26.77 N (2.729 kg)
+     -> wrench 1.34-5.35 N (active_frac=0.5); obstacle asset present, obstacle_frac=0.25
+```
+
+26.77 N / 9.81 = **2.729 kg**, matching `audit_plant_mass.py` exactly, so the
+wrench is 0.05-0.20x body weight *of the plant on disk*. Under PLANT-1 this
+banner would have read 3.657 kg and every wrench would have been 34 % too
+strong — the defect was invisible for the whole v5 campaign precisely because
+nothing ever compared this number to the model.
+
+**Training signals** (`scripts/tb_summary.py --last 100`, TensorBoard means —
+never a console-log grep, per journal rule 1):
+
+| tag | last-100 mean | final | peak @ step |
+|---|---|---|---|
+| `Train/mean_reward` | 137.1391 | 167.0426 | 205.7524 @ 3086 |
+| `Train/mean_episode_length` | 592.3300 | 721.2000 | 871.5700 @ 3086 |
+| `Gait/duty_in_band_frac` | **0.9768** | 0.9829 | 0.9852 @ 3040 |
+| `Episode_Reward/track_lin_vel_xy_exp` | 0.5132 | 0.6741 | 0.7409 @ 3086 |
+| `Episode_Reward/imitation_reward` | 0.5973 | 0.7943 | 0.9059 @ 3090 |
+| `Episode_Reward/alive_bonus` | 5.9162 | 7.6986 | 8.4522 @ 3086 |
+
+Wall clock **0:05:15** (03:41:08 -> 03:46:23).
+
+**Reward drops on contact, and that is the expected shape.** 244.83 (Run 22,
+open field) -> 137.14 here. Obstacles and a sustained wrench were switched on;
+a policy that kept its open-field reward under a new disturbance would mean the
+disturbance was not reaching it. The signal that matters at 100 iterations is
+that `mean_episode_length` and reward both *rise* across the window
+(137 last-100 mean vs 167 final), i.e. the policy is adapting rather than
+collapsing.
+
+**No gate was run on this checkpoint, by design.** A 100-iteration smoke is a
+plumbing check; gating it would spend 3,840 episodes to measure a policy nobody
+intends to ship. The gate belongs to Run 24.
+
+**Verdict: PASS (smoke).** The contact track loads on the 53/14 interface,
+scales its wrench to the measured plant, and trains without NaNs or resets to
+the floor. Cleared Run 24 to start.
+
+**Artifacts:**
+`~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/2026-08-13_03-36-47_v6_smoke/`,
+final `model_3098.pt`; log `.training_runs/v6_smoke.log`.
