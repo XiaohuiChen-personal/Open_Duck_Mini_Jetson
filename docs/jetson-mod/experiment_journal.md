@@ -54,6 +54,7 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 19 | `v5b_ungated_ft` | PPO | 2026-07-28 | gate removed | **FAIL** — gait 3/6, asymmetric shuffle |
 | 20 | `v5c_contact_only` | PPO | 2026-07-29 | obstacles, no sustained wrench | gait PASS 6/6, **wrench 100.000 % falls** |
 | 21 | `v5d_contact_wrench` | PPO | 2026-07-29 | **sustained wrench added** | **PASS — SHIPPED**, beats v4_robust on all four contact gates |
+| 22 | `v6_robust` | PPO | 2026-08-13 | **the post-Phase-M plant** (2.729 kg, 53/14, 4.903 N·m ceiling, 0-40 ms latency); v4_robust recipe from scratch | PASS — reward 244.83, in-training falls 3.6 % |
 
 ---
 
@@ -1065,3 +1066,70 @@ Both are fixed by Task M0; neither was known when this ran.
 **Artifacts:** `.../2026-07-29_08-59-25/`, `model_5998.pt`
 (md5 `0333e68a4cd9ed3817310ed80f6715e4`), shipped copy at
 `exported_policies/v5d_contact_wrench_ppo/`.
+
+---
+
+## Run 22 — `v6_robust` (`open_duck_ppo_v6/2026-08-13_01-05-40_v6_robust`) — from scratch on the post-Phase-M plant: PASS
+
+> **Plant banner.** The **post-Phase-M** plant: **2.729035 kg**, obs **53** /
+> action **14**, USD asset hash `767f2415d1b3a056d95e9c310434dbbc`. This is a
+> different robot model from every earlier run in this journal. Results dir
+> `eval_results_rebuild/`; **nothing may be copied to or from
+> `eval_results_m2657/`.**
+
+**One-lever delta: the plant, plus Phase M's batched fixes.** The v4_robust
+recipe verbatim, retrained **from scratch** — no `--resume`. It had to be from
+scratch: the v4_robust seed was trained on the 3.657 kg plant and its 59/16
+interface no longer loads after M0b.
+
+What changed under it, versus every previous run:
+
+| | before | this run |
+|---|---|---|
+| plant mass | 2.657067 kg | **2.729035 kg** (M2 + M3 + M4) |
+| obs / action | 59 / 16 | **53 / 14** (M0b) |
+| torque ceiling | 8.716 N·m (BAM electrical stall) | **4.903 N·m** (datasheet, PLANT-5) |
+| observation latency | none | **0–40 ms**, per-env (PLANT-7) |
+| below-ground resets | 61.7 % | **0.0 %** (PLANT-3) |
+| `torque_z_range` | discarded by the warp kernel | **applied** (CFG-1) |
+| obstacle draws/episode | 2 | **1** (CFG-2) |
+
+**Training signals** (`scripts/tb_summary.py`, last-100 means):
+
+| tag | last-100 mean | final | peak @ step |
+|---|---|---|---|
+| `Train/mean_reward` | **244.8290** | 246.1242 | 248.9701 @ 2953 |
+| `Train/mean_episode_length` | 984.2392 | 989.2600 | — |
+| `Episode_Reward/track_lin_vel_xy_exp` | **0.8654** | 0.8735 | 0.8842 @ 96 |
+| `Episode_Reward/imitation_reward` | 1.5029 | 1.5095 | 1.5565 @ 2432 |
+| `Episode_Reward/alive_bonus` | 9.8465 | 9.9294 | — |
+| `Episode_Reward/track_ang_vel_z_exp` | 0.3970 | 0.4003 | — |
+
+Wall clock **1:55:26** (01:09:58 → 03:05:24), 3,000 iterations.
+
+**In-training fall rate fell monotonically through the run**:
+`Episode_Termination/base_contact` 12.9 % at iter 552 → 10.1 % @ 1566 →
+6.9 % @ 1920 → 5.6 % @ 2418 → **3.6 % @ 2796**. A policy still consolidating at
+the end, not one that plateaued.
+
+**Watchdog note.** `task_plan_v2.md` R2 step 5 specifies a
+`Gait/duty_in_band_frac < 0.30` abort. **That metric does not exist in this
+config** — it is emitted by `contact_events.py`, which runs only in the v5
+*contact* configs, and R2 is the v4_robust recipe. `Episode_Reward/track_lin_vel_xy_exp`
+was substituted: a standing policy cannot track a nonzero velocity command, so
+it discriminates exactly the failure the watchdog exists to catch. It read
+**0.8586 at the +30 min checkpoint** against v5d's healthy 0.8761. No abort.
+
+**Comparison to earlier runs is context, NOT a delta.** v5d's last-100 reward
+was 237.50 and its `track_lin_vel_xy_exp` 0.8761 — but on a lighter plant, with
+a 1.78× torque ceiling, no latency model, and a 16-action interface. That this
+run reaches **244.83** from scratch under a *stricter* actuator model is
+encouraging; it is not a controlled improvement and must not be reported as one.
+
+**Verdict: PASS as a seed.** Gated by the open-field grid before being
+fine-tuned — a seed that does not walk must not be fine-tuned, which is the
+2.22 GPU-hours the v5a arm spent proving.
+
+**Artifacts:** `~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/2026-08-13_01-05-40_v6_robust/`,
+final `model_2999.pt`; seed copy at
+`~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/0000-00-00_v6robust_seed/` for R2b.
