@@ -8,7 +8,8 @@ Reward design v3 — BDX-aligned composite imitation reward, corrected.
 Based on the Disney BDX paper ("Design and Control of a Bipedal Robotic
 Character", Jan 2025) and the Open Duck Playground reward structure.
 
-v3 changes from v2 (the run archived in exported_policies/v2_bdx_imitation_ppo):
+v3 changes from v2 (its archive was pruned 2026-08-15 -- see
+locomotion_selection.md -- and is recoverable from git history):
 - PHASE BUG FIX in imitation_reward.py: the polynomial reference is now
   evaluated at normalized phase t in [0, 1) instead of seconds in [0, 0.54)
   — v2 imitated only the first 54% of the gait cycle (an asymmetric limp).

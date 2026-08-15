@@ -14,7 +14,7 @@ per-joint peak or RMS, so the question cannot be answered from existing results.
 
     cd ~/IsaacLab && ./isaaclab.sh -p \
       ~/Projects/Open_Duck_Mini_Jetson/scripts/measure_joint_torque.py \
-      --checkpoint ~/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt \
+      --checkpoint ~/Projects/Open_Duck_Mini_Jetson/exported_policies/v6d_contact_wrench_ppo/model_5998.pt \
       --headless
 
 Reports per joint: peak |tau|, p99, RMS, and the fraction of steps above the

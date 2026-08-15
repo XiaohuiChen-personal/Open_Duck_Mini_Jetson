@@ -104,7 +104,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [SHELL-4](#shell-4) | Queue's GPU-busy predicate is blind to eval and play jobs | LOW | dormant script |
 | [SHELL-5](#shell-5) | Training watchdog fails open on a parse error | MEDIUM | future runs |
 | [ART-1](#art-1) | `policy.onnx` is gitignored while its weight sidecar is committed | HIGH | reproducibility |
-| [ART-2](#art-2) | `exported_policies/v4_robust/` was never created | MEDIUM | provenance |
+| [ART-2](#art-2) | The shipped policy's provenance parent (`v6_robust`) is not in git | MEDIUM | **REFRAMED 2026-08-15** |
 | [ART-3](#art-3) | `usd/config.yaml` records a deleted worktree as the asset source | LOW | **FIXED 2026-08-11** by the USD regen |
 | [ART-4](#art-4) | `.gitignore` ignores `*.txt` repo-wide — any future prompt library or fixture is silently untracked | MEDIUM | Phase 4/5 |
 | [DEPLOY-1](#deploy-1) | The ONNX omits `action_scale` and `q_default` entirely | HIGH | **MITIGATED 2026-08-13** (R3: sidecar ships with the policy; graph unchanged) |
@@ -1147,13 +1147,28 @@ root-level `BEST_WALK_ONNX*.onnx` files *are* tracked, so the ignore rule is
 inconsistent about which ONNX matters.
 
 <a id="art-2"></a>
-## ART-2 · `exported_policies/v4_robust/` was never created — MEDIUM
+## ART-2 · The shipped policy's provenance parent is not in git — MEDIUM
 
-`exported_policies/` contains `v1_imitation_ppo`, `v2_bdx_imitation_ppo`,
-`v3_bdx_imitation_ppo`, `v5d_contact_wrench_ppo` — but not `v4_robust`, the
-doc-declared Task 2.7 deployment candidate. It survives only outside git at
-`~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt`.
-`v5d/README.md` references it as the baseline; a clean clone cannot resolve that.
+**Reframed 2026-08-15.** The original complaint was that `exported_policies/v4_robust/`
+was never created. [`locomotion_selection.md`](locomotion_selection.md) retired
+`v4_robust` outright and pruned `exported_policies/` to the single mainline
+archive, so that framing would now be CONFIRMED forever for an **intentional**
+reason — a check describing no defect. The concern itself is real and moved.
+
+`exported_policies/` contains exactly `v6d_contact_wrench_ppo/`. Its
+`README.md` records the provenance *"fine-tuned from `v6_robust`
+(`model_2999.pt`), itself trained from scratch on the post-Phase-M plant"* —
+and `v6_robust` is **not in the repository**. It survives only at
+`~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/2026-08-13_01-05-40_v6_robust/`.
+
+So a clean clone can load and deploy the shipped policy, but **cannot reproduce
+or verify the control it was measured against**. Every contact-gate number in
+`rebuild_results.md` is relative to that run.
+
+Two honest options, neither taken yet: archive `v6_robust`'s checkpoint too
+(≈4.7 MB, and it is the control for every published delta), or accept that the
+comparison is reproducible only from the eval JSONs already committed — which
+do carry the control's full aggregate and per-condition numbers.
 
 <a id="art-3"></a>
 ## ART-3 · `usd/config.yaml` records a deleted worktree — LOW

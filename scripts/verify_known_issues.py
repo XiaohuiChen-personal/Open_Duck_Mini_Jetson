@@ -103,7 +103,7 @@ def _():
 @issue("PLANT-6", "Joint dry friction is inactive during motion")
 def _():
     rc = R("isaac_lab_env/open_duck_mini_v2/robot_cfg.py")
-    y = R("exported_policies/v5d_contact_wrench_ppo/env.yaml")
+    y = R("exported_policies/v6d_contact_wrench_ppo/env.yaml")
     blk = y.split("actuators:", 1)[1].split("\n  articulation_props", 1)[0]
     vals = {}
     for grp in ("legs", "head"):
@@ -145,7 +145,7 @@ def _():
 # to `== 1`.
 # Per this script's convention a fixed issue carries no check, so the check
 # is retired rather than inverted. The entry stays in known_issues.md.
-@issue("CFG-3", "v5d inherits DuckRewards, so nothing reads the disturbance gate")
+@issue("CFG-3", "the contact arm inherits DuckRewards, so nothing reads the disturbance gate")
 def _():
     src = R("isaac_lab_env/open_duck_mini_v2/env_cfg.py")
     chain, cur = [], "OpenDuckContactWrenchEnvCfg"
@@ -154,13 +154,13 @@ def _():
         chain.append(cur)
         cur = parents[cur]
     chain.append(cur)
-    y = R("exported_policies/v5d_contact_wrench_ppo/env.yaml")
+    y = R("exported_policies/v6d_contact_wrench_ppo/env.yaml")
     counts = {t: y.count(t) for t in ("ground_contact", "GatedTrack", "flat_orientation_deadzone",
                                       "feet_slide", "disturbance_gate",
                                       "polynomial_coefficients_v2", "normalized_match")}
     ok = "OpenDuckContactEnvCfg" not in chain and all(v == 0 for v in counts.values())
     return ("CONFIRMED" if ok else "REFUTED"), [
-        "v5d chain: " + " -> ".join(chain),
+        "contact chain: " + " -> ".join(chain),
         f"passes through the v5a/v5b arm (OpenDuckContactEnvCfg): {'OpenDuckContactEnvCfg' in chain}",
         f"gated machinery in the shipped env.yaml: {counts}",
     ]
@@ -184,7 +184,7 @@ def _():
 def _():
     env = R("isaac_lab_env/open_duck_mini_v2/env_cfg.py")
     hl = int(re.search(r"history_length=(\d)", env).group(1))
-    y = R("exported_policies/v5d_contact_wrench_ppo/env.yaml")
+    y = R("exported_policies/v6d_contact_wrench_ppo/env.yaml")
     up = re.search(r"update_period: ([\d.]+)", y).group(1)
     return ("CONFIRMED" if hl == 3 else "REFUTED"), [
         f"history_length={hl}, update_period={up} (0.0 = refresh every physics substep)",
@@ -286,8 +286,8 @@ def _():
 # -------------------------------------------------------------------- ART
 @issue("ART-1", "policy.onnx is gitignored while policy.onnx.data is tracked")
 def _():
-    ci = sh("git check-ignore -v exported_policies/v5d_contact_wrench_ppo/policy.onnx")
-    tracked = sh("git ls-files exported_policies/v5d_contact_wrench_ppo/").split()
+    ci = sh("git check-ignore -v exported_policies/v6d_contact_wrench_ppo/policy.onnx")
+    tracked = sh("git ls-files exported_policies/v6d_contact_wrench_ppo/").split()
     names = [os.path.basename(t) for t in tracked]
     ok = ".gitignore" in ci and "policy.onnx" not in names and "policy.onnx.data" in names
     return ("CONFIRMED" if ok else "REFUTED"), [
@@ -297,14 +297,28 @@ def _():
     ]
 
 
-@issue("ART-2", "exported_policies/v4_robust/ was never created")
+@issue("ART-2", "the shipped policy's provenance parent is not in git")
 def _():
-    dirs = sorted(os.listdir(P("exported_policies")))
+    # Reframed 2026-08-15. The original complaint was that v4_robust was never
+    # archived; the selection decision retired v4_robust outright, so that
+    # framing would now be CONFIRMED forever for an INTENTIONAL reason -- a
+    # check that describes no defect. The underlying concern is real and simply
+    # moved: exported_policies/ keeps exactly one archive, and that archive's
+    # README names a parent run which lives only in a training log directory.
+    # A clean clone cannot resolve the shipped policy's lineage.
+    dirs = sorted(d for d in os.listdir(P("exported_policies"))
+                  if os.path.isdir(P("exported_policies", d)))
+    rd = R("exported_policies/v6d_contact_wrench_ppo/README.md")
+    m = re.search(r"fine-tuned from `([\w]+)`", rd)
+    parent = m.group(1) if m else None
     ext = os.path.expanduser(
-        "~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt")
-    return ("CONFIRMED" if "v4_robust" not in dirs else "REFUTED"), [
-        f"exported_policies/: {[d for d in dirs if os.path.isdir(P('exported_policies', d))]}",
+        "~/IsaacLab/logs/rsl_rl/open_duck_ppo_v6/2026-08-13_01-05-40_v6_robust/model_2999.pt")
+    unresolvable = parent is not None and parent not in dirs
+    return ("CONFIRMED" if unresolvable else "REFUTED"), [
+        f"exported_policies/: {dirs}",
+        f"shipped README names parent: {parent!r} -- archived here: {parent in dirs}",
         f"only surviving copy (outside git): {ext} exists={os.path.exists(ext)}",
+        "-> a clean clone cannot reproduce or verify the parent this policy was fine-tuned from",
     ]
 
 
@@ -326,8 +340,9 @@ def _():
     # v5d_contact_wrench_ppo this check would keep reporting CONFIRMED off a
     # superseded archive even if a newer export embedded the constants -- the
     # same blindness that let PLANT-3 and SHELL-1 pass their own fixes.
-    candidates = ["exported_policies/v6d_contact_wrench_ppo/policy.onnx",
-                  "exported_policies/v5d_contact_wrench_ppo/policy.onnx"]
+    # Only one archive exists by policy: exported_policies/ keeps the mainline
+    # locomotion and nothing else (locomotion_selection.md, 2026-08-15).
+    candidates = ["exported_policies/v6d_contact_wrench_ppo/policy.onnx"]
     p = next((P(c) for c in candidates if os.path.exists(P(c))), None)
     if p is None:
         return "INCONCLUSIVE", [f"none of {candidates} present (gitignored -- see ART-1)"]

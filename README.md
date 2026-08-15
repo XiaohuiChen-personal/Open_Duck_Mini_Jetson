@@ -44,14 +44,26 @@ tilt > 60° or height < 0.09 m, the deployment's own definition), an obstacle
 stands in 25% of training episodes, and a sustained 2-6 s torso wrench presses
 the robot while it tracks a turn command. Checkpoint, configs and ONNX export
 are archived in
-[`exported_policies/v5d_contact_wrench_ppo/`](exported_policies/v5d_contact_wrench_ppo/).
+[`exported_policies/v6d_contact_wrench_ppo/`](exported_policies/v6d_contact_wrench_ppo/) —
+**the one locomotion policy this repository keeps.** Selected 2026-08-15; the
+decision, the evidence and what it does *not* authorise are in
+[`docs/jetson-mod/locomotion_selection.md`](docs/jetson-mod/locomotion_selection.md).
 
 Lineage: v1 → v2 → v3 (gait-phase fix; the 16-run PPO-vs-AMP course study's
 winner, archived in
 [open-duck-ppo-vs-amp](https://github.com/XiaohuiChen-personal/open-duck-ppo-vs-amp))
 → **v4_robust** (retrained on the corrected layout-v2.1 model, with dynamics
 domain randomization and a hardware-realizable 59-dim observation) → **v5d**
-(contact-rich fine-tune of v4_robust).
+(contact-rich fine-tune of v4_robust) → **v6_robust** (from scratch on the
+post-Phase-M plant: 2.729 kg, obs 53 / action 14, datasheet torque ceiling,
+0–40 ms observation latency) → **v6d_contact_wrench** (contact-rich fine-tune
+of v6_robust — **the mainline**).
+
+Only `v6d_contact_wrench_ppo/` is archived here. The v1/v2/v3/v5d archives were
+pruned on 2026-08-15 and remain in git history; the v1–v5 generation is retired
+because its 59/16 observation vector includes two antenna joints that have **no
+position sensor on the real robot** (`known_issues.md` DEPLOY-3), so that
+observation cannot be built on hardware at all.
 
 **Training setup:**
 - NVIDIA Isaac Lab + RSL-RL PPO on DGX Spark (Grace Blackwell)
@@ -281,9 +293,9 @@ Training uses Isaac Lab on a DGX Spark (or any NVIDIA GPU with Isaac Sim install
 
 # Evaluate a trained checkpoint
 ./isaaclab.sh -p scripts/play_policy.py \
-    --task Isaac-Velocity-Rough-OpenDuck-Play-v0 \
+    --task Isaac-Velocity-Rough-OpenDuck-ContactWrench-Play-v0 \
     --num_envs 50 \
-    --checkpoint exported_policies/v2_bdx_imitation_ppo/model_2999.pt \
+    --checkpoint exported_policies/v6d_contact_wrench_ppo/model_5998.pt \
     --headless --video --video_length 500
 ```
 

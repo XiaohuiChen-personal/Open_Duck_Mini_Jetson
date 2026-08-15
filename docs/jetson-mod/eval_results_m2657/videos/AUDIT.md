@@ -5,7 +5,7 @@ step 7 requires. This gate exists because `amp_command7` (Run 12) passed every
 aggregate metric while crawling and only the video caught it. **Video verdict
 outranks metrics.**
 
-Checkpoint `exported_policies/v5d_contact_wrench_ppo/model_5998.pt`
+Checkpoint `exported_policies/v5d_contact_wrench_ppo/model_5998.pt` (**that archive was pruned 2026-08-15** — see [`locomotion_selection.md`](../../locomotion_selection.md); the checkpoint remains in git history)
 (md5 `0333e68a4cd9ed3817310ed80f6715e4`), plant 2.657067 kg, obs/action 59/16.
 
 Each clip is 1000 control steps (20 s) at `--num_envs 2`.

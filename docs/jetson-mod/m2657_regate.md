@@ -1,5 +1,8 @@
 # Re-gate verdict — v5d on the PLANT-1-corrected plant
 
+> **Archive note (2026-08-15).** `exported_policies/v5d_contact_wrench_ppo/` no longer exists: `exported_policies/` now keeps only the mainline policy (`v6d_contact_wrench_ppo/`) — see [`locomotion_selection.md`](locomotion_selection.md). The v5d checkpoint remains in git history. Paths below are left as written, because they record what was measured at the time.
+
+
 **Decided 2026-08-12.** Task R1c of `docs/jetson-mod/task_plan_v2.md`.
 
 ## VERDICT: v5d PASSES every gate on the corrected plant

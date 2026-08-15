@@ -14,6 +14,8 @@
 > These numbers are kept as the historical record of the campaign that shipped
 > `v5d_contact_wrench`. **Do not quote them as hardware numbers.**
 
+> **Archive note (2026-08-15).** `exported_policies/v5d_contact_wrench_ppo/` no longer exists: `exported_policies/` now keeps only the mainline policy (`v6d_contact_wrench_ppo/`) — see [`locomotion_selection.md`](locomotion_selection.md). The v5d checkpoint remains in git history. Paths below are left as written, because they record what was measured at the time.
+
 # v5 contact-rich retrain — results
 
 **Written 2026-08-13 by Task R4.** `known_issues.md` **DOC-2** recorded that five

@@ -16,7 +16,8 @@ Key difference from v1: raw quadratic `-||q - q_ref||^2 * 15.0` instead of
 exponential `exp(-2*error) * 10.0`. The raw quadratic has linear gradient
 (no saturation), demanding precise joint tracking.
 
-v3 fixes (vs the v2 run archived in exported_policies/v2_bdx_imitation_ppo):
+v3 fixes (vs the v2 run; its archive was pruned 2026-08-15 -- see
+locomotion_selection.md -- and is recoverable from git history):
 1. PHASE BUG FIX: the polynomials are fit over NORMALIZED phase t in [0, 1]
    (generator fit_poly.py: `X = np.linspace(0, 1, ...)`), but v2 evaluated
    them at phase in SECONDS in [0, 0.54) — replaying only the first 54% of

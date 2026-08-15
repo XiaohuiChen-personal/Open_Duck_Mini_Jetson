@@ -83,7 +83,7 @@ Verified by running code on 2026-08-11. These are facts, not assumptions.
 | Articulation root | `trunk_assembly` (was the massless `base`) | `robot_motors.xml` line ~69 |
 | Rigid bodies in the articulation | 21 (was 22) | the audit table |
 | Observation / action dims | **59 / 16** | unchanged by the PLANT-1 fix, so checkpoints still load |
-| Shipped locomotion policy | `exported_policies/v5d_contact_wrench_ppo/` | contains `policy.onnx`, `policy.pt`, `model_5998.pt` |
+| Shipped locomotion policy | `exported_policies/v6d_contact_wrench_ppo/` | **superseded v5d on 2026-08-15** (`locomotion_selection.md`); contains `policy.onnx`, `policy.pt`, `model_5998.pt`, `deployment_contract.json`. The v5d archive was pruned; it remains in git history. |
 | Printed part set | **52 pieces, 1571.94 cm³** | `python3 scripts/measure_print_mass.py --process mjf-pa12` |
 | Printed mass, FDM PLA 2 perim/15% | 1158 g | `--process fdm-pla --perimeters 2 --infill 15` |
 | Printed mass, MJF PA12 (solid) | 1598 g | `--process mjf-pa12` |

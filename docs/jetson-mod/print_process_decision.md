@@ -281,7 +281,9 @@ python3 scripts/measure_print_mass.py --process mjf-pa12
 
 # the torque measurement behind §2a (needs a free GPU)
 cd ~/IsaacLab && ./isaaclab.sh -p <repo>/scripts/measure_joint_torque.py \
-  --checkpoint <repo>/exported_policies/v5d_contact_wrench_ppo/model_5998.pt --headless
+  --checkpoint <repo>/exported_policies/v6d_contact_wrench_ppo/model_5998.pt --headless
+# NOTE: the v5d archive was pruned 2026-08-15. The v6d torque envelope, which
+# supersedes the table above, is in v6d_torque_measurement.md.
 
 # the decision record and its schema
 python3 -m pytest tests/test_print_process.py -v
