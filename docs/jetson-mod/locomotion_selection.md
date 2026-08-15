@@ -105,7 +105,7 @@ do not subtract. `rebuild_results.md` §1 carries the full seven-caveat list.
 `scripts/measure_joint_torque.py` had only ever been run on v5d. It was run on
 **v6d** for this decision, on v6d's own PLAY task, current plant, vx = 0.2,
 32 envs × 1500 steps, **all disturbances off** — the friendliest condition that
-exists. Full output: [`v6d_torque_measurement.txt`](v6d_torque_measurement.txt).
+exists. Full output: [`v6d_torque_measurement.md`](v6d_torque_measurement.md).
 
 | joint | peak N·m | p99 | RMS | % of steps over continuous |
 |---|---|---|---|---|

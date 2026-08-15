@@ -1648,7 +1648,7 @@ simulator does and whether the repo describes it accurately.
 **Evidence** — `scripts/measure_joint_torque.py` on `v6d_contact_wrench`, current
 2.729035 kg plant, its own PLAY task, vx = 0.2, 32 envs x 1500 steps, **all
 disturbances off** (the friendliest condition that exists). Full log:
-`v6d_torque_measurement.txt`.
+`v6d_torque_measurement.md`.
 
 ```
 joint          peak     p99     rms   % steps over continuous
