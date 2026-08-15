@@ -32,7 +32,13 @@ _USD_PATH = os.path.join(
 # what the vendor will stand behind, and a policy trained against it cannot
 # learn a gait the servo physically cannot execute.
 STS3250_EFFORT_LIMIT_NM = 4.903        # 50 kg.cm datasheet stall
-STS3250_CONTINUOUS_NM = 1.569          # 16 kg.cm, the THERMAL limit
+STS3250_CONTINUOUS_NM = 1.569          # 16 kg.cm = Feetech 'Rated Torque'
+# Feetech does NOT call this continuous or thermal, and publishes no duty-cycle
+# curve; it is a 25 C free-air bench figure. For a sealed chassis with a Jetson
+# inside, docs/jetson-mod/servo_torque_budget.md derives a ~1.0 N.m sustained
+# target (thermal derating AND Feetech's own 1/5-stall cycle-life load agree).
+# The servo's firmware also trips at 3.923 N.m (overload, 2 s) and 4.099 N.m
+# (over-current, 2 s) -- BOTH BELOW the 4.903 N.m effort limit set above.
 
 # An SG90 micro servo, for the antennas. ~0.18 N.m stall.
 SG90_EFFORT_LIMIT_NM = 0.18

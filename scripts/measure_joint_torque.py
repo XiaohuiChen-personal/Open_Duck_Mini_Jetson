@@ -40,7 +40,14 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Feetech STS3250, from AGENTS.md and the datasheet.
+# Feetech STS3250, from the manufacturer's own 8-page product specification
+# (Edition A/0, 2024-01-16, feetechrc.com): row 5-4 stall 50 kg.cm +/-10%,
+# row 5-8 "Rated Torgue" [sic] 16 kg.cm, row 5-9 rated current 1400 mA.
+# NOTE Feetech says "Rated", never "continuous", and publishes NO duty-cycle or
+# thermal-derating curve -- see docs/jetson-mod/servo_torque_budget.md, which
+# derives a ~1.0 N.m sustained target for an enclosed chassis.
+# (The previous comment here credited "AGENTS.md and the datasheet"; AGENTS.md
+# carries the stall figure only, never 16 kg.cm.)
 STALL_NM = 4.903          # 50 kg.cm, peak
 CONTINUOUS_NM = 1.569     # 16 kg.cm, continuous
 

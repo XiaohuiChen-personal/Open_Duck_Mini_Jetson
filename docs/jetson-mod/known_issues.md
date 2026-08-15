@@ -1738,6 +1738,39 @@ law with a clip. A real STS3250 runs its own firmware PD with its own gains, so
 these torques are a red flag to investigate on the bench, not a measured
 hardware failure. Task **S.8** is where that gets settled.
 
+## SERVO-1 addendum · MEASURED ROOT CAUSE — the neck is pinned on its end stop
+
+`scripts/measure_head_motion.py` (new), v6d, 30 s of walking at vx = 0.2:
+
+```
+joint         cmd range          actual range        act p2p   tau rms
+neck_pitch    -25.7 .. -21.3    -20.0001 .. -19.9989   0.003    3.282
+head_yaw      -10.5 ..   9.9    -11.5   ..  10.2      21.674    0.991
+head_pitch     -9.5 ..  -3.6     -9.6   ..  -3.4       6.233    0.522
+head_roll      -5.1 ..   0.0     -5.1   ..   0.2       5.306    0.340
+```
+
+`neck_pitch`'s MJCF range is `-0.349066 1.13446` rad = **-20.0° to +65.0°**. The
+joint sits on its **lower mechanical stop** for **100 % of steps**, while the
+policy commands **4° past it, 100 % of steps**. Total travel: **0.003°**.
+
+So the 3.28 N·m is not gain-induced lag — it is a servo **stalled against a hard
+stop**, which is the worst possible thermal case: maximum current, zero motion,
+no convective cooling from movement.
+
+**The other three head joints move freely and track well** (head_yaw ±10°), so
+the head does nod and turn; it is specifically the neck pitch that is jammed.
+
+**Root cause, verified:** the reward term whose comment reads *"Joint limits:
+protect servos"* (`env_cfg.py:175`) lists only `right_ankle, left_ankle,
+right_knee, left_knee`. **The head and neck joints were never added to it**, and
+`joint_deviation_head` at weight −0.1 is far too weak to hold the neck off its
+stop. No other joint in the robot is pinned.
+
+**Fix:** add the four head joints to `joint_pos_limits`. This frees ~20° of neck
+travel the robot currently cannot use **and** removes the single worst thermal
+load, in one change.
+
 ## SERVO-2 · The shipped policy saturates the leg actuators — HIGH
 
 **Evidence** — same run as [SERVO-1](#servo-1):
@@ -1765,7 +1798,23 @@ deliver; it simply uses all of it. **The 4.903 N.m ceiling is the corrective,
 and v6d is the first policy trained under it.** So this issue argues for a
 mechanical or reward change, never for reverting to an older policy.
 
-**Candidate responses**, in the order a retrain should try them: raise
-`joint_torque_l2` / add an explicit torque-limit penalty; lower the commanded
-velocity envelope; reduce plant mass (the M1 print process is already the
-lightest orderable option at 2.729 kg); gear or upgrade the hip-pitch joints.
+**MEASURED CAUSE (2026-08-15).** `dof_torques_l2 = None` and
+`dof_acc_l2 = None` in `env_cfg.py:209-210` — verified against the shipped
+policy's own archived `env.yaml`. **There is no torque penalty and no
+acceleration penalty in the reward function at all.** Nothing ever told the
+policy that torque costs anything.
+
+**AND THE SIM CEILING IS TOO HIGH.** Feetech's firmware trips at **3.923 N·m**
+(overload: >80 % stall for 2 s) and **4.099 N·m** (over-current: >3.8 A for 2 s),
+both **below** `effort_limit_sim = 4.903`. The policy has been trained to
+command torque the real servo will switch off. See
+[`servo_torque_budget.md`](servo_torque_budget.md).
+
+**Target: worst-joint RMS <= ~1.0 N·m**, which thermal derating for an enclosed
+chassis and Feetech's own 1/5-of-stall cycle-life load independently agree on.
+Today: 2.735 N·m.
+
+**Responses, in order:** enable `dof_torques_l2` (~-2e-5, tune to target); lower
+`effort_limit_sim` 4.903 -> 3.9; consider `dof_acc_l2` given `armature = 0.040`
+is 1,056x the driven link inertia at `hip_roll_assembly_2`; only then look at
+mass or gearing.
