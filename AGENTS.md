@@ -679,7 +679,7 @@ Isaac Lab (DGX Spark) → .pt checkpoint → ONNX export → TensorRT engine →
 - `isaac_lab_env/open_duck_mini_v2/data/polynomial_coefficients.pkl` — 240 polynomial walking gaits
 - `isaac_lab_env/open_duck_mini_v2/agents/rsl_rl_ppo_cfg.py` — PPO hyperparameters
 - `isaac_lab_env/open_duck_mini_v2/robot_cfg.py` — Robot articulation config
-- `exported_policies/<name>/policy.onnx` — Exported policies (`v6d_contact_wrench_ppo/` is current, obs 53 / action 14 on the 2.729 kg plant; `v5d_contact_wrench_ppo/` is the superseded 59/16 archive). `*.onnx` is gitignored, so each dir's `README.md` md5 is the only provenance. **`deployment_contract.json` is required to deploy** — `action_scale` and `q_default` are not in the graph.
+- `exported_policies/v6d_contact_wrench_ppo/` — **THE locomotion policy.** Selected 2026-08-15; see [`locomotion_selection.md`](docs/jetson-mod/locomotion_selection.md). obs 53 / action 14, plant 2.729 kg, `model_5998.pt` md5 `37da88d08bf5d593a3febf74bce96dbe`. Every other policy the project trained is **retired** — do not quote, deploy or benchmark one without re-measuring it on the current plant first. `*.onnx` is gitignored, so the dir's `README.md` md5 is the only provenance. **`deployment_contract.json` is required to deploy** — `action_scale` and `q_default` are not in the graph. Before any duty cycle longer than a bring-up run, read `known_issues.md` **SERVO-1** and **SERVO-2**.
 - `experiments/v2/params_sts3250_id008.json` — BAM motor identification parameters (STS3250)
 - `mini_bdx/mini_bdx/utils/rl_utils.py` — Joint order conversion, action scaling
 

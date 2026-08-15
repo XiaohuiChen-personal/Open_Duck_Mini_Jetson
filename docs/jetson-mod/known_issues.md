@@ -122,6 +122,8 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [DOC-4](#doc-4) | `task_plan.md` is stale on four axes | MEDIUM | **FIXED 2026-08-11** (all four) |
 | [DOC-5](#doc-5) | `AGENTS.md` says the USD came from URDF; it came from MJCF | LOW | **FIXED 2026-08-09** |
 | [DOC-6](#doc-6) | `AGENTS.md` actuator snippet sets a field the code does not use | LOW | **FIXED 2026-08-09** |
+| [SERVO-1](#servo-1) | `neck_pitch` holds the head at 207 % of the servo's continuous thermal rating, 94.7 % of the time | **HIGH** | blocks sustained operation; affects every policy |
+| [SERVO-2](#servo-2) | The shipped policy saturates the leg actuators: p99 = peak stall on four joints | **HIGH** | blocks sustained operation |
 
 ---
 
@@ -1640,3 +1642,68 @@ correctness beyond the terms named above, anything in `jetson_runtime/` (it does
 not exist), and **real-hardware measurements of any kind**. Nothing in this
 document is a claim about the physical robot's behaviour — only about what the
 simulator does and whether the repo describes it accurately.
+
+## SERVO-1 · `neck_pitch` holds the head at 207 % of continuous, 94.7 % of the time — HIGH
+
+**Evidence** — `scripts/measure_joint_torque.py` on `v6d_contact_wrench`, current
+2.729035 kg plant, its own PLAY task, vx = 0.2, 32 envs x 1500 steps, **all
+disturbances off** (the friendliest condition that exists). Full log:
+`v6d_torque_measurement.txt`.
+
+```
+joint          peak     p99     rms   % steps over continuous
+neck_pitch    4.710   4.523   3.241        94.70%
+```
+
+`neck_pitch` is in the `head` actuator group and carries the STS3250 limits
+(`robot_cfg.py:118-131`): **4.903 N.m** peak stall, **1.569 N.m continuous**.
+RMS 3.241 / 1.569 = **207 % of the continuous thermal rating**, sustained for
+95 % of every second of ordinary walking.
+
+**This is the most stressed joint in the robot** — worse than any leg joint —
+and it is not a locomotion problem. It is the head assembly held against gravity:
+a **static** load that any policy on this plant will carry. Retraining will not
+fix it. The candidate fixes are mechanical: reduce head mass, move the head CoM
+toward the neck axis, add a counterbalance or a spring, or fit a higher-torque
+servo at that joint.
+
+**Why it was not caught earlier.** `measure_joint_torque.py` was written for
+Task M1 and run once, on v5d, and the table quoted into
+`print_process_decision.md` was filtered to **leg joints only**. The neck was
+measured and then not looked at.
+
+**Consequence.** Task **S.8** must resolve this before any duty cycle longer
+than a bring-up run. A servo held at 2x its thermal rating does not fail
+immediately; it fails after minutes, hot, mid-run.
+
+## SERVO-2 · The shipped policy saturates the leg actuators — HIGH
+
+**Evidence** — same run as [SERVO-1](#servo-1):
+
+```
+joint             peak     p99     rms   % steps over continuous
+left_hip_pitch   4.903   4.903   2.735        60.59%
+right_hip_pitch  4.903   4.903   2.591        50.91%
+left_ankle       4.903   4.903   2.475        40.77%
+right_ankle      4.903   4.903   2.417        34.85%
+left_knee        4.903   3.734   2.269        62.20%
+```
+
+`effort_limit_sim` is **4.903 N.m** since Task M0 fixed PLANT-5. Four leg joints
+reach exactly that value **and their p99 is also exactly that value** — so this
+is not a transient at heel-strike, it is where the policy lives. Worst-leg RMS
+is **2.735 N.m = 174 % of the 1.569 N.m continuous rating**, again on the
+undisturbed walk; every contact gate is worse.
+
+**Read this together with the alternative, not alone.** v5d commands
+**6.723 N.m = 137 % of datasheet stall** because it was trained against the
+stale 8.716 N.m ceiling — it asks for torque the hardware cannot produce at all.
+v6d was trained against the true ceiling, so it never exceeds what the servo can
+deliver; it simply uses all of it. **The 4.903 N.m ceiling is the corrective,
+and v6d is the first policy trained under it.** So this issue argues for a
+mechanical or reward change, never for reverting to an older policy.
+
+**Candidate responses**, in the order a retrain should try them: raise
+`joint_torque_l2` / add an explicit torque-limit penalty; lower the commanded
+velocity envelope; reduce plant mass (the M1 print process is already the
+lightest orderable option at 2.729 kg); gear or upgrade the hip-pitch joints.
