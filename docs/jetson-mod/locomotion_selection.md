@@ -129,11 +129,20 @@ Three facts follow, none of which were recorded anywhere before this document:
    RMS 2.735 N·m ÷ 1.569 = 1.74. This is on the *unloaded* walk; every contact
    gate is worse.
 3. **The most stressed joint is not a leg — it is `neck_pitch`, at 207 % of
-   continuous for 94.70 % of steps.** It is in the `head` actuator group and
-   carries the same 4.903 N·m STS3250 limit (`robot_cfg.py:118-131`). This is
-   the head assembly held against gravity, i.e. a **static** load, so it will
-   affect *any* policy on this plant. It is a mechanical-design finding, not a
-   policy finding. Filed as **SERVO-1**.
+   continuous for 94.70 % of steps.** Filed as **SERVO-1**.
+
+   > **Corrected 2026-08-15.** This paragraph first attributed that to "the head
+   > held against gravity, i.e. a static load … a mechanical-design finding".
+   > That was wrong. Computed from the MJCF with body rotations applied, the
+   > head group is **541.6 g with its CoM only 14.4 mm from the pitch axis**, so
+   > the static hold is **0.077 N·m — 5 % of continuous**, and the measured
+   > 3.241 N·m is **42× that**. The cause is dynamic: `robot_cfg.py:118-131`
+   > gives the `head` group the **same `stiffness=45.53` / `armature=0.040` as
+   > the `legs`**, and at that gain 3.241 N·m is just a **4.08° tracking error**
+   > while the trunk bobs. The fix is a config change (retune the head gains,
+   > or relax `joint_deviation_head` so the policy stops paying to hold the head
+   > still against body motion) — **not** a head redesign, and **not** a reason
+   > to delay the print order.
 
 **This does not change the choice, because it is not differential.** v5d is
 worse on the same axis — it commands 137 % of stall, torque the hardware cannot

@@ -122,7 +122,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [DOC-4](#doc-4) | `task_plan.md` is stale on four axes | MEDIUM | **FIXED 2026-08-11** (all four) |
 | [DOC-5](#doc-5) | `AGENTS.md` says the USD came from URDF; it came from MJCF | LOW | **FIXED 2026-08-09** |
 | [DOC-6](#doc-6) | `AGENTS.md` actuator snippet sets a field the code does not use | LOW | **FIXED 2026-08-09** |
-| [SERVO-1](#servo-1) | `neck_pitch` holds the head at 207 % of the servo's continuous thermal rating, 94.7 % of the time | **HIGH** | blocks sustained operation; affects every policy |
+| [SERVO-1](#servo-1) | `neck_pitch` commands 207 % of continuous — caused by leg-sized PD gains on the head group, not by head mass | **HIGH** | **CORRECTED 2026-08-15**; fix is config, not mechanical |
 | [SERVO-2](#servo-2) | The shipped policy saturates the leg actuators: p99 = peak stall on four joints | **HIGH** | blocks sustained operation |
 
 ---
@@ -1658,38 +1658,85 @@ not exist), and **real-hardware measurements of any kind**. Nothing in this
 document is a claim about the physical robot's behaviour — only about what the
 simulator does and whether the repo describes it accurately.
 
-## SERVO-1 · `neck_pitch` holds the head at 207 % of continuous, 94.7 % of the time — HIGH
+## SERVO-1 · `neck_pitch` commands 207 % of continuous — and it is the GAINS, not the head mass — HIGH
 
-**Evidence** — `scripts/measure_joint_torque.py` on `v6d_contact_wrench`, current
-2.729035 kg plant, its own PLAY task, vx = 0.2, 32 envs x 1500 steps, **all
-disturbances off** (the friendliest condition that exists). Full log:
-`v6d_torque_measurement.md`.
+> **CORRECTED 2026-08-15, same day as filing.** This entry first said the cause
+> was "the head assembly held against gravity, i.e. a **static** load", that
+> "retraining cannot fix it", and that "the candidates are mechanical". **All
+> three were wrong**, and they were wrong in the direction that costs money —
+> they implied a head redesign before the print order. The measurement below
+> replaces them.
+
+**The measurement stands.** `scripts/measure_joint_torque.py` on
+`v6d_contact_wrench`, current plant, its own PLAY task, vx = 0.2, all
+disturbances off (`v6d_torque_measurement.md`):
 
 ```
 joint          peak     p99     rms   % steps over continuous
 neck_pitch    4.710   4.523   3.241        94.70%
 ```
 
-`neck_pitch` is in the `head` actuator group and carries the STS3250 limits
-(`robot_cfg.py:118-131`): **4.903 N.m** peak stall, **1.569 N.m continuous**.
-RMS 3.241 / 1.569 = **207 % of the continuous thermal rating**, sustained for
-95 % of every second of ordinary walking.
+3.241 / 1.569 = **207 % of the STS3250 continuous rating**, sustained.
 
-**This is the most stressed joint in the robot** — worse than any leg joint —
-and it is not a locomotion problem. It is the head assembly held against gravity:
-a **static** load that any policy on this plant will carry. Retraining will not
-fix it. The candidate fixes are mechanical: reduce head mass, move the head CoM
-toward the neck axis, add a counterbalance or a spring, or fit a higher-torque
-servo at that joint.
+**The cause is not gravity.** Computed from the MJCF with full forward
+kinematics (body quaternions applied — a flat position sum gets this wrong):
 
-**Why it was not caught earlier.** `measure_joint_torque.py` was written for
-Task M1 and run once, on v5d, and the table quoted into
-`print_process_decision.md` was filtered to **leg joints only**. The neck was
-measured and then not looked at.
+| | |
+|---|---|
+| mass outboard of `neck_pitch` | 541.6 g (neck + head + antenna holders) |
+| horizontal CoM offset from the pitch axis | **14.4 mm** — the head is well balanced |
+| **static gravity torque** | **0.077 N·m = 5 % of continuous, 2 % of stall** |
+| measured RMS while walking | 3.241 N·m = **42× the static requirement** |
 
-**Consequence.** Task **S.8** must resolve this before any duty cycle longer
-than a bring-up run. A servo held at 2x its thermal rating does not fail
-immediately; it fails after minutes, hot, mid-run.
+Holding the head up is nearly free. The torque is **dynamic**.
+
+**The cause is the control gains.** `robot_cfg.py:118-131` gives the `head`
+group *the same numbers as the `legs` group*:
+
+```
+legs: stiffness=45.53  damping=1.346  armature=0.040
+head: stiffness=45.53  damping=1.346  armature=0.040   <- copied verbatim
+```
+
+With `stiffness = 45.53 N·m/rad`, torque is `45.53 × tracking_error`:
+
+| torque | implied tracking error |
+|---|---|
+| 0.077 N·m (static hold) | 0.10° |
+| **3.241 N·m (measured RMS)** | **4.08°** |
+| 4.903 N·m (clip ceiling) | 6.17° |
+
+So the neck is producing 207 % of its thermal rating because the head lags its
+commanded angle by **about four degrees** while the trunk bobs and rotates, and
+a leg-sized proportional gain turns four degrees into 3.2 N·m. The policy
+actively commands `neck_pitch`/`head_pitch`/`head_yaw`/`head_roll` (they are 4
+of the 14 actions) and `joint_deviation_head` rewards holding them at default,
+so the servo is actively fighting body motion to keep the head still.
+
+`armature = 0.040 kg·m²` compounds it: the head link's own principal inertia is
+**0.0020 kg·m²**, so the actuator model attributes to the neck a reflected rotor
+inertia **~20× the thing it is moving**. That is defensible as a servo property
+(same servo, same gearbox) but it means the head group inherited a tuning sized
+for a load 20-40× heavier.
+
+**Candidate fixes, cheapest first — none of them mechanical:**
+
+1. **Retune the `head` group's `stiffness`/`damping`** for its actual load and
+   retrain. This is a config change.
+2. **Let the head track the trunk** instead of resisting it — relax or reshape
+   `joint_deviation_head` so the policy is not paying reward to hold the head
+   still against body motion.
+3. Add an explicit torque penalty (shared with [SERVO-2](#servo-2)).
+4. Only if 1-3 fail: mechanical work.
+
+**Do NOT redesign the head or delay the print order on account of this entry.**
+The head is balanced to 14 mm and holds itself for 5 % of the servo's continuous
+rating.
+
+**Epistemic status.** This is the *simulator's* actuator model — an implicit PD
+law with a clip. A real STS3250 runs its own firmware PD with its own gains, so
+these torques are a red flag to investigate on the bench, not a measured
+hardware failure. Task **S.8** is where that gets settled.
 
 ## SERVO-2 · The shipped policy saturates the leg actuators — HIGH
 
