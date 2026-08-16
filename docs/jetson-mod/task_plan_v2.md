@@ -4404,7 +4404,7 @@ Observable: the last command prints `59`, and `--check` exits 0.
 
 ---
 
-### Task S.2 — Record Isaac reference traces as offline ground truth
+### Task S.2 — Record Isaac reference traces as offline ground truth — ✅ **DONE 2026-08-16** — 3 traces, 21 tests, lag decomposition measured
 
 **1. Context for the implementing agent**
 

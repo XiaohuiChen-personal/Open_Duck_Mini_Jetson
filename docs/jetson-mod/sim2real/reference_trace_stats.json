@@ -1,0 +1,220 @@
+{
+  "_note": "Action rate is |a_t - a_{t-1}| on the RAW policy output. Multiply by action_scale to get radians of joint target. S.11 rung 2 aborts if the real robot exceeds the p95 here.",
+  "action_scale": 0.25,
+  "joint_order": [
+    "left_hip_yaw",
+    "neck_pitch",
+    "right_hip_yaw",
+    "left_hip_roll",
+    "head_pitch",
+    "right_hip_roll",
+    "left_hip_pitch",
+    "head_yaw",
+    "right_hip_pitch",
+    "left_knee",
+    "head_roll",
+    "right_knee",
+    "left_ankle",
+    "right_ankle"
+  ],
+  "traces": {
+    "fwd": {
+      "command": [
+        0.2,
+        0.0,
+        0.0
+      ],
+      "steps": 1500,
+      "obs_joint_block_total_lag": 3,
+      "plant7_delay_steps": 2,
+      "action_rate": {
+        "p50": 0.05530114844441414,
+        "p95": 0.29476943612098694,
+        "max": 0.4489139914512634,
+        "p95_per_joint": {
+          "left_hip_yaw": 0.05499815195798874,
+          "neck_pitch": 0.0712963417172432,
+          "right_hip_yaw": 0.06102341413497925,
+          "left_hip_roll": 0.1689988672733307,
+          "head_pitch": 0.09158848226070404,
+          "right_hip_roll": 0.1292155236005783,
+          "left_hip_pitch": 0.4254975914955139,
+          "head_yaw": 0.15166571736335754,
+          "right_hip_pitch": 0.396526962518692,
+          "left_knee": 0.2799409031867981,
+          "head_roll": 0.061783693730831146,
+          "right_knee": 0.2946484088897705,
+          "left_ankle": 0.3585681617259979,
+          "right_ankle": 0.3489038646221161
+        }
+      },
+      "joint_target_dev_from_default_rad": {
+        "max": 0.47624327802658084,
+        "max_per_joint": {
+          "left_hip_yaw": 0.035466901630163195,
+          "neck_pitch": 0.22870272397994995,
+          "right_hip_yaw": 0.039503713577985766,
+          "left_hip_roll": 0.12893587040901183,
+          "head_pitch": 0.23720094561576843,
+          "right_hip_roll": 0.1560930633544922,
+          "left_hip_pitch": 0.4300442886352539,
+          "head_yaw": 0.23012197017669678,
+          "right_hip_pitch": 0.42756842613220214,
+          "left_knee": 0.2770101718902589,
+          "head_roll": 0.40021780133247375,
+          "right_knee": 0.26085954093933106,
+          "left_ankle": 0.47624327802658084,
+          "right_ankle": 0.42011522865295414
+        }
+      },
+      "applied_torque_rms_per_joint": {
+        "left_hip_yaw": 0.2853529751300812,
+        "neck_pitch": 0.44355374574661255,
+        "right_hip_yaw": 0.2757295072078705,
+        "left_hip_roll": 0.7001934051513672,
+        "head_pitch": 0.38449254631996155,
+        "right_hip_roll": 0.6967342495918274,
+        "left_hip_pitch": 2.2074668407440186,
+        "head_yaw": 0.6913727521896362,
+        "right_hip_pitch": 1.9547953605651855,
+        "left_knee": 1.742540717124939,
+        "head_roll": 0.3220090866088867,
+        "right_knee": 1.7446500062942505,
+        "left_ankle": 1.7900354862213135,
+        "right_ankle": 1.7275402545928955
+      }
+    },
+    "turn": {
+      "command": [
+        0.0,
+        0.0,
+        0.3
+      ],
+      "steps": 1500,
+      "obs_joint_block_total_lag": 3,
+      "plant7_delay_steps": 2,
+      "action_rate": {
+        "p50": 0.039477307349443436,
+        "p95": 0.18103903532028198,
+        "max": 0.3532198965549469,
+        "p95_per_joint": {
+          "left_hip_yaw": 0.07272458076477051,
+          "neck_pitch": 0.05591480806469917,
+          "right_hip_yaw": 0.07062375545501709,
+          "left_hip_roll": 0.13736942410469055,
+          "head_pitch": 0.05785951763391495,
+          "right_hip_roll": 0.12751087546348572,
+          "left_hip_pitch": 0.18926198780536652,
+          "head_yaw": 0.11405827850103378,
+          "right_hip_pitch": 0.22582076489925385,
+          "left_knee": 0.2351756989955902,
+          "head_roll": 0.042881131172180176,
+          "right_knee": 0.19351761043071747,
+          "left_ankle": 0.26065224409103394,
+          "right_ankle": 0.20181630551815033
+        }
+      },
+      "joint_target_dev_from_default_rad": {
+        "max": 0.3322074317932129,
+        "max_per_joint": {
+          "left_hip_yaw": 0.07417215067148208,
+          "neck_pitch": 0.18649506568908691,
+          "right_hip_yaw": 0.0740679441690445,
+          "left_hip_roll": 0.13262536811828612,
+          "head_pitch": 0.15864863991737366,
+          "right_hip_roll": 0.10776579141616821,
+          "left_hip_pitch": 0.23589181423187255,
+          "head_yaw": 0.18568113446235657,
+          "right_hip_pitch": 0.3322074317932129,
+          "left_knee": 0.19929477500915538,
+          "head_roll": 0.23845002055168152,
+          "right_knee": 0.1726384677886963,
+          "left_ankle": 0.21363266372680667,
+          "right_ankle": 0.19914590930938725
+        }
+      },
+      "applied_torque_rms_per_joint": {
+        "left_hip_yaw": 0.384869784116745,
+        "neck_pitch": 0.33606401085853577,
+        "right_hip_yaw": 0.36870163679122925,
+        "left_hip_roll": 0.6131339073181152,
+        "head_pitch": 0.2602488100528717,
+        "right_hip_roll": 0.7070626020431519,
+        "left_hip_pitch": 1.3541406393051147,
+        "head_yaw": 0.47843214869499207,
+        "right_hip_pitch": 1.414209008216858,
+        "left_knee": 1.2597837448120117,
+        "head_roll": 0.20598876476287842,
+        "right_knee": 1.1504350900650024,
+        "left_ankle": 1.4351942539215088,
+        "right_ankle": 1.2540205717086792
+      }
+    },
+    "stand": {
+      "command": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "steps": 1500,
+      "obs_joint_block_total_lag": 3,
+      "plant7_delay_steps": 2,
+      "action_rate": {
+        "p50": 0.031958624720573425,
+        "p95": 0.17425747215747833,
+        "max": 0.33601340651512146,
+        "p95_per_joint": {
+          "left_hip_yaw": 0.053659796714782715,
+          "neck_pitch": 0.049488943070173264,
+          "right_hip_yaw": 0.05665155127644539,
+          "left_hip_roll": 0.15598973631858826,
+          "head_pitch": 0.051689743995666504,
+          "right_hip_roll": 0.14192870259284973,
+          "left_hip_pitch": 0.18656906485557556,
+          "head_yaw": 0.10202781111001968,
+          "right_hip_pitch": 0.206429123878479,
+          "left_knee": 0.2333221584558487,
+          "head_roll": 0.035849105566740036,
+          "right_knee": 0.17035481333732605,
+          "left_ankle": 0.24134103953838348,
+          "right_ankle": 0.22626285254955292
+        }
+      },
+      "joint_target_dev_from_default_rad": {
+        "max": 0.2984423542022705,
+        "max_per_joint": {
+          "left_hip_yaw": 0.03379216757416725,
+          "neck_pitch": 0.16666832566261292,
+          "right_hip_yaw": 0.029576654985547065,
+          "left_hip_roll": 0.1278511105775833,
+          "head_pitch": 0.16648127138614655,
+          "right_hip_roll": 0.11227333784103394,
+          "left_hip_pitch": 0.26875245094299316,
+          "head_yaw": 0.12721243500709534,
+          "right_hip_pitch": 0.2984423542022705,
+          "left_knee": 0.19072112369537364,
+          "head_roll": 0.23291821777820587,
+          "right_knee": 0.15262465858459473,
+          "left_ankle": 0.22765453720092776,
+          "right_ankle": 0.17494880771636967
+        }
+      },
+      "applied_torque_rms_per_joint": {
+        "left_hip_yaw": 0.2599095404148102,
+        "neck_pitch": 0.3067152202129364,
+        "right_hip_yaw": 0.27671048045158386,
+        "left_hip_roll": 0.6279610395431519,
+        "head_pitch": 0.2787436246871948,
+        "right_hip_roll": 0.6909849047660828,
+        "left_hip_pitch": 1.4088516235351562,
+        "head_yaw": 0.39306455850601196,
+        "right_hip_pitch": 1.3026639223098755,
+        "left_knee": 1.206856369972229,
+        "head_roll": 0.1746879667043686,
+        "right_knee": 1.0985867977142334,
+        "left_ankle": 1.3361749649047852,
+        "right_ankle": 1.2641805410385132
+      }
+    }
+  }
+}
