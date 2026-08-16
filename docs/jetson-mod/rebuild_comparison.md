@@ -45,7 +45,7 @@ Aggregate values below are means over the five conditions.
 <!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
 ## Results
 
-_Last regenerated: 2026-08-16T03:11:13_
+_Last regenerated: 2026-08-16T08:18:04_
 
 _Plant mass(es) simulated: 2.729035 kg — obs/action dims: 53/14 — conditions per entry: [6]_
 
@@ -55,23 +55,23 @@ Rank policies on the quality columns only after they pass the gait gate (see Met
 
 | Policy | Framework | Gait valid | Fall rate (%) | Ep len (s) | Ref RMS (deg) | Jerk | Action std | Duty L (%) | Duty R (%) | Duty asym (pp) | ROM ratio L/R | v_xy err (m/s) | wz err (rad/s) | Energy (W) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| v6_robust_grid6 | rsl_rl | 6/6 | 0.0 | 30.0 | 4.61 | 0.0601 | 0.270 | 66.7 | 64.2 | 2.6 | 0.99 | 0.165 | 0.107 | 19.97 |
 | v6d_contact_wrench | rsl_rl | 6/6 | 0.0 | 30.0 | 4.72 | 0.0749 | 0.274 | 70.9 | 70.9 | 2.6 | 1.08 | 0.149 | 0.115 | 19.59 |
 | v7_servo_safe | rsl_rl | 6/6 | 0.0 | 30.0 | 5.07 | 0.0407 | 0.259 | 67.9 | 66.0 | 2.0 | 1.00 | 0.158 | 0.103 | 12.40 |
+| v7b_servo_safe | rsl_rl | 6/6 | 0.0 | 30.0 | 5.59 | 0.0213 | 0.209 | 65.8 | 65.5 | 2.2 | 0.91 | 0.161 | 0.103 | 7.15 |
 
 ### Fall rate (%) per condition
 
 | Policy | vx+0.20_vy+0.00_wz+0.00 | vx-0.10_vy+0.00_wz+0.00 | vx+0.00_vy+0.10_wz+0.00 | vx+0.00_vy+0.00_wz+0.30 | vx+0.15_vy+0.05_wz+0.20 | vx+0.00_vy+0.00_wz+0.50 |
 |---|---|---|---|---|---|---|
-| v6_robust_grid6 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | v6d_contact_wrench | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | v7_servo_safe | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| v7b_servo_safe | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 
 ### Gait validity per condition (duty L/R, ok = both in [40, 90]%)
 
 | Policy | vx+0.20_vy+0.00_wz+0.00 | vx-0.10_vy+0.00_wz+0.00 | vx+0.00_vy+0.10_wz+0.00 | vx+0.00_vy+0.00_wz+0.30 | vx+0.15_vy+0.05_wz+0.20 | vx+0.00_vy+0.00_wz+0.50 |
 |---|---|---|---|---|---|---|
-| v6_robust_grid6 | ok (63/60) | ok (70/63) | ok (63/63) | ok (68/68) | ok (66/63) | ok (70/68) |
 | v6d_contact_wrench | ok (68/65) | ok (73/74) | ok (70/77) | ok (73/70) | ok (70/71) | ok (71/69) |
 | v7_servo_safe | ok (68/64) | ok (68/65) | ok (69/68) | ok (67/66) | ok (66/66) | ok (68/67) |
+| v7b_servo_safe | ok (64/65) | ok (66/63) | ok (70/67) | ok (66/64) | ok (64/66) | ok (65/68) |
 <!-- END AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
