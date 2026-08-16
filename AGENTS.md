@@ -772,7 +772,13 @@ docker run --rm -it --runtime=nvidia --network host --shm-size=4g \
 
 ### Safety Rules
 
-- Apply the same line edit — `All velocity commands from Cosmos MUST be clamped to the trained command hull: forward [-0.148, 0.222], lateral [-0.111, 0.111], turn [-0.3, 0.3]` — but ONLY as part of a three-file change: (1) AGENTS.md:699 as above; (2) docs/jetson-mod/known_issues.md — close DEPLOY-5 (line 105 index row and the section at 789-798) as FIXED, since its body verbatim-quotes the old numbers; (3) scripts/verify_known_issues.py — remove or invert the `EVAL-3` check at lines 344-358, which otherwise reports REFUTED and makes the script exit 1.
+- **All velocity commands MUST be clamped to the trained command hull:**
+  forward `[-0.148, 0.222]` m/s, lateral `[-0.111, 0.111]` m/s, turn
+  `[-0.3, 0.3]` rad/s. The forward and lateral figures are the hull the
+  policy was trained on (`env_cfg.py:301-303`, and the shipped policy's
+  archived `env.yaml`). **The turn clamp is deliberately tighter than the
+  trained ±0.5** — a conservative deployment choice, not the hull. Do not
+  "correct" it to ±0.5.
 - On any Cosmos inference failure, fall back to last known good command (not zero — that could cause mid-stride fall)
 - IMU-based emergency stop: if tilt > 60 degrees, cut all motors
 - Servo current monitoring: if any servo exceeds safe current, reduce velocity
