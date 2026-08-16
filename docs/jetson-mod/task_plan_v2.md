@@ -4798,6 +4798,42 @@ measurement of real stall current needs hardware and a current meter.
 
 ---
 
+### Task S.8b — Bench-measure the servo thermal envelope — 🔧 **HARDWARE, parts ordered 2026-08-16**
+
+**AI-agent suitable:** NO — this is a physical measurement. The agent wrote the
+protocol, will process the logs, and will fold the results back into the
+documents; a human runs the bench.
+
+**Why this task was added.** S.8 is *"pure numpy over the S.2 traces — no
+hardware"*, and **no other Phase-S task measures real servo current or
+temperature**. That was a gap: every thermal number in this project — including
+the ≤1.0 N·m target `v7_servo_safe` missed and a second retrain could not reach —
+comes from a derating calculation over thermal behaviour **Feetech does not
+publish**. One servo and an afternoon replaces the assumption with a measurement.
+
+**The question:** the shipped policy commands **2.060 N·m RMS** at its worst leg
+joint. On a real servo, does that plateau below the firmware's 70 °C torque-off,
+or climb until the joint goes limp?
+
+Full protocol, wiring, safety and the load table:
+[`bench_test_servo.md`](bench_test_servo.md).
+
+**Depends on:** parts only. Independent of S.1/S.2/S.8, which can run first and
+should — S.8's sim-side envelope tells you what to look for on the bench.
+
+**5. Done when**
+
+- [ ] `docs/jetson-mod/bench_results_servo.md` carries the raw logs, the measured
+      Kt, and a time-to-70 °C (or "stable at X °C") for each torque level.
+- [ ] `servo_torque_budget.md`'s derating assumptions are replaced by measured
+      numbers, or explicitly reaffirmed against them.
+- [ ] `known_issues.md` **SERVO-2** is either closed or restated with a real
+      target.
+- [ ] The three firmware thresholds in S.8 lose their `"UNVERIFIED"` marking, or
+      are shown to be wrong.
+
+---
+
 ### Task S.4 — Build the hardware-free runtime core
 
 **1. Context for the implementing agent**
