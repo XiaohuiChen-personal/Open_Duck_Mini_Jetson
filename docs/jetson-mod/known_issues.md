@@ -1758,6 +1758,25 @@ So the 3.28 N·m is not gain-induced lag — it is a servo **stalled against a h
 stop**, which is the worst possible thermal case: maximum current, zero motion,
 no convective cooling from movement.
 
+**IT IS CONDITION-DEPENDENT, and the 100 % figure above is for FORWARD WALKING
+ONLY.** Re-measured turning in place (vx = 0, wz = 0.5 rad/s):
+
+| | walking straight (vx 0.2) | turning in place (wz 0.5) |
+|---|---|---|
+| `neck_pitch` travel | **0.003°** | **5.16°** |
+| range used | −20.00° .. −20.00° | −20.00° .. −14.84° |
+| % of steps on the stop | **100.0 %** | **30.4 %** |
+| % of steps commanded past it | **100.0 %** | 3.6 % |
+| torque RMS | **3.282 N·m** | **0.340 N·m** |
+
+Turning costs the neck **10× less torque** because the policy asks for an angle
+inside the joint's range; forward walking asks for ~4° beyond it. The joint has
+**85° of travel (−20° to +65°) and the policy operates it in the bottom 5°**,
+hard against the stop whenever the robot walks forward.
+
+Since forward walking is the dominant mode, the thermal conclusion stands — but
+"the neck never moves" is wrong, and so is any fix premised on it.
+
 **The other three head joints move freely and track well** (head_yaw ±10°), so
 the head does nod and turn; it is specifically the neck pitch that is jammed.
 
