@@ -80,6 +80,8 @@ parser.add_argument("--steps", type=int, default=1500,
 parser.add_argument("--vx", type=float, default=0.2)
 parser.add_argument("--vy", type=float, default=0.0)
 parser.add_argument("--wz", type=float, default=0.0)
+parser.add_argument("--out", default=None,
+                    help="optional .npz dump of the per-step torque tensor")
 
 from isaaclab.app import AppLauncher  # noqa: E402
 
@@ -88,6 +90,7 @@ args_cli = parser.parse_args()
 simulation_app = AppLauncher(args_cli).app
 
 import gymnasium as gym  # noqa: E402
+import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 import isaaclab_tasks  # noqa: F401,E402
@@ -159,12 +162,26 @@ def main() -> int:
             sq += (tau ** 2).sum(dim=0)
             over += (tau > CONTINUOUS_NM).sum(dim=0).float()
             samples += tau.shape[0]
-            if i % 10 == 0:
-                keep.append(tau.detach().clone())
+            keep.append(tau.detach().clone())
             if i and i % 250 == 0:
                 print(f"[INFO] step {i}/{args_cli.steps}")
 
     rms = torch.sqrt(sq / samples)
+    # SERVO-2 acceptance needs the LONGEST CONTINUOUS RUN above the servo's
+    # firmware overload trip, not just the fraction of steps -- Feetech shuts
+    # the output off only after the threshold is held 2 s. Env 0, full rate.
+    series = torch.stack(keep, dim=0)[:, 0, :]          # (steps, joints)
+    OVERLOAD_NM = 3.923      # 80% of stall held 2 s -> Feetech overload trip
+    OC_NM = 4.099            # 3.8 A held 2 s -> Feetech over-current trip
+    runlen = {}
+    for th in (OVERLOAD_NM, OC_NM, CONTINUOUS_NM):
+        above = (series > th).cpu().numpy()
+        best = np.zeros(above.shape[1], dtype=int)
+        cur = np.zeros(above.shape[1], dtype=int)
+        for row in above:
+            cur = np.where(row, cur + 1, 0)
+            best = np.maximum(best, cur)
+        runlen[th] = best * 0.02
     frac_over = over / samples
     p99 = torch.quantile(torch.cat(keep, dim=0).float(), 0.99, dim=0)
     plant_kg = float(robot.data.default_mass[0].sum())
@@ -177,6 +194,23 @@ def main() -> int:
           f"({args_cli.steps * 0.02:.0f} s)")
     print(f"STS3250 continuous {CONTINUOUS_NM:.3f} N.m (16 kg.cm) | "
           f"peak stall {STALL_NM:.3f} N.m (50 kg.cm)")
+    print()
+    print(f"longest CONTINUOUS run above each threshold (env 0, "
+          f"{series.shape[0]} steps @ 50 Hz); Feetech trips after 2.0 s")
+    wj = max(len(x) for x in names)
+    print(f"{'joint':<{wj}}{'>1.569 rated':>14}{'>3.923 overload':>17}{'>4.099 overcur':>16}")
+    for jj, nm in enumerate(names):
+        print(f"{nm:<{wj}}{runlen[CONTINUOUS_NM][jj]:13.2f}s"
+              f"{runlen[OVERLOAD_NM][jj]:16.2f}s{runlen[OC_NM][jj]:15.2f}s")
+    trip = [names[jj] for jj in range(len(names)) if runlen[OVERLOAD_NM][jj] >= 2.0]
+    print(f"  -> joints that WOULD TRIP the 2 s overload cutout: "
+          f"{trip if trip else 'none'}")
+    if args_cli.out:
+        np.savez(args_cli.out, tau=series.cpu().numpy(),
+                 names=np.array(names), rms=rms.cpu().numpy(),
+                 peak=peak.cpu().numpy())
+        print(f"  -> per-step torque dumped to {args_cli.out}")
+
     print()
     w = max(len(x) for x in names)
     print(f"{'joint':<{w}}{'peak':>9}{'p99':>9}{'rms':>9}{'% over cont':>13}")

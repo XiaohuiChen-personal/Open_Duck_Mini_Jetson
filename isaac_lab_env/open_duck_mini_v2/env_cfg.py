@@ -55,7 +55,7 @@ from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     RewardsCfg,
 )
 
-from isaac_lab_env.open_duck_mini_v2 import contact_events, gated_rewards, latency
+from isaac_lab_env.open_duck_mini_v2 import contact_events, gated_rewards, latency, torque_rewards
 from isaac_lab_env.open_duck_mini_v2.duck_commands import BandedWzVelocityCommandCfg
 from isaac_lab_env.open_duck_mini_v2.imitation_reward import (
     ImitationReward,
@@ -172,6 +172,13 @@ class DuckRewards(RewardsCfg):
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-2.0)
 
     # Joint limits: protect servos.
+    # SERVO-1 (2026-08-15): the head joints were MISSING from this list, and
+    # nothing else penalised them, so the policy parked `neck_pitch` on its
+    # lower mechanical stop (-20.00 deg) for 100 % of forward-walking steps and
+    # commanded 4 deg past it -- a servo stalled against a hard stop at
+    # 3.28 N.m RMS, the worst possible thermal case. `mdp.joint_pos_limits`
+    # penalises violation of the SOFT limits (soft_joint_pos_limit_factor=0.9),
+    # which for neck_pitch is -15.75 deg, so the term is active from iteration 1.
     joint_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-1.0,
@@ -181,6 +188,7 @@ class DuckRewards(RewardsCfg):
                 joint_names=[
                     "right_ankle", "left_ankle",
                     "right_knee", "left_knee",
+                    "neck_pitch", "head_pitch", "head_yaw", "head_roll",
                 ],
             )
         },
@@ -194,8 +202,10 @@ class DuckRewards(RewardsCfg):
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
+                    # M0b removed the antennas from the action space, so
+                    # penalising their deviation described a control the policy
+                    # does not have. They hold their default; no reward changes.
                     "neck_pitch", "head_pitch", "head_yaw", "head_roll",
-                    "left_antenna", "right_antenna",
                 ],
             )
         },
@@ -206,7 +216,16 @@ class DuckRewards(RewardsCfg):
     # ====================================================================
 
     ang_vel_xy_l2 = None
-    dof_torques_l2 = None
+    # SERVO-2 (2026-08-15). Was None -- nothing priced torque at all, which is
+    # why the worst leg joint ran 2.735 N.m RMS = 174 % of rated. Weight is
+    # DERIVED from the measured mean sum(tau^2) = 51.84 over the 14 actioned
+    # joints: -1e-2 costs 0.518/step against alive_bonus +9.37 (~4.7 % of the
+    # budget). Mainstream weights (-1e-5) are calibrated on robots with 10-50x
+    # our torque and this term is squared, so they transfer ~1/1000 of the
+    # penalty. Uses the PRE-CLIP term -- see torque_rewards.py for why.
+    dof_torques_l2 = RewTerm(
+        func=torque_rewards.joint_torques_commanded_l2, weight=-1.0e-2
+    )
     dof_acc_l2 = None
     undesired_contacts = None
     dof_pos_limits = None

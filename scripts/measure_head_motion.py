@@ -59,6 +59,8 @@ parser.add_argument("--steps", type=int, default=1500,
 parser.add_argument("--vx", type=float, default=0.2)
 parser.add_argument("--vy", type=float, default=0.0)
 parser.add_argument("--wz", type=float, default=0.0)
+parser.add_argument("--out", default=None,
+                    help="where to write the .npz; defaults to REPO/head_kinematics.npz.\n                         Give distinct paths when measuring several conditions,\n                         or each run overwrites the last.")
 
 from isaaclab.app import AppLauncher  # noqa: E402
 
@@ -150,24 +152,41 @@ def main() -> int:
     print(f"env 0, {q.shape[0]} control steps ({q.shape[0]*0.02:.1f} s) after a 2 s settle")
     print(f"command (vx={args_cli.vx}, vy={args_cli.vy}, wz={args_cli.wz})")
     print()
+    # SERVO-1 acceptance needs the fraction of steps spent ON a mechanical
+    # stop, which is the difference between "held at an angle" and "jammed".
+    # Ranges come from the MJCF, the same source PhysX was built from.
+    import xml.etree.ElementTree as ET
+    _r = ET.parse(os.path.join(
+        REPO_ROOT, "mini_bdx/robots/open_duck_mini_v2/robot_motors.xml")).getroot()
+    lim = {jt.get("name"): [float(v) for v in jt.get("range").split()]
+           for jt in _r.iter("joint") if jt.get("name") and jt.get("range")}
+    TOL = np.radians(0.5)
+
     print("DOES THE HEAD MOVE?  angles in degrees, relative to the trunk")
     print(f"{'joint':<16}{'default':>9}{'cmd mean':>10}{'cmd sd':>8}{'cmd p2p':>9}"
-          f"{'act sd':>8}{'act p2p':>9}{'err rms':>9}{'tau rms':>9}")
+          f"{'act sd':>8}{'act p2p':>9}{'err rms':>9}{'tau rms':>9}{'% on stop':>11}")
     for j in HEAD + LEG:
         k = idx[j]
         deg = np.degrees
         cmd, act = tg[:, k], q[:, k]
         err = cmd - act
+        if j in lim:
+            lo, hi = lim[j]
+            on_stop = ((act <= lo + TOL) | (act >= hi - TOL)).mean() * 100.0
+        else:
+            on_stop = float("nan")
         print(f"{j:<16}{deg(dq[k]):9.2f}{deg(cmd.mean()):10.2f}{deg(cmd.std()):8.3f}"
               f"{deg(cmd.max()-cmd.min()):9.3f}{deg(act.std()):8.3f}"
               f"{deg(act.max()-act.min()):9.3f}{deg(np.sqrt((err**2).mean())):9.3f}"
-              f"{np.sqrt((tq[:, k]**2).mean()):9.3f}")
+              f"{np.sqrt((tq[:, k]**2).mean()):9.3f}{on_stop:10.1f}%")
     print()
     print("Reading: 'cmd sd/p2p' = how much the POLICY asks the joint to move.")
     print("         'act sd/p2p' = how much the joint ACTUALLY moves.")
     print("         'err rms'    = lag between the two; torque = 45.53 * err.")
-    np.savez(os.path.join(REPO_ROOT, "head_kinematics.npz"),
+    out_path = args_cli.out or os.path.join(REPO_ROOT, "head_kinematics.npz")
+    np.savez(out_path,
              q=q, tgt=tg, tau=tq, names=np.array(names), default=dq)
+    print(f"  -> {out_path}")
     return 0
 
 
