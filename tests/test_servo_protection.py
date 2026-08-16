@@ -143,6 +143,29 @@ def test_soft_limit_actually_binds():
 
 
 @pytest.mark.phase2
+def test_live_weight_matches_the_shipped_policy():
+    """HEAD must reproduce what shipped.
+
+    Caught for real on 2026-08-16: the live config still carried iteration 2's
+    -4e-2 — the weight that FAILED three bars — while the shipped policy was
+    trained at -1e-2. Anyone retraining from HEAD would have reproduced the
+    failing policy and had no way to know.
+    """
+    import json
+    yaml = pytest.importorskip("yaml")
+    archived = os.path.join(REPO_ROOT, "exported_policies", "v7_servo_safe_ppo", "env.yaml")
+    if not os.path.isfile(archived):
+        pytest.skip("no shipped archive to compare against")
+    # unsafe_load: the archive carries !!python/object tags. Do not "fix" it.
+    shipped = float(yaml.unsafe_load(open(archived))["rewards"]["dof_torques_l2"]["weight"])
+    live = float(ast.literal_eval(_kwarg(_assignments(ENV_CFG)["dof_torques_l2"], "weight")))
+    assert abs(live - shipped) < 1e-12, (
+        f"env_cfg.py has weight {live} but the SHIPPED policy "
+        f"(exported_policies/v7_servo_safe_ppo) was trained at {shipped}. "
+        f"Retraining from HEAD would not reproduce what is deployed.")
+
+
+@pytest.mark.phase2
 def test_effort_limit_unchanged():
     """Design decision D2: the plant must stay byte-identical to v6d's so its ten
     existing eval JSONs remain a valid control. `evaluate_policies.py` does NOT

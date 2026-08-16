@@ -219,20 +219,22 @@ class DuckRewards(RewardsCfg):
     # SERVO-2. Was None -- nothing priced torque at all, which is why the worst
     # leg joint ran 2.735 N.m RMS = 174 % of rated.
     #
-    # ITERATION 2 (2026-08-16): -1e-2 -> -4e-2. Measured, not guessed: at -1e-2
-    # the worst leg joint went 2.735 -> 2.060 N.m (tau^2 ratio 0.567) at ZERO
-    # locomotion cost -- gait stayed 6/6 with 0.000 % falls, and the wrench and
-    # obstacle gates IMPROVED (70.365 -> 62.969 %, 7.318 -> 6.562 %). So there
-    # is measured headroom to push. The plan's pre-data guess of -2e-2 projects
-    # to ~1.74 N.m, still above the 1.569 N.m nameplate; -4e-2 projects to
-    # ~1.47, just under it. Weight is
+    # WEIGHT IS -1e-2, WHICH IS WHAT THE SHIPPED POLICY WAS TRAINED AT.
+    # Iteration 2 tried -4e-2 (run v7b_servo_safe). It reached a better torque
+    # figure -- worst leg 1.587 N.m, 101 % of the 1.569 N.m nameplate, against
+    # -1e-2's 2.060 -- but FAILED two other pre-registered bars to get there:
+    # head_yaw travel fell 19.2 -> 9.101 deg (bar >= 10, i.e. it started
+    # freezing the head) and push-recovery rose 0.417 -> 1.875 % (bar <= 1.0).
+    # It was also WORSE under the wrench, 65.729 vs 62.969 %. So -4e-2 is
+    # reverted; see docs/jetson-mod/servo_fix_results.md.
+    # Weight is
     # DERIVED from the measured mean sum(tau^2) = 51.84 over the 14 actioned
     # joints: -1e-2 costs 0.518/step against alive_bonus +9.37 (~4.7 % of the
     # budget). Mainstream weights (-1e-5) are calibrated on robots with 10-50x
     # our torque and this term is squared, so they transfer ~1/1000 of the
     # penalty. Uses the PRE-CLIP term -- see torque_rewards.py for why.
     dof_torques_l2 = RewTerm(
-        func=torque_rewards.joint_torques_commanded_l2, weight=-4.0e-2
+        func=torque_rewards.joint_torques_commanded_l2, weight=-1.0e-2
     )
     dof_acc_l2 = None
     undesired_contacts = None
