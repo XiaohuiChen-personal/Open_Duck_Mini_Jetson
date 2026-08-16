@@ -1,4 +1,13 @@
-# Locomotion selection — `v6d_contact_wrench` is the mainline
+# Locomotion selection
+
+> **SUPERSEDED 2026-08-16.** `v7_servo_safe` is now the mainline. It is
+> `v6d_contact_wrench` fine-tuned with two reward fixes — see
+> [`servo_fix_results.md`](servo_fix_results.md). Everything below remains the
+> record of why v6d was chosen over its predecessors, and that reasoning is
+> unchanged; only the head of the lineage moved. The SERVO-1 and SERVO-2
+> sections in §4 are now **outdated** — v7 fixed SERVO-1 outright.
+
+# (historical) Locomotion selection — `v6d_contact_wrench` is the mainline
 
 **Decided 2026-08-15.** This document names the single locomotion policy the
 project uses from here, states the evidence, and — because two of the reasons

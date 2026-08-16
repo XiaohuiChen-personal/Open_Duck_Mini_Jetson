@@ -45,7 +45,7 @@ Aggregate values below are means over the five conditions.
 <!-- BEGIN AUTO-GENERATED RESULTS (scripts/evaluate_policies.py) -->
 ## Results
 
-_Last regenerated: 2026-08-16T08:18:04_
+_Last regenerated: 2026-08-16T08:57:23_
 
 _Plant mass(es) simulated: 2.729035 kg — obs/action dims: 53/14 — conditions per entry: [6]_
 

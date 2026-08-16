@@ -24,6 +24,8 @@ V5_RUNS = ("v5_smoke", "v5a_gated_ft", "v5b_ungated_ft",
            "v5c_contact_only", "v5d_contact_wrench")
 # Written by Tasks R2 and R2b themselves, not by R4.
 V6_RUNS = ("v6_robust", "v6d_contact_wrench")
+# Phase-R servo fix; R2b-style rule: a finished run owes a journal entry.
+V7_RUNS = ("v7_smoke", "v7_servo_safe", "v7b_servo_safe")
 
 
 @pytest.fixture(scope="module")

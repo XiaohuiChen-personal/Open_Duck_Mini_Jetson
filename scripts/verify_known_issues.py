@@ -103,7 +103,7 @@ def _():
 @issue("PLANT-6", "Joint dry friction is inactive during motion")
 def _():
     rc = R("isaac_lab_env/open_duck_mini_v2/robot_cfg.py")
-    y = R("exported_policies/v6d_contact_wrench_ppo/env.yaml")
+    y = R("exported_policies/v7_servo_safe_ppo/env.yaml")
     blk = y.split("actuators:", 1)[1].split("\n  articulation_props", 1)[0]
     vals = {}
     for grp in ("legs", "head"):
@@ -154,7 +154,7 @@ def _():
         chain.append(cur)
         cur = parents[cur]
     chain.append(cur)
-    y = R("exported_policies/v6d_contact_wrench_ppo/env.yaml")
+    y = R("exported_policies/v7_servo_safe_ppo/env.yaml")
     counts = {t: y.count(t) for t in ("ground_contact", "GatedTrack", "flat_orientation_deadzone",
                                       "feet_slide", "disturbance_gate",
                                       "polynomial_coefficients_v2", "normalized_match")}
@@ -184,7 +184,7 @@ def _():
 def _():
     env = R("isaac_lab_env/open_duck_mini_v2/env_cfg.py")
     hl = int(re.search(r"history_length=(\d)", env).group(1))
-    y = R("exported_policies/v6d_contact_wrench_ppo/env.yaml")
+    y = R("exported_policies/v7_servo_safe_ppo/env.yaml")
     up = re.search(r"update_period: ([\d.]+)", y).group(1)
     return ("CONFIRMED" if hl == 3 else "REFUTED"), [
         f"history_length={hl}, update_period={up} (0.0 = refresh every physics substep)",
@@ -286,8 +286,8 @@ def _():
 # -------------------------------------------------------------------- ART
 @issue("ART-1", "policy.onnx is gitignored while policy.onnx.data is tracked")
 def _():
-    ci = sh("git check-ignore -v exported_policies/v6d_contact_wrench_ppo/policy.onnx")
-    tracked = sh("git ls-files exported_policies/v6d_contact_wrench_ppo/").split()
+    ci = sh("git check-ignore -v exported_policies/v7_servo_safe_ppo/policy.onnx")
+    tracked = sh("git ls-files exported_policies/v7_servo_safe_ppo/").split()
     names = [os.path.basename(t) for t in tracked]
     ok = ".gitignore" in ci and "policy.onnx" not in names and "policy.onnx.data" in names
     return ("CONFIRMED" if ok else "REFUTED"), [
@@ -308,7 +308,7 @@ def _():
     # A clean clone cannot resolve the shipped policy's lineage.
     dirs = sorted(d for d in os.listdir(P("exported_policies"))
                   if os.path.isdir(P("exported_policies", d)))
-    rd = R("exported_policies/v6d_contact_wrench_ppo/README.md")
+    rd = R("exported_policies/v7_servo_safe_ppo/README.md")
     m = re.search(r"fine-tuned from `([\w]+)`", rd)
     parent = m.group(1) if m else None
     ext = os.path.expanduser(
@@ -342,7 +342,7 @@ def _():
     # same blindness that let PLANT-3 and SHELL-1 pass their own fixes.
     # Only one archive exists by policy: exported_policies/ keeps the mainline
     # locomotion and nothing else (locomotion_selection.md, 2026-08-15).
-    candidates = ["exported_policies/v6d_contact_wrench_ppo/policy.onnx"]
+    candidates = ["exported_policies/v7_servo_safe_ppo/policy.onnx"]
     p = next((P(c) for c in candidates if os.path.exists(P(c))), None)
     if p is None:
         return "INCONCLUSIVE", [f"none of {candidates} present (gitignored -- see ART-1)"]

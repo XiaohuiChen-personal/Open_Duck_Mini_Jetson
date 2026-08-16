@@ -50,9 +50,9 @@
   "plant_mass_kg": 2.7290353775024414,
   "usd_asset_hash": "767f2415d1b3a056d95e9c310434dbbc",
   "mjcf_sha256": "c444493a651b4745eafe5f52a84783ae02e2ed14abd5f24bd3eb2117039931a5",
-  "checkpoint": "model_5998.pt",
-  "checkpoint_md5": "37da88d08bf5d593a3febf74bce96dbe",
-  "onnx_md5": "976c09f31ecb41642c8c9c10007a3e1e",
+  "checkpoint": "model_8997.pt",
+  "checkpoint_md5": "2e7dda7a771768052d856612843b100b",
+  "onnx_md5": "8ea61dcf9034192233675f6d6dbd8f14",
   "unmeasurable_obs_dims": {
     "note": "EMPTY BY CONSTRUCTION. DEPLOY-3 was closed by Task M0b, which removed the two antenna joints from the action and observation spaces (16->14 actions, 59->53 obs). Every remaining dim is measurable on hardware. This is not an oversight."
   }

@@ -18,7 +18,7 @@ import os
 import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POLICY_DIR = os.path.join(REPO_ROOT, "exported_policies", "v6d_contact_wrench_ppo")
+POLICY_DIR = os.path.join(REPO_ROOT, "exported_policies", "v7_servo_safe_ppo")
 CONTRACT = os.path.join(POLICY_DIR, "deployment_contract.json")
 INIT_POS = os.path.join(REPO_ROOT, "scripts", "duck_init_pos.json")
 RESULTS_DIR = os.path.join(REPO_ROOT, "docs", "jetson-mod", "eval_results_rebuild")
@@ -91,7 +91,7 @@ def test_dims_are_self_consistent(contract):
 def test_dims_match_the_measured_plant(contract):
     """The contract's dims must equal what a live env actually produced, which
     the eval JSON's `plant` block records."""
-    j = os.path.join(RESULTS_DIR, "v6d_contact_wrench.json")
+    j = os.path.join(RESULTS_DIR, "v7_servo_safe.json")
     if not os.path.isfile(j):
         pytest.skip("v6d eval JSON not produced yet")
     plant = json.load(open(j))["plant"]
