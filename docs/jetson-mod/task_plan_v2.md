@@ -4185,7 +4185,7 @@ Corrections to the original graph, and why:
 > is no longer available, and that is a finding, not something to improvise
 > around.
 
-### Task S.1 — Freeze the deployment contract as a generated artifact
+### Task S.1 — Freeze the deployment contract as a generated artifact — ✅ **DONE 2026-08-16** — generator + loader + 8 tests, `--check` exits 0
 
 **1. Context for the implementing agent**
 

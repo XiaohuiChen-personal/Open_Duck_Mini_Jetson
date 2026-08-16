@@ -1,0 +1,286 @@
+{
+  "_generated_by": "scripts/generate_policy_contract.py \u2014 DO NOT HAND-EDIT",
+  "policy_dir": "exported_policies/v7_servo_safe_ppo",
+  "checkpoint_md5": "2e7dda7a771768052d856612843b100b",
+  "onnx_md5": "8ea61dcf9034192233675f6d6dbd8f14",
+  "obs_dim": 53,
+  "obs_terms": [
+    {
+      "name": "base_ang_vel",
+      "func": "base_ang_vel",
+      "dim": 3
+    },
+    {
+      "name": "projected_gravity",
+      "func": "projected_gravity",
+      "dim": 3
+    },
+    {
+      "name": "velocity_commands",
+      "func": "generated_commands",
+      "dim": 3
+    },
+    {
+      "name": "joint_pos",
+      "func": "delayed_joint_pos_rel",
+      "dim": 14
+    },
+    {
+      "name": "joint_vel",
+      "func": "delayed_joint_vel_rel",
+      "dim": 14
+    },
+    {
+      "name": "actions",
+      "func": "last_action",
+      "dim": 14
+    },
+    {
+      "name": "gait_phase",
+      "func": "gait_phase_observation",
+      "dim": 2
+    }
+  ],
+  "obs_slices": {
+    "base_ang_vel": [
+      0,
+      3
+    ],
+    "projected_gravity": [
+      3,
+      6
+    ],
+    "velocity_commands": [
+      6,
+      9
+    ],
+    "joint_pos": [
+      9,
+      23
+    ],
+    "joint_vel": [
+      23,
+      37
+    ],
+    "actions": [
+      37,
+      51
+    ],
+    "gait_phase": [
+      51,
+      53
+    ]
+  },
+  "action_dim": 14,
+  "joint_order": [
+    "left_hip_yaw",
+    "neck_pitch",
+    "right_hip_yaw",
+    "left_hip_roll",
+    "head_pitch",
+    "right_hip_roll",
+    "left_hip_pitch",
+    "head_yaw",
+    "right_hip_pitch",
+    "left_knee",
+    "head_roll",
+    "right_knee",
+    "left_ankle",
+    "right_ankle"
+  ],
+  "action_formula": "q_target = q_default + action_scale * action",
+  "action_scale": 0.25,
+  "action_uses_default_offset": true,
+  "q_default_rad": [
+    0.002,
+    0.0,
+    -0.003,
+    0.053,
+    0.0,
+    -0.065,
+    -0.63,
+    0.0,
+    0.635,
+    1.368,
+    0.0,
+    1.379,
+    -0.784,
+    -0.796
+  ],
+  "control_dt_s": 0.02,
+  "sim_dt_s": 0.005,
+  "decimation": 4,
+  "gait_reference_pkl": "polynomial_coefficients.pkl",
+  "gait_nb_steps": 27,
+  "cmd_hull_trained": {
+    "vx": [
+      -0.148,
+      0.222
+    ],
+    "vy": [
+      -0.111,
+      0.111
+    ],
+    "wz": [
+      -0.5,
+      0.5
+    ]
+  },
+  "cmd_clamp_deployment": {
+    "vx": [
+      -0.148,
+      0.222
+    ],
+    "vy": [
+      -0.111,
+      0.111
+    ],
+    "wz": [
+      -0.3,
+      0.3
+    ]
+  },
+  "cmd_note": "cmd_clamp_deployment is a CONSERVATIVE deployment choice, not the trained hull: wz is clamped tighter than trained. Never widen it to match cmd_hull_trained. AGENTS.md Safety Rules.",
+  "hard_limits_rad": {
+    "left_hip_yaw": [
+      -0.523599,
+      0.523599
+    ],
+    "neck_pitch": [
+      -0.349066,
+      1.13446
+    ],
+    "right_hip_yaw": [
+      -0.523599,
+      0.523599
+    ],
+    "left_hip_roll": [
+      -0.436332,
+      0.436332
+    ],
+    "head_pitch": [
+      -0.785398,
+      0.785398
+    ],
+    "right_hip_roll": [
+      -0.436332,
+      0.436332
+    ],
+    "left_hip_pitch": [
+      -1.22173,
+      0.523599
+    ],
+    "head_yaw": [
+      -2.79253,
+      2.79253
+    ],
+    "right_hip_pitch": [
+      -0.523599,
+      1.22173
+    ],
+    "left_knee": [
+      -1.5708,
+      1.5708
+    ],
+    "head_roll": [
+      -0.523599,
+      0.523599
+    ],
+    "right_knee": [
+      -1.5708,
+      1.5708
+    ],
+    "left_ankle": [
+      -1.5708,
+      1.5708
+    ],
+    "right_ankle": [
+      -1.5708,
+      1.5708
+    ]
+  },
+  "soft_limits_rad": {
+    "left_hip_yaw": [
+      -0.4712391,
+      0.4712391
+    ],
+    "neck_pitch": [
+      -0.27488969999999996,
+      1.0602837
+    ],
+    "right_hip_yaw": [
+      -0.4712391,
+      0.4712391
+    ],
+    "left_hip_roll": [
+      -0.3926988,
+      0.3926988
+    ],
+    "head_pitch": [
+      -0.7068582000000001,
+      0.7068582000000001
+    ],
+    "right_hip_roll": [
+      -0.3926988,
+      0.3926988
+    ],
+    "left_hip_pitch": [
+      -1.13446355,
+      0.43633255
+    ],
+    "head_yaw": [
+      -2.5132770000000004,
+      2.5132770000000004
+    ],
+    "right_hip_pitch": [
+      -0.43633255,
+      1.13446355
+    ],
+    "left_knee": [
+      -1.41372,
+      1.41372
+    ],
+    "head_roll": [
+      -0.4712391,
+      0.4712391
+    ],
+    "right_knee": [
+      -1.41372,
+      1.41372
+    ],
+    "left_ankle": [
+      -1.41372,
+      1.41372
+    ],
+    "right_ankle": [
+      -1.41372,
+      1.41372
+    ]
+  },
+  "soft_limit_factor": 0.9,
+  "clamp_note": "The policy output is UNBOUNDED: clip_actions is null and JointPositionAction applies no limit clamp. In sim PhysX absorbs an out-of-range target; on hardware NOTHING does. The runtime MUST clamp q_target to hard_limits_rad.",
+  "servo_ids": {
+    "right_hip_yaw": 10,
+    "right_hip_roll": 11,
+    "right_hip_pitch": 12,
+    "right_knee": 13,
+    "right_ankle": 14,
+    "left_hip_yaw": 20,
+    "left_hip_roll": 21,
+    "left_hip_pitch": 22,
+    "left_knee": 23,
+    "left_ankle": 24,
+    "neck_pitch": 30,
+    "head_pitch": 31,
+    "head_yaw": 32,
+    "head_roll": 33
+  },
+  "servo_baud": 1000000,
+  "servo_note": "14 bus servos == the 14 policy outputs exactly, since Task M0b removed the antennas from the action space. The two antennas are SG90 PWM parts with no bus id and no policy output.",
+  "obs_latency_note": "The joint_pos / joint_vel terms are delayed_joint_pos_rel and delayed_joint_vel_rel (PLANT-7): the policy was TRAINED on joint readings delayed 0-40 ms, per-env, because real hardware has sensor and bus latency. The runtime must NOT add artificial delay \u2014 feed the freshest reading available. The point is that real latency up to ~40 ms is inside the training distribution, not that delay is required. Measure the real figure in Task S.6.",
+  "normalizer_epsilon": 0.01,
+  "normalizer_note": "Inside the ONNX graph (the Sub/Div nodes). Only a hand-rolled reimplementation of policy.pt needs it.",
+  "onnx_batch_dim": 1,
+  "plant_mass_kg": 2.7290353775024414,
+  "usd_asset_hash": "767f2415d1b3a056d95e9c310434dbbc"
+}
