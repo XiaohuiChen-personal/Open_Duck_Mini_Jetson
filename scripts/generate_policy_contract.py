@@ -133,6 +133,18 @@ def gait_period(env):
     return os.path.basename(path), steps.pop()
 
 
+def _effort_limit_from_source() -> float:
+    """Read STS3250_EFFORT_LIMIT_NM out of robot_cfg.py rather than pinning it.
+    Task M0 changed this value once already (PLANT-5: BAM's electrical 8.716 ->
+    the datasheet stall 4.903); a literal would silently go stale again."""
+    import re
+    src = open(os.path.join(REPO, "isaac_lab_env", "open_duck_mini_v2", "robot_cfg.py")).read()
+    m = re.search(r"STS3250_EFFORT_LIMIT_NM\s*=\s*([0-9.]+)", src)
+    if not m:
+        raise SystemExit("STS3250_EFFORT_LIMIT_NM not found in robot_cfg.py")
+    return float(m.group(1))
+
+
 def build():
     env = load_archived_env()
     contract = json.load(open(os.path.join(POLICY_DIR, "deployment_contract.json")))
@@ -212,6 +224,36 @@ def build():
             "the freshest reading available. The point is that real latency up to "
             "~40 ms is inside the training distribution, not that delay is "
             "required. Measure the real figure in Task S.6."),
+
+        # ---- servo limits (Task S.8) -------------------------------------
+        # effort_limit is READ FROM SOURCE, not pinned: the plan predates Task
+        # M0, which corrected it from BAM's electrical 8.716 to the datasheet
+        # stall. A literal here would re-introduce the stale figure.
+        "sim_effort_limit_nm": _effort_limit_from_source(),
+        "servo_continuous_torque_nm": 1.569,
+        "servo_stall_torque_nm": 4.903,
+        # DERIVED, not a rounded literal: the firmware trips at ">80 % of stall
+        # held 2 s", so this is 0.8 x stall exactly. Writing 3.923 (the rounded
+        # figure used in prose) would drift from its own definition.
+        "servo_overload_trip_nm": round(0.8 * 4.903, 6),
+        "servo_current_limit_a": 3.8,
+        "servo_current_limit_window_s": 2.0,
+        "servo_overload_window_s": 2.0,
+        "servo_firmware_temp_cutout_c": 70,
+        # ENGINEERING CHOICES, not measurements. Both sit BELOW the firmware
+        # cutout so the runtime stops the robot in a controlled way before the
+        # firmware drops torque without warning — a silent torque-off mid-stride
+        # is a fall.
+        "servo_temp_warn_c": 55,
+        "servo_temp_stop_c": 65,
+        "servo_temp_thresholds_are": "ENGINEERING CHOICE, not measured — see S.8b",
+        "servo_limits_source": (
+            "Feetech ST-3250-C001 product specification, Edition A/0 (2024-01-16), "
+            "sections 5 (electrical) and 7-11 (electronic protection), obtained "
+            "from feetechrc.com. Torque and current figures are CITED. Feetech "
+            "publishes NO thermal time constant and NO duty-cycle curve, so the "
+            "sustainable torque is NOT established by the datasheet — Task S.8b "
+            "measures it on a bench servo."),
 
         "normalizer_epsilon": 0.01,
         "normalizer_note": ("Inside the ONNX graph (the Sub/Div nodes). Only a "

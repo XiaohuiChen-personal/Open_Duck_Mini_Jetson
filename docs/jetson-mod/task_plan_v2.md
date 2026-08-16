@@ -4639,7 +4639,7 @@ Observable: the audit exits 0, and PLANT-4 reports **REFUTED** (meaning fixed).
 
 ---
 
-### Task S.8 — Establish the servo torque, current and thermal envelope
+### Task S.8 — Establish the servo torque, current and thermal envelope — ✅ **DONE 2026-08-16** — verdict ACCEPT; firmware thresholds now CITED, not UNVERIFIED
 
 > **Run this after S.2 and before S.7.** It is pure numpy over the S.2 traces —
 > no hardware, no GPU — and its output is an input to the S.7 retrain campaign.

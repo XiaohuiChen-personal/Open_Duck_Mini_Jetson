@@ -474,6 +474,16 @@ servos. See also [DEPLOY-3](#deploy-3).
 <a id="plant-5"></a>
 ## PLANT-5 · Torque ceiling is 1.78× datasheet, pinned to 12.1 V — MEDIUM — ✅ **FIXED 2026-08-13**
 
+> **S.8 measured the headroom, 2026-08-16.** Over the three reference traces of
+> the shipped `v7_servo_safe`: longest sustained run above the 1.569 N·m rated
+> torque **0.12 s**, longest run above the 3.9224 N·m overload trip **0.04 s**
+> (the firmware needs **2.0 s** to trip), absolute max **4.739 N·m** — under the
+> 4.903 N·m datasheet stall. **Verdict: ACCEPT** — the policy is not leaning on
+> torque the hardware lacks. Full table:
+> [`sim2real/S8_torque_envelope.md`](sim2real/S8_torque_envelope.md).
+> Caveat: those traces are UNDISTURBED. The contact battery is where torque
+> peaks, and thermal behaviour is not established at all — Task **S.8b**.
+
 > ### FIXED 2026-08-13 — Task M0 / M0b
 >
 > Task M0 replaced the bare `8.716` — BAM id008's **electrical** stall at 12.1 V, 1.78x the datasheet — with `STS3250_EFFORT_LIMIT_NM = 4.903`, the 50 kg·cm datasheet stall, and recorded `STS3250_CONTINUOUS_NM = 1.569` beside it. `scripts/measure_joint_torque.py` had measured v5d commanding **6.723 N·m**, 137 % of datasheet stall, against the old ceiling.
@@ -499,6 +509,12 @@ independent reasons to over-command a real servo.
 
 <a id="plant-6"></a>
 ## PLANT-6 · Joint dry friction is inactive during motion — MEDIUM
+
+> **Still open, and it makes S.8's numbers optimistic.** Dry friction is
+> inactive during motion and BAM's viscous term is dropped, so the
+> `applied_torque` that S.8 measured is not faithful motor torque. Recorded here
+> because [`sim2real/S8_torque_envelope.md`](sim2real/S8_torque_envelope.md)
+> cites this as one of its three under-sampling caveats.
 
 Isaac splits MuJoCo's single `frictionloss` into three parameters; only the
 first is set.
