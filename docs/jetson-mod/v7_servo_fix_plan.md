@@ -1,6 +1,16 @@
 # Plan — `v7_servo_safe`: fix SERVO-1 and SERVO-2, retrain, validate
 
-**Drafted 2026-08-15. Revised after adversarial review. NOT YET APPROVED.**
+**Drafted 2026-08-15. Revised after adversarial review. Approved and
+EXECUTED 2026-08-15/16 — see [`servo_fix_results.md`](servo_fix_results.md).**
+
+> **Outcome.** SERVO-1 **FIXED** (neck 100 % → 0 % on its end stop, 207 % → 28 %
+> of rated). SERVO-2 **MITIGATED** (174 % → 131 %); its ≤1.0 N·m bar proved
+> unreachable by reward weight — iteration 2 at −4e-2 hit 101 % of nameplate but
+> broke head liveliness and push recovery, so the remainder is a mass/gearing
+> problem for Task S.8. `v7_servo_safe` shipped. Both of the adversarial
+> review's BLOCKERs were confirmed by execution: the seed step was required, and
+> the corrected torque weight logged −0.2898 where the original would have
+> logged −0.001.
 
 > **Review record.** The first draft was attacked by 5 independent reviewers and
 > every reported defect was independently re-verified; 2 BLOCKERs and 9 further

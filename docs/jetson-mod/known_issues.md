@@ -122,8 +122,8 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [DOC-4](#doc-4) | `task_plan.md` is stale on four axes | MEDIUM | **FIXED 2026-08-11** (all four) |
 | [DOC-5](#doc-5) | `AGENTS.md` says the USD came from URDF; it came from MJCF | LOW | **FIXED 2026-08-09** |
 | [DOC-6](#doc-6) | `AGENTS.md` actuator snippet sets a field the code does not use | LOW | **FIXED 2026-08-09** |
-| [SERVO-1](#servo-1) | `neck_pitch` commands 207 % of continuous — caused by leg-sized PD gains on the head group, not by head mass | **HIGH** | **CORRECTED 2026-08-15**; fix is config, not mechanical |
-| [SERVO-2](#servo-2) | The shipped policy saturates the leg actuators: p99 = peak stall on four joints | **HIGH** | blocks sustained operation |
+| [SERVO-1](#servo-1) | `neck_pitch` stalled against its end stop at 207 % of continuous | **HIGH** | ✅ **FIXED 2026-08-16** (v7: 0.0 % on stop, 28 % of rated) |
+| [SERVO-2](#servo-2) | Leg actuators run above the servo's rated torque | **HIGH** | **MITIGATED 2026-08-16** (174 % -> 131 %); remainder is mass/gearing, Task S.8 |
 
 ---
 
@@ -1658,7 +1658,26 @@ not exist), and **real-hardware measurements of any kind**. Nothing in this
 document is a claim about the physical robot's behaviour — only about what the
 simulator does and whether the repo describes it accurately.
 
-## SERVO-1 · `neck_pitch` commands 207 % of continuous — and it is the GAINS, not the head mass — HIGH
+## SERVO-1 · ✅ FIXED 2026-08-16 — `neck_pitch` no longer stalls against its end stop
+
+> **FIXED by `v7_servo_safe`.** The four head joints were added to
+> `joint_pos_limits`, the reward term whose own comment reads *"Joint limits:
+> protect servos"* and which had only ever listed ankles and knees. Measured on
+> the shipped policy, forward walk:
+>
+> | | v6d | **v7** | bar |
+> |---|---|---|---|
+> | % of steps on the end stop | **100.0 %** | **0.0 %** | ≤ 10 % |
+> | `neck_pitch` travel | 0.005° | **3.775°** | ≥ 2.0° |
+> | `neck_pitch` torque RMS | 3.164 N·m (207 % of rated) | **0.445 (28 %)** | ≤ 1.5 |
+> | `head_yaw` travel — the head must not be frozen to buy this | 25.9° | **19.2°** | ≥ 10° |
+>
+> The neck now rests at −10.99°, mid-range. Evidence:
+> [`servo_fix_results.md`](servo_fix_results.md),
+> `v7_baselines/v7_probes.md`. **The check is retired** per this register's
+> convention. The entry stays as the record.
+
+## (historical) SERVO-1 · `neck_pitch` commands 207 % of continuous — and it is the GAINS, not the head mass — HIGH
 
 > **CORRECTED 2026-08-15, same day as filing.** This entry first said the cause
 > was "the head assembly held against gravity, i.e. a **static** load", that
@@ -1790,7 +1809,26 @@ stop. No other joint in the robot is pinned.
 travel the robot currently cannot use **and** removes the single worst thermal
 load, in one change.
 
-## SERVO-2 · The shipped policy saturates the leg actuators — HIGH
+## SERVO-2 · MITIGATED 2026-08-16 — 174 % → 131 % of rated; the rest is hardware
+
+> **MITIGATED, NOT CLOSED.** `dof_torques_l2` was `None` — nothing priced torque
+> at all. `v7_servo_safe` enables it at −1e-2 using a **pre-clip** term, taking
+> the worst leg joint from **2.735 → 2.060 N·m** (174 % → 131 % of the 1.569 N·m
+> rated torque), removing p99-at-the-clip on every joint, and cutting mechanical
+> power 37 % and jerk 46 %.
+>
+> **The ≤1.0 N·m thermal target is NOT reachable by reward weight.** A second
+> iteration at −4e-2 reached 1.587 N·m (101 % of rated) but failed two other
+> pre-registered bars to do it: `head_yaw` travel 19.2° → 9.101° (bar ≥10) and
+> push v4-rule 0.417 → 1.875 % (bar ≤1.0), and it was *worse* on the wrench
+> (65.729 vs 62.969 %). Extrapolation from the two measured points puts even
+> −8e-2 near 1.24 N·m.
+>
+> **The remainder is a mass or gearing problem** — consistent with
+> `servo_torque_budget.md`, which put the gait floor at ≈0.69 N·m RMS. Task
+> **S.8** owns it. The check stays live.
+
+## (historical) SERVO-2 · The shipped policy saturates the leg actuators — HIGH
 
 **Evidence** — same run as [SERVO-1](#servo-1):
 

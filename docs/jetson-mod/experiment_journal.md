@@ -57,6 +57,9 @@ G3 = command-conditioned AMP tracks velocity within ~2x of PPO v3 error.
 | 22 | `v6_robust` | PPO | 2026-08-13 | **the post-Phase-M plant** (2.729 kg, 53/14, 4.903 N·m ceiling, 0-40 ms latency); v4_robust recipe from scratch | PASS — reward 244.83, in-training falls 3.6 % |
 | 23 | `v6_smoke` | PPO | 2026-08-13 | contact-wrench curriculum switched on over the Run-22 seed, 100 iters | PASS (smoke) — wrench scaled to the measured 2.729 kg plant; no gate by design |
 | 24 | `v6d_contact_wrench` | PPO | 2026-08-13 | **sustained wrench added** to Run 23's obstacles, 3,000-iter fine-tune of Run 22 | **PASS — SHIPPED**, beats the same-plant control on 4/4 contact gates, gait 6/6 |
+| 25 | `v7_smoke` | PPO | 2026-08-15 | servo-protection reward terms added, 100 iters | PASS (smoke) |
+| 26 | `v7_servo_safe` | PPO | 2026-08-15 | **head joints limit-protected + torque priced (−1e-2)** | **PASS — SHIPPED**; SERVO-1 fixed, power −37 %, wrench and obstacle improved |
+| 27 | `v7b_servo_safe` | PPO | 2026-08-16 | torque weight ×4 (−4e-2) | **FAIL** — reached 101 % of nameplate but broke head liveliness and push recovery |
 
 ---
 
@@ -1314,3 +1317,86 @@ earlier wrench measurement was taken under a press that could not twist. See
 final `model_5998.pt`, `exported/`, `videos/play/` (5 clips) and
 `videos/train/` (15 clips); results `docs/jetson-mod/eval_results_rebuild/`;
 verdict `docs/jetson-mod/rebuild_results.md`.
+
+## Run 25 — `v7_smoke` (`open_duck_ppo_v7/2026-08-15_21-36-…_v7_smoke`) — 100-iter validation of the servo fix: PASS
+
+> **Plant banner.** Post-Phase-M plant, **2.729035 kg**, obs **53** / action
+> **14**, USD `767f2415d1b3a056d95e9c310434dbbc` — byte-identical to v6d's, by
+> design, so v6d's eval JSONs stay a valid control.
+
+**One-lever delta: two reward terms, both servo protection.** The four head
+joints added to `joint_pos_limits` (SERVO-1), and `dof_torques_l2` enabled at
+−1e-2 using a **pre-clip** term (SERVO-2). Resumed from a seeded copy of v6d's
+`model_5998.pt`; 100 iterations; final `model_6097.pt`.
+
+**The two checks this smoke exists for**, both of which caught real errors in
+the plan's first draft:
+- `Loading model checkpoint from: …/open_duck_ppo_v7/0000-00-00_v6d_seed/model_5998.pt`
+  — rsl-rl resolves `--load_run` inside the *current* experiment's log root, so
+  without the seed step this would have died after Kit startup into a detached
+  log while the launcher exited 0.
+- `Episode_Reward/dof_torques_l2 = −0.2898` — the plan's original −2e-5 weight
+  would have logged ≈−0.001. The magnitude check is what catches a 1000×
+  arithmetic error.
+
+`joint_pos_limits` moved −0.0040 → −0.0133 (the neck now contributes),
+`duty_in_band_frac` 0.9901, reward 225.41 vs v6d's 225.95.
+
+**Verdict: PASS (smoke).** Cleared Run 26.
+
+## Run 26 — `v7_servo_safe` (`open_duck_ppo_v7/2026-08-15_21-46-17_v7_servo_safe`) — servo fix: **PASS, SHIPPED**
+
+**One-lever delta: the same two reward terms, 3,000 iterations** from v6d's
+`model_5998.pt`. Final `model_8997.pt`. Wall clock 2:13.
+
+**Gate evaluation.** 3,840 episodes per entry, seed 42:
+**6/6 gait valid**, **0.000 % falls**,
+ref RMS 5.068°.
+
+| gate | v6d | **v7** | bar |
+|---|---|---|---|
+| push, v4 rule | 0.104 | **0.417 %** | ≤1.0 |
+| push, v5 rule | 0.026 | **0.234 %** | ≤1.0 |
+| sustained wrench | 70.365 | **62.969 %** | ≤80 |
+| obstacle graze | 7.318 | **6.562 %** | ≤12 |
+
+**The torque penalty made the robot MORE robust, not less** — wrench and
+obstacle both improved. Power draw fell 19.59 → 12.40 W (−37 %)
+and jerk 0.0749 → 0.0407 (−46 %); the smoother, lower-impulse
+gait is harder to destabilise.
+
+**SERVO-1 fixed:** `neck_pitch` 100 % → **0.0 %** of steps on its end stop,
+0.005° → **3.775°** of travel, 3.164 → **0.445 N·m** RMS (207 % → 28 % of
+rated), while `head_yaw` keeps 19.2°.
+
+**Video (G-R3): all five conditions PASS**, incl. the AGENTS.md-mandated
+`turn_wz03` — `eval_results_v7/videos/AUDIT.md`.
+
+**Verdict: PASS — SHIPPED** to `exported_policies/v7_servo_safe_ppo/`. The one
+bar it misses is the aspirational leg-RMS ≤1.0 N·m (it reads 2.060).
+
+## Run 27 — `v7b_servo_safe` (`open_duck_ppo_v7/2026-08-16_03-24-16_v7b_servo_safe`) — weight ×4: **FAIL, not shipped**
+
+**One-lever delta: the torque weight −1e-2 → −4e-2**, 3,000 iterations from
+Run 26's `model_8997.pt`. Final `model_11996.pt`.
+
+Run to answer one question: can the ≤1.0 N·m bar be bought with weight alone?
+**No.**
+
+| | v7 | v7b | bar |
+|---|---|---|---|
+| worst leg RMS | 2.060 | **1.587** | ≤1.0 — still fails |
+| `head_yaw` travel | 19.2° | **9.101°** | ≥10 — **FAILS** |
+| push, v4 rule | 0.417 | **1.875 %** | ≤1.0 — **FAILS** |
+| sustained wrench | 62.969 | 65.729 % | ≤80 — passes, but worse |
+| obstacle | 6.562 | 4.375 % | ≤12 — better |
+| power | 12.40 W | **7.15 W** | — |
+
+It reached **101 % of the Feetech nameplate** (1.587 vs 1.569 N·m) and halved
+power again, but broke head liveliness and push recovery to do it, and was not
+even better under the wrench. Extrapolation from these two points puts −8e-2
+near 1.24 N·m.
+
+**Verdict: FAIL — the remaining gap is a mass/gearing problem (Task S.8), not a
+reward problem.** v7 remains the mainline. Kept as the measurement that
+establishes the frontier.
