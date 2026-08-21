@@ -219,3 +219,76 @@ def test_status_error_bits_decode():
 def test_link_test_requires_all_replies():
     """Stage B requires 100/100. A single-digit failure rate invalidates a run."""
     assert probe.cmd_link_test.__doc__ and "100/100" in probe.cmd_link_test.__doc__
+
+
+# ---------------------------------------------------- half-duplex echo guard --
+
+
+class _FakeSerial:
+    """Stands in for pyserial so transport logic is testable with no hardware."""
+
+    def __init__(self, response: bytes):
+        self.response = response
+        self.written = b""
+
+    def reset_input_buffer(self):
+        pass
+
+    def write(self, data):
+        self.written += data
+
+    def read(self, n):
+        out, self.response = self.response[:n], self.response[n:]
+        return out
+
+    def close(self):
+        pass
+
+
+def _bus_with(response: bytes):
+    bus = probe.Bus.__new__(probe.Bus)  # bypass __init__ so pyserial is not needed
+    bus.ser = _FakeSerial(response)
+    return bus
+
+
+def test_echoed_ping_is_not_reported_as_a_servo():
+    """The bug a no-hardware negative control caught: on a half-duplex bus an
+    echoed PING is checksum-valid, because its instruction byte 0x01 lands where
+    the error byte belongs. Naive parsing invents a servo at every ID."""
+    ping = probe.build_packet(1, probe.INST_PING)
+    # Prove the echo really would decode as a valid status frame...
+    servo_id, error, params = probe.decode_status(ping)
+    assert (servo_id, error, params) == (1, 0x01, b"")
+    # ...and that the transport refuses it anyway.
+    assert _bus_with(ping).ping(1) is False
+
+
+@pytest.mark.parametrize("servo_id", [0, 1, 2, 3, 17, 253])
+def test_echo_rejected_for_every_id(servo_id):
+    ping = probe.build_packet(servo_id, probe.INST_PING)
+    assert _bus_with(ping).ping(servo_id) is False
+
+
+def test_real_reply_after_an_echo_is_still_found():
+    ping = probe.build_packet(1, probe.INST_PING)
+    reply = _status(1, 0, b"")
+    assert _bus_with(ping + reply).ping(1) is True
+
+
+def test_real_reply_without_echo_is_found():
+    assert _bus_with(_status(1, 0, b"")).ping(1) is True
+
+
+def test_read_returns_value_after_echo():
+    request = probe.build_packet(1, probe.INST_READ, bytes([56, 2]))
+    reply = _status(1, 0, bytes([0x34, 0x12]))
+    assert _bus_with(request + reply).read(1, 56, 2) == 0x1234
+
+
+def test_silence_is_not_a_servo():
+    assert _bus_with(b"").ping(1) is False
+
+
+def test_leading_garbage_is_resynced_past():
+    reply = _status(1, 0, b"")
+    assert _bus_with(b"\x00\x13" + reply).ping(1) is True

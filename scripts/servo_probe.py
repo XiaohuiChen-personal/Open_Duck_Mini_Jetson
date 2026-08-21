@@ -181,13 +181,38 @@ class Bus:
         self.ser.close()
 
     def _txrx(self, packet: bytes, expect_params: int) -> bytes | None:
+        """Write an instruction and return the status params, or None.
+
+        The STS bus is HALF-DUPLEX: TX and RX share one wire, so many adapters
+        echo the outgoing bytes straight back. An echoed PING is a checksum-valid
+        frame (its instruction byte 0x01 lands where the error byte belongs), so
+        naive parsing reports a servo that is not there. We read a generous
+        window and strip the echo before parsing.
+        """
         self.ser.reset_input_buffer()
         self.ser.write(packet)
-        reply = self.ser.read(expect_params + 6)
-        if not reply:
+        window = self.ser.read(len(packet) + expect_params + 6)
+        if not window:
+            return None
+        if window.startswith(packet):  # adapter echoed us; the reply follows
+            window = window[len(packet):]
+        if not window:
+            return None
+        return self._parse(window)
+
+    def _parse(self, window: bytes) -> bytes | None:
+        # Resync on the header rather than assuming the frame starts at byte 0.
+        start = window.find(HEADER)
+        if start < 0:
+            return None
+        frame = window[start:]
+        if len(frame) < 6:
+            return None
+        total = frame[3] + 4
+        if len(frame) < total:
             return None
         try:
-            _, error, params = decode_status(reply)
+            _, error, params = decode_status(frame[:total])
         except ValueError:
             return None
         self.last_error = error
