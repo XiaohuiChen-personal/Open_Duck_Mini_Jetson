@@ -126,16 +126,31 @@ servo side of the break, and leave the `V1` screw terminal empty forever; the
 board runs on USB alone.** The bus still works — `S` is a half-duplex signal
 referenced to the common ground, and red is only power pass-through.
 
-**Preferred method — extract, don't cut.** At the **board end** of the cable,
-lift the small latch in the housing window with a sewing needle and slide the
-**red** and **black** contacts out. They re-latch when pushed back, so this is
-fully reversible and costs no hardware. Cutting works too but is permanent;
-prefer extraction and keep cutting as the fallback if the latches won't lift.
+**Method — cut. (Extraction was tried first and abandoned: on this cable the
+5264 retention tabs are not reachable, 2026-08-21.)**
 
-After extraction the board end carries **white only**, so ground it as a **star
-at the servo connector**: fat PSU(−) to the servo's black tab, and a **thin**
-wire from PSU(−) to the board's `G` screw as a signal reference only. Servo
-return current then never crosses the board's ground plane.
+Cut **red and black** mid-cable. Leave **white uncut**. That yields four ends:
+
+| end | goes to |
+|---|---|
+| **servo-side red** | PSU (+) |
+| **servo-side black** | PSU (−) |
+| **board-side black** | PSU (−) — *same clip*, this is the star point |
+| **board-side red** | **nothing. Insulate it completely.** |
+
+Both black ends land in the **same PSU(−) clip**, which *is* the star ground — no
+extra wire needed, and servo return current never crosses the board's ground
+plane. White runs servo↔board untouched and carries the signal.
+
+**Board-side red is now the dangerous end.** It connects to the board's `V1` pin,
+which measures 4.94 V off USB VBUS. Tape it off so it cannot touch anything.
+
+> **Why not simply cut red and leave black intact?** Then the servo's only return
+> is servo → black → board socket `G` → the board's ground plane → `G` screw →
+> PSU(−). If that screw ever loosens, the servo's return current hunts for
+> another path — and the only one left is the white signal wire into the board's
+> transceiver and out through **USB ground into the host**. Cutting black removes
+> that failure mode entirely.
 
 > **Why the servo's spare socket does NOT work as a power inlet.** The servo's
 > two sockets are internally paralleled, so 11.1 V injected at socket B appears
