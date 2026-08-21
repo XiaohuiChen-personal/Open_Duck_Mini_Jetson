@@ -1,8 +1,10 @@
 # Bench test — measure what the STS3250 datasheet does not publish
 
-**Written 2026-08-16.** This task does not exist in `task_plan_v2.md`: **no Phase-S
-task measures real servo current or temperature.** That is a gap, because every
-thermal number in this project is currently an assumption.
+**Written 2026-08-16. Rewritten 2026-08-20** after the hardware arrived and an
+adversarial review overturned the wiring plan. This task does not exist in
+`task_plan_v2.md`: **no Phase-S task measures real servo current or
+temperature.** That is a gap, because every thermal number in this project is
+currently an assumption.
 
 ## Why this test exists
 
@@ -18,20 +20,45 @@ rests on a *derating calculation over assumed thermal behaviour*.
 > Held on a real servo, does it stabilise below the firmware's 70 °C torque-off,
 > or does it climb until the joint goes limp?
 
-If it stabilises, **SERVO-2 can be closed and no further retraining is needed.**
-If it doesn't, we learn the real sustainable torque and can aim at it instead of
-at a derived guess.
+## Primary source
+
+All servo numbers below are quoted from the **official Feetech STS3250 product
+specification, `ST-3250-C001.pdf`, EDITION A/0, 2024-01-16**, cited by its own
+line numbers. Where this document previously relied on a third-party table for a
+*different model*, those numbers are now marked as superseded.
+
+| line | spec | value |
+|---|---|---|
+| 1-2 | operating temperature | **−20 … +60 °C** |
+| 5-3 | no-load running current | 280 mA |
+| 5-4 | stall torque ±10 % | 50 kg·cm (4.903 N·m) |
+| 5-5 | stall current ±10 % | 4.2 A |
+| 5-6 | **idle current (stopped)** | **24 mA** |
+| 5-8 | rated torque | 16 kg·cm (1.569 N·m) |
+| 5-9 | rated current | 1400 mA |
+| 5-10 | **motor terminal resistance** | **1.2 Ω** |
+| 5-11 | **Kt** | **11 kg·cm/A** = 1.0787 N·m/A |
+| 7-11 | over-hot protection | torque off above **70 °C** |
+
+> **A real datasheet inconsistency.** 12 V ÷ 1.2 Ω = 10 A, but 5-5 says stall is
+> 4.2 A. So **4.2 A is a driver current clamp, not V/R.** Whether the effective
+> circuit resistance is 1.2 Ω or ~2.86 Ω changes predicted heat by 2.4×, so the
+> bench run must resolve it. Both bounds are carried through every table below.
 
 ## Parts
 
-| item | role |
-|---|---|
-| Feetech STS3250 (12 V) | the device under test |
-| FE-URT-1 | USB ↔ servo TTL bus |
-| NICE-POWER 30 V/10 A bench supply | power **and** the current reference |
-| banana→alligator/fork leads | PSU to servo |
-| multimeter | independent current cross-check |
-| ~200 mm rigid arm + weights | applies known torque |
+| item | role | status |
+|---|---|---|
+| Feetech STS3250 (12 V) | the device under test | have |
+| **FE-URT-2** | USB-C ↔ servo TTL bus (**not** the URT-1) | have |
+| NICE-POWER 30 V/10 A bench supply | power **and** the current reference | have |
+| banana→alligator leads | PSU to the wire stubs | have |
+| multimeter | independent cross-check | have |
+| **~1 m 24 AWG solid wire** | **BLOCKING** — see "wire stubs" below | salvage Cat5e |
+| **non-contact IR thermometer** | 70 °C aluminium case is a contact burn | **buy** |
+| second 5264-3P cable | split-harness fallback + spare | **buy** |
+| ~200 mm rigid arm + weights | applies known torque | build |
+| foam pad | the weight *will* drop | have |
 
 ## Pinout — go by COLOUR, never by position
 
@@ -44,241 +71,449 @@ Feetech's [STS3215 datasheet][ds] (same 5264-3P connector as the STS3250) define
 | 3 | Signal (TTL) | **white** |
 
 "Left to right" flips when you turn the connector over. **Always identify by wire
-colour.** Reversed polarity destroys the servo — Feetech's own docs say so.
+colour.** Reversed polarity destroys the servo.
 
 [ds]: https://files.seeedstudio.com/products/Feetech/108090023_STS3215-C001_Datasheet.pdf
 
-## Wiring — the servo is powered from the PSU, NOT through the adapter
+## The adapter is an FE-URT-2
 
-Two independent reasons, both verified rather than assumed:
+An earlier revision planned around an **FE-URT-1**, whose external-power terminal
+is printed `DC6V-9V` ([Feetech][urt], [MakerBotics][mb]). The URT-2 is a
+different board — effectively **two independent bus drivers on one PCB**, each
+with its own pair of daisy-chain sockets and its own power rail:
 
-1. The FE-URT-1's external-power screw terminal is **printed `DC6V-9V`**
-   ([Feetech][urt], [MakerBotics][mb]). Our pack is **11.1 V** — 23 % over the
-   printed rating.
-2. The board is USB-powered with **500 mA over-current protection**, and the
-   servo stalls at **4.2 A**. Even at a legal voltage the current alone is 8×.
-
-A board that fails shorted can put 11.1 V onto the host's USB 5 V rail. The cost
-of avoiding that is one connector operation, so we always avoid it.
+| | **TTL bus — ours** | RS485 bus |
+|---|---|---|
+| socket | **3-pin**, smaller | 4-pin, larger |
+| silkscreen | **`G V1 S`** | (`V2` rail) |
+| power terminal | **`G V1`**, `DC4.8-12V` | `G V2`, `DC12-24V` |
+| servo family | SCS / **STS** | SMS |
+| default baud | **1,000,000** | 115,200 |
 
 [urt]: https://www.feetechrc.com/FE-URT1-C001.html
 [mb]: https://makerbotics.com/product/mb-elc-servo-controller-urt1/
 
+### ⚠️ The rating is NOT the question
+
+**`V1` being rated 4.8–12 V does not license powering the servo through the
+board.** A voltage rating says nothing about whether the servo rail and USB VBUS
+share a node — and the URT-2 is advertised as able to power a servo *from USB 5 V*
+for parameter tuning, which means **a path between those rails exists by design**.
+
+If that path is a plain connection rather than a blocking diode, putting 11.1 V
+on `V1` back-feeds **11.1 V into the host PC's USB port**.
+
+No official FE-URT-2 electrical document exists — Feetech's own URT-2 page serves
+URT-1 body text, and vendor listings contradict each other. So the question is
+settled **by meter, in pre-flight P3 and P5**, not by any datasheet.
+
 ```
-   PSU (+) ──────────────────►  servo VCC     (red)
-   PSU (−) ──┬───────────────►  servo GND     (black)
-             └───────────────►  adapter GND      ← common ground, REQUIRED
-   adapter signal ──────────►  servo Signal  (white)
-   USB ─────────────────────►  PC
+   PSU (+) ──►  screw terminal  V1     ← only after P5 passes
+   PSU (−) ──►  screw terminal  G      (the one beside V1)
+   3-pin socket  ──[stock cable]──►  servo
+   USB-C ────────────────────────►  PC
 ```
 
-### The cable is female on BOTH ends — that is correct, and it is the catch
+### Two hazards created by there being four sockets
 
-The stock Feetech 3-pin cable mates a servo socket to the adapter's header, so
-both ends are female housings. There is no bare end to land in the PSU's binding
-posts, and the servo's two sockets are **internally paralleled** — so any cable
-reaching the adapter also carries the 11.1 V rail to it. Plugging the cable in
-whole is exactly the failure mode above.
+1. **A 3-pin housing can be forced into the 4-pin socket, offset by one
+   position.** It feels like it fits, and it lands 11.1 V on the wrong pin.
+   Count pins; if a socket needs force, it is the wrong socket.
+2. **`V2` is the 12–24 V rail.** Tape over both its screws for the whole campaign.
 
-The fix is a standard, fully reversible connector operation: **extract the red
-and black contacts from the ADAPTER end of the cable.** Lift the small latch in
-the housing window with a sewing needle and the crimped contact slides straight
-out; pushing it back in re-latches it. That leaves:
+### Bench-verified wiring (2026-08-20)
 
-- **white only** in the housing → adapter (signal, USB-powered, no rail)
-- **red and black** dangling as bare crimp tabs → alligator clips from the PSU
+Vendor pages disagreed, so the wiring was proven by meter, unpowered, cable in a
+3-pin socket, far end free:
 
-Ground the adapter separately (PSU − to its terminal GND pin, which is the one
-nearest the 3-pin sockets). Signal return is milliamps; the servo's 4.2 A never
-touches the board.
+| # | from | to | result | establishes |
+|---|---|---|---|---|
+| 1 | `V1` terminal | cable **red** | continuity | `V1` feeds the socket; red is Vcc |
+| 2 | `G` beside `V1` | cable **black** | continuity | ground path; black is GND |
+| 3 | `V1` terminal | cable **white** | open | signal isolated from power |
+| 4 | `V1` terminal | `G` beside it | open | no short across the rail |
+| 5 | `V2` terminal | cable **red** | open | `V2` is not on our bus |
+| 6 | `G` (V1 side) | `G` (V2 side) | **continuity** | the two grounds are **common** |
 
-*If you would rather not touch the connector:* male-to-female Dupont jumpers let
-you build the same split harness with no disassembly. Order them now — Step 0a
-below does not need them, so nothing is blocked while they ship.
+**These six are necessary but NOT sufficient.** They prove the PSU→servo path and
+that nothing is shorted. **They do not test the USB rail**, which is the one that
+can damage the host. P3/P5 below close that gap, and supersede test 6 as a
+decision input — a common ground cannot distinguish the two terminals.
 
-## Safety
-
-- The servo **will get hot enough to burn** — 70 °C is the firmware cutoff, and
-  the case reaches it. Do not hold it; use a non-flammable surface.
-- Weights fall. Keep the arm low over a padded surface, and nothing fragile (or
-  a foot) underneath.
-- Set the PSU current limit **before** every step, never after.
+**Use resistance (Ω) mode, not the beeper, for all re-tests.** A continuity
+beeper is threshold-triggered and will chirp through a capacitor.
 
 ---
 
-## Step 0a — power only. No adapter, no USB, no PC. (10 min)
+## Standing rules — every moment, no exceptions
 
-Deliberately the smallest possible blast radius: if something is wrong with the
-supply, the polarity, or the servo, this step finds it with **nothing else
-connected that can be damaged**. It also needs no connector surgery — plug one
-cable end into the servo and use the free end as a breakout.
+- **Output OFF before any connector is mated or unmated.** The 5264 has no
+  sequenced contacts; hot-plugging pits and welds them.
+- **Never turn the voltage knob while the output is on and loaded.** On a 30 V
+  supply a knob slip reaches the servo's over-voltage trip in a quarter turn.
+- **Never connect anything to the 5-pin 2.54 mm header.** Its `5V` pin is an
+  *input* expecting exactly 5.0 V; 11.1 V destroys the board. Meter probes only,
+  never a clip. Tape it over after pre-flight.
+- **Tape over both `V2` screws** for the entire campaign.
+- **Do not bond the PSU's negative post to its green earth post.** Leave the
+  output floating; that is what makes a lost ground an open circuit rather than a
+  return path through the PC.
+- **If the CC light comes on in Stage A or B: OUTPUT OFF.** Do not turn the
+  current knob up to make the light go away.
+- **Never write EEPROM while the PSU is in CC.** A brownout mid-write bricks the
+  servo's ID/baud, and there is exactly one servo.
+- **Connect ground first, disconnect it last.**
+- The servo **will get hot enough to burn** — the case is aluminium (6-3), far
+  worse than the plastic-cased STS3215. Never test temperature with a finger.
 
-**Set the supply BEFORE anything is connected:**
+## Before anything: build two wire stubs — BLOCKING
 
-1. Output **OFF**. Nothing in the binding posts.
-2. Set voltage to **11.1 V** — the robot's real 3S2P pack voltage, *not* 12 V.
-   (Momentarily enabling the output with no load to read the display is fine;
-   switch it back off.)
-3. Turn the **current knob fully counter-clockwise** (to zero).
+**Alligator clips cannot land on a 5.08 mm screw terminal.** The screws are
+5.08 mm apart, clip bodies are 8–20 mm wide, and a clip cannot enter a screw
+clamp at all. Banana-to-fork-spade leads do not fit either. This is the single
+missing part that makes the wiring step unexecutable.
 
-**Then connect:**
+**Free source available today: a dead Cat5e Ethernet patch cable.** It contains
+eight 24 AWG solid copper conductors (0.51 mm) — exactly what a 5.08 mm clamp
+wants, and solid wire leaves no stray strands. A 60 mm stub is ~5 mΩ.
 
-4. Insert a male pin into the free connector end's **red** socket and another
-   into its **black** socket — a male Dupont jumper, a stripped 22 AWG solid
-   wire, or a straightened paperclip all work. Keep them splayed apart; they
-   must not touch each other.
-5. Alligator-clip **PSU (+) → red** and **PSU (−) → black**. Check the colours
-   twice. Leave **white unconnected** — never put the supply on the signal wire.
+- Cut **two stubs of different lengths — 30 mm and 60 mm** (so they cannot be
+  confused), strip 8 mm at the terminal end and ~25 mm at the clip end.
+- Land them, torque the screws, **tug-test each**, and bend the free ends into a
+  V so the alligator clips sit 40+ mm apart with air between them.
+- For Stage C, twist two conductors together per polarity.
 
-**Then ramp:**
+---
 
-6. Output **ON**. Because current is dialled to zero, the supply starts in
-   constant-current mode and the voltage display will read near 0 V.
-7. Turn the current knob **slowly clockwise** until the voltage display rises to
-   and holds **11.1 V**. Read the current at that point — that is idle draw.
+## Pre-flight — all zero-risk, none of it can damage anything
 
-This ramp is self-protecting: a short or reversed connection means the voltage
-*never* climbs no matter how far you turn. That is the whole point of doing it
-this way rather than presetting a limit.
+### P1 — USB only. No PSU on the bench. No servo.
+
+1. Set the logic switch firmly to **5 V** (a detent, not between positions).
+2. Plug into the PC with a **USB-A-to-C** cable — C-to-C often fails to enumerate
+   on boards that omit the CC pull-downs.
+3. `dmesg | tail` and `ls /dev/ttyACM*`. Expect `/dev/ttyACM0`, no driver needed.
+4. Confirm the software opens the port. `FD.exe` is Windows-only; on Linux use
+   `feetech-servo-sdk` / `scservo_sdk`. **Decide this now, not at 11.1 V.**
+5. Meter on DC volts, header `GND` → `5V`. Flip the switch: expect ~5.0 V in one
+   position, ~3.3 V in the other. Return it to **5 V** and leave it.
+6. Unplug USB.
+
+### P2 — Ohm-map the board. Unpowered, USB out, nothing plugged in.
+
+Probe each of the four terminal screws against each pin of the TTL socket.
+
+| expected | if not |
+|---|---|
+| **Exactly one** screw < 1 Ω to one socket pin — that is the TTL **V** | Two screws low to the same pin → the positive rails are shared → **STOP, split harness** |
+| **All four** screws < 1 Ω to the socket `G` pin | Expected — grounds are common |
+| Any reading of a few hundred ohms | Reading through active circuitry → **STOP** |
+
+### P3 — Isolation, passive half. **This is the test that protects your PC.**
+
+Probe **TTL socket `V` pin ↔ header `5V` pin**: resistance both ways, diode mode
+both ways, in **both** switch positions.
+
+| reading | meaning |
+|---|---|
+| **OL / megohms**, all four ways | Rails look separated → continue |
+| **< 10 Ω** | Hard-tied. **11.1 V will land on USB VBUS** → split harness |
+| 0.3–0.7 V drop, **socket→header** | Diode-OR blocking the wrong way → treat as hard-tied |
+| 0.3–0.7 V drop, **header→socket** | Blocking correctly → continue, still do P5 |
+
+### P4 — Set the supply properly, with no load
+
+Ramping the current knob up until the voltage holds **is not a way to set a
+current limit** — with no load the knob does nothing observable, and you end up
+with a limit barely above idle, which browns out under load.
+
+1. **Masking tape under each knob, labelled V-C, V-F, A-C, A-F.**
+2. Output OFF. **A-COARSE fully CCW.**
+3. **Clip the two PSU leads to each other** — a deliberate short. This is safe and
+   is what the supply is for.
+4. Output ON. The supply enters **CC**; the V display drops near zero.
+   **This is the only state in which the A display shows your actual limit.**
+5. Dial until the A display reads **0.10 A**. Output OFF. Remove the short.
+6. Output ON, leads open. Set **5.00 V**, and **verify with the multimeter** —
+   the panel is a ±(0.5 % + 2 digit) affair.
+7. **Verify polarity:** DMM red probe on the red clip. It must read **+5.00 V,
+   not −5.00 V.** Output OFF.
+
+### P5 — Isolation, active half, at 5 V. **The gate.**
+
+1. Stubs in the TTL terminal (identified electrically in P2, not by silkscreen).
+   USB **unplugged**, servo **unplugged**, nothing in any socket.
+2. PSU **5.00 V / 0.10 A**. Output ON.
+3. Meter DC volts: header `5V` → header `GND`.
+
+| reading | verdict |
+|---|---|
+| **~0.00 V** | **Rails isolated. Through-board plan is GO.** |
+| **~4.3–5.0 V** | **Coupled. STOP.** → Appendix A split harness |
+
+### P6 — Polarity and cable straight-through, at 5 V, servo still unplugged
+
+1. Output OFF. Cable into the **3-pin TTL socket only**, far end dangling.
+2. Output ON at 5.00 V / 0.10 A, USB still unplugged.
+3. Probe the dangling end (push a single Cat5e strand into each recessed hole):
+   - black probe → **black**, red probe → **red**: must read **+5.00 V**
+   - **−5.00 V** → terminals reversed; swap the stubs and re-measure
+   - **0 V** → wrong terminal, wrong socket, or a bad clamp
+   - black → **white**: ~0 V or floating. **Never 5 V.**
+4. Output OFF.
+
+This one measurement verifies terminal polarity, terminal→socket mapping, correct
+socket, and cable continuity at once, with nothing destructible in circuit.
+
+### P7 — Repeat at 11.1 V, still no servo and no USB
+
+1. Recalibrate the limit by the shorting method to **1.0 A**. Set **11.1 V**,
+   verify with the DMM, then **do not touch the voltage knob again.**
+2. Output ON. Re-measure header `5V` → `GND`. **Must still be ~0.00 V.**
+   Anything above ~0.5 V → OFF, split harness.
+3. Re-measure at the dangling connector: **+11.1 V** black-to-red. Output OFF.
+4. Tape over the 2.54 mm header and both `V2` screws.
+
+---
+
+## Stage A — first servo power-up
+
+**Preconditions: P1–P7 passed. Limit 1.0 A. 11.1 V verified. USB unplugged.**
+
+1. **Servo clamped to the bench. Bare horn. No arm, no weight. Hands clear.**
+   The datasheet lists no mechanical limit angle; 4.9 N·m through steel gears will
+   not stop for a finger.
+2. Output OFF. Plug the cable into the servo, leaving a service loop.
+3. Output ON.
 
 | observation | meaning |
 |---|---|
-| Voltage reaches 11.1 V at **~0.05–0.1 A** | Healthy. Proceed. |
-| Voltage stays low, current climbs past ~0.5 A | Short or reversed polarity. **Output OFF immediately.** |
-| Voltage reaches 11.1 V at **0.00 A** | No connection — pins not seated. |
-| Any smell, heat, or noise | **Output OFF.** Stop and report. |
+| **~24 mA**, holding 11.1 V, CV light | **Healthy** (5-6) |
+| **~280 mA**, holding | Powered up torque-enabled and hunting (5-3). Unexpected, not a fault |
+| **Voltage plateaus below 5 V** with current rising | **OUTPUT OFF.** Reversed polarity presents as a *diode*, not a short — H-bridge body diodes conduct at 0.7–1.4 V. **Watch the voltage display, not the current display.** |
+| CC light on at all | **OUTPUT OFF** |
+| 11.1 V at 0.00 A | Connector not seated |
+| Any smell, heat, buzz | **OUTPUT OFF** |
 
-8. Leave it powered ~60 s. The case must stay at room temperature — an idle
-   servo does no work and must not warm up at all.
-9. Output **OFF** before touching anything.
+The old "0.05–0.1 A" pass band matched **neither** datasheet figure and is deleted.
 
-**Record:** idle current, the voltage the supply actually held, and case
-temperature after 60 s.
+4. Hold 60 s. Case must stay at room temperature. Output OFF.
 
-> The servo will not move and will make no sound. That is a **pass**, not a
-> failure — it holds no position until it is commanded over the bus in Step 0b.
+**Record:** idle current, held voltage, case temperature after 60 s.
 
-## Step 0b — add the adapter (after 0a passes)
+> The servo will not move and will make no sound. That is a **pass** — it holds
+> no position until commanded over the bus.
 
-Only now does the FE-URT-1 join the circuit, using the split harness from the
-wiring section above. Re-verify with the multimeter, **before plugging in USB**,
-that there is **no continuity between the 11.1 V rail and the adapter's Vcc pin**.
-Then raise the current limit to **5.0 A** for the loaded steps that follow.
+## Stage B — comms and the EEPROM dump
 
-## Step 1 — talk to the servo (10 min)
+**Gated on P5. Limit 1.0 A. Still no arm, no weight.**
 
-Use Feetech's `FD.exe` debug software, or the Python SDK
-(`pip install feetech-servo-sdk`, or Feetech's `STservo_sdk`). Baud **1000000**
-for STS series.
+1. Output ON at 11.1 V. Confirm **CV**, not CC. **Then** plug in USB-C.
+   A **powered USB hub** between PC and board is cheap insurance.
+2. **Scan IDs 0–253 across all baud rates**, not just 1 Mbps — factory default is
+   ID 1 @ 1 Mbps, but a servo that went through `configure_motor.py` may be at
+   ID 10–14 / 20–24 / 30–33.
+3. **Full read-only dump. Change nothing.** Addresses 5, 6, 13, 14, 15, 16, 19,
+   20, 28, 34, 35, 36, 40, 48, 55, 56, 60, 62, 63, 69.
+4. **Self-validate the register map.** These addresses come from a community
+   STS3215 reference. Check **addr 13 reads 70** (matching 7-11's 70 °C) and
+   **addr 62 reads ~111** (11.1 V at 0.1 V/LSB). **If addr 13 is not 70, the map
+   is wrong for this model and every register number above is void.**
+5. **Commit the raw dump.** Commit `b253142` currently cites the 3.8 A / 2 s /
+   80 % / 70 °C thresholds from a third-party table for a *different model*. This
+   dump upgrades them from vendor claim to bench fact.
+6. **Flags to act on:** addr 16 or 48 below 1000 → every Stage C torque is
+   silently clamped and the run is void. addr 55 (lock) set → EEPROM writes fail
+   silently. addr 15 raised → the servo trips at exactly the low-battery
+   condition most worth characterising.
+7. **Sanity gate:** read addr 62 one hundred times. Require **100/100** clean
+   replies before logging anything.
+8. **Never write 128 to address 40** — 7-14, that re-zeroes the servo's midpoint.
 
-1. Scan for the servo ID (default is usually 1).
-2. Read back: present **position, voltage, current, temperature**.
-3. Confirm reported voltage matches the PSU display within ~0.2 V.
+## Stage C — loaded torque and thermal
 
-**Record:** servo ID, firmware version, reported vs actual voltage.
+**Limit raised to 3.0 A by the shorting method** — above the ~1.9 A clamped-stall
+bus transient, at/below the connector rating. **Not 5 A.**
 
-> If reported voltage is wrong, **every later reading from this servo is suspect**
-> — that is what this check is for.
+### What the ammeter will actually read
 
-## Step 2 — is the servo's self-reporting honest? (15 min)
+At a static hold the mechanical output is zero, so all electrical input becomes
+heat, and `I_bus = I_winding² × R / V`. **Bus current is not winding current** —
+they differ by the PWM duty and will legitimately disagree by 2–10×.
 
-The whole test relies on the servo's own current and temperature telemetry.
-Verify it once against instruments.
+| torque | winding current (addr 69) | **PSU ammeter** | **heat** |
+|---|---|---|---|
+| 0.981 N·m | 0.91 A | 0.09 … 0.21 A | 1.0 – 2.4 W |
+| 1.569 N·m *(rated)* | 1.45 A | 0.23 … 0.54 A | 2.5 – 6.0 W |
+| **2.060 N·m** *(target)* | **1.91 A** | **0.39 … 0.94 A** | **4.4 – 10.4 W** |
+| 2.735 N·m | 2.54 A | 0.70 … 1.66 A | 7.7 – 18.4 W |
 
-1. Put the **multimeter in series** on the positive lead (10 A jack).
-2. Command the servo to hold position with no load; log current from **all three**
-   sources: multimeter, PSU display, servo telemetry.
-3. Repeat holding a 0.5 kg weight at 200 mm (≈0.98 N·m).
+*(ranges span R = 1.2 Ω to 2.86 Ω. If you see ~2 A on the bus, something is wrong.)*
 
-**Record:** a 3-column table. **Acceptance: the three agree within ~10 %.**
-If the servo's self-report is off, use the PSU/meter figure for everything after
-and note the offset.
+> **The old acceptance criterion "the three current sources agree within ~10 %"
+> was wrong and is deleted.** The servo reports winding current; the PSU and DMM
+> report bus current. Following it would have made you discard the servo
+> telemetry, halving every inferred torque and understating heat by ~4×.
 
-## Step 3 — verify the torque constant (20 min)
+Your 2.060 N·m target is **136 % of rated current** (5-9). The honest prior is
+"probably not sustainable indefinitely" — this test quantifies duty-cycle
+headroom, it does not produce a yes/no.
 
-The datasheet claims **Kt = 11 kg·cm/A**. Everything in
-`servo_torque_budget.md` that converts current to torque depends on it.
+### Mechanical setup
 
-Mount the arm horizontally and hang each weight in turn. Command the servo to
-**hold horizontal** (worst case: full gravitational torque, zero motion).
+- Servo **bolted or clamped down**. 2 N·m will flip a 74.5 g servo off the bench.
+- **Metal horn**, single M3×6. This is the weak link at 2+ N·m, and spline slip is
+  silent — logging addr 56 catches it, nothing prevents it.
+- 200 mm arm: **weigh it and find its centre of mass.** A 100 g arm with CoM at
+  100 mm adds 0.098 N·m — **4.8 % of target** — and is not in the weight table.
+  Subtract it from the hung mass.
+- Weight on a **string**, arm **horizontal** (verify with a phone level; torque
+  scales as cos θ, and 30 ° off is a 13 % error), hanging **≤50 mm above foam**.
+- **IR thermometer or taped thermocouple.** Never a finger.
+- **Eye protection.** **Emergency stop = finger on the OUTPUT button**, never yank
+  a live clip.
 
-| torque | what it is | @100 mm | @150 mm | @200 mm |
-|---|---|---|---|---|
-| 0.981 N·m | Feetech's 100k-cycle life load (1/5 stall) | 1.00 kg | 0.67 kg | 0.50 kg |
-| 1.569 N·m | **Feetech RATED torque** | 1.60 kg | 1.07 kg | 0.80 kg |
-| 2.060 N·m | **v7 worst-leg RMS — what we ship** | 2.10 kg | 1.40 kg | 1.05 kg |
-| 2.735 N·m | v6d worst-leg RMS (before the fix) | 2.79 kg | 1.86 kg | 1.39 kg |
+### Per-level sequence
 
-*1 L of water = 1.00 kg. A bottle on a string is a fine weight.*
+1. Cold start — case within 2 °C of ambient. **Record ambient.** ~15 min between.
+2. Torque **off**. Hold the arm horizontal by hand.
+3. **Read addr 56, write goal position = that exact value, *then* enable torque.**
+   This eliminates the torque-enable lurch, the only realistic path to a stall
+   transient in this test.
+4. Release the arm gently.
+5. **Superimpose a dither: ±3 ° at the output, 0.5 Hz.** Through the 1/345 gearbox
+   that is ±2.9 motor revolutions — enough to spread commutation across a
+   *coreless* motor's brushes, while changing mean torque by cos(3°) = **0.14 %**.
+   A 20-minute static hold parks the whole current on one or two commutator
+   segments; that is a known coreless failure mode and it is not what walking does.
+6. **Log at 1 Hz:** addr 56, 60, 62, 63, 65, 69 + PSU volts, PSU amps, ambient,
+   wall clock.
+7. Stop at **plateau** (dT/dt < 0.2 K/min for 5 min), **70 °C trip**, or 20 min.
 
-For each: hold ~10 s, record steady current. **Plot torque vs current — the slope
-is the real Kt.** Compare with 11 kg·cm/A (= 1.079 N·m/A).
+**Order: 0.981 → 1.569 → 2.060 → 2.735 N·m. Stop at the first level that trips.**
 
-**Record:** torque/current pairs, fitted Kt, deviation from datasheet.
+### The trip detector — check first on every sample
 
-## Step 4 — THE THERMAL TEST (the reason for all of this)
+7-11 says over-load and over-current are cleared by **re-sending a position
+command** — and the dither *is* a position command every 2 s. So:
 
-For each torque level below, from a **cold start** (case at room temperature —
-allow ~15 min between runs):
+- Any sample where **addr 60 or 69 drops >50 % below the run's median** with no
+  command change is a trip. **Truncate the run there.**
+- Any **step change in addr 56** with no command change is a trip or horn slip.
+- **Without the dither and the load channel, a trip latches silently**: torque
+  goes to zero, current collapses to 24 mA, and temperature **plateaus** — which
+  is this test's own pass condition. You would close SERVO-2 on a servo that had
+  gone limp.
+- At 2.060 N·m you sit at **1.91 A vs the 3.8 A over-current limit** and well
+  under the 80 % overload limit, so **only over-temperature can legitimately
+  trip.** Any other trip means the rig is wrong, not the servo.
 
-1. Set the load, command hold-horizontal.
-2. Log **temperature, current, voltage every 1 s**.
-3. Stop at **70 °C**, or at **20 minutes**, whichever first.
-4. Note the ambient temperature.
+### Abort conditions
 
-Run in this order, and **stop the sequence at the first level that reaches 70 °C**:
+- PSU goes **CC** → OFF.
+- PSU voltage reads **above** 11.1 V → regeneration into a supply that cannot
+  sink → OFF.
+- **addr 62 more than 0.3 V below the PSU display** → harness drop is corrupting
+  the experiment → stop and fix.
+- Any 5264 housing too warm to hold → OFF.
 
-| # | torque | question it answers |
-|---|---|---|
-| 1 | **0.981 N·m** | is Feetech's own life-rating load thermally free? |
-| 2 | **1.569 N·m** | is the nameplate actually sustainable indefinitely? |
-| 3 | **2.060 N·m** | **can the shipped policy's worst joint run forever?** |
-| 4 | 2.735 N·m | how bad was it before the fix? |
+### What to derive — model-free, and the real payoff
 
-**Record per level:** time-to-70 °C (or "stable at X °C"), the steady-state
-temperature if it plateaus, and the temperature curve.
+- **P_servo = (addr 62 × 0.1 V) × I_PSU** — measured, exact.
+- **Harness drop = V_PSU − (addr 62 × 0.1)**, logged at every level. This is also
+  a hard requirement the robot's real harness must beat.
+- **R_th = ΔT / P_servo [K/W]** — **this is the transferable number**, not the
+  absolute temperature.
+- **τ_thermal** = time to 63 % of ΔT. Expect ~2–3 min, so the answer arrives in
+  ~10 minutes, not 20.
+- **R_effective = P_servo / (addr 69)²** — resolves the 1.2 Ω vs 2.86 Ω
+  inconsistency. **If it lands near 2.86 Ω, add a 9.0 V repeat of the worst
+  passing level; if near 1.2 Ω, skip it.**
+- **Kt_measured** = torque / addr 69, **recorded with case temperature at each
+  point** — copper resistance rises +0.393 %/K, so a sweep mixing cold early
+  points with hot late points fits drift, not Kt.
 
-**The thermal time constant** is the time to reach ~63 % of the final rise. That
-single number replaces the biggest assumption in `servo_torque_budget.md`.
+### The pass bar — state it before running
 
-## Step 5 — replay the real gait profile (30 min, optional but best evidence)
+"Plateaus below 70 °C on the bench" is the wrong bar, and it fails favourably,
+which is the worst direction. The real bar is:
 
-Steps 3–4 are *static holds*, which are the worst case. Walking is not static.
+> **ΔT_bench × k ≤ 70 °C − T_internal**
 
-`v7_torque.npz` holds the shipped policy's **actual per-step torque, 1500 steps
-at 50 Hz**, for every joint. Replay the `left_hip_pitch` trace as a position
-command on the bench servo, loop it for 10 minutes, and log temperature.
+where T_internal is the trunk bay ambient (the Jetson is in there — see
+[`project_thermal_safety`](thermal_safety.md)) and k is the enclosure factor.
+With T_internal = 45 °C and k = 1.5, that is **ΔT_bench ≤ 16.7 K — a bench
+plateau near 42 °C, nothing like 70.** Note 1-2 also caps rated operating ambient
+at **60 °C**, so a bay above 60 °C is out of spec regardless of the cutoff.
 
-This is the closest thing to "what the robot will actually do to this servo".
-If temperature plateaus safely here even where Step 4 says the static hold does
-not, that is a meaningful and favourable result — and it is the number Phase S
-should design the duty cycle around.
+**Measure k, don't guess it:** repeat one level (1.569 N·m) with the servo inside
+the actual printed leg shell. `k = ΔT_enclosed / ΔT_open` then survives into
+`servo_torque_budget.md` as a measured number.
+
+**Instrument note:** use the series DMM (10 A jack) for **one** cross-check at one
+operating point, record the PSU ammeter's offset, then **remove it and pull the
+lead out of the A jack.** Most 10 A jacks are unfused or rated for seconds, not
+20 minutes — and a lead left in the A jack with the dial on V is a dead short.
 
 ---
+
+## Appendix A — split-harness fallback (only if P3, P5 or P7 fails)
+
+The board must never see the 11.1 V rail. Because the servo's two sockets are
+**internally paralleled**, feeding power into the spare socket does **not** help —
+it appears on the first socket's V pin and travels down the cable to the board.
+A second cable alone buys zero isolation.
+
+1. On **cable A**, at the **board end**, lift the latch in the housing window with
+   a sewing needle and slide the **red (Vcc)** contact out. It re-latches when
+   pushed back — fully reversible. The board end now carries **white + black only**.
+2. Cut **cable B** in half, strip red and black, land them on the PSU stubs, and
+   plug its surviving housing into the servo's **second** socket.
+3. PSU (+) → servo Vcc; PSU (−) → servo GND **and** the board's `G` screw as a
+   **signal reference only** (milliamps). The board keeps its own 5 V from USB.
+4. **Re-run P6 on cable A** before connecting the servo, to confirm the right
+   contact was extracted.
+
+---
+
+## Honest limits
+
+1. **There is no official FE-URT-2 electrical document.** Every URT-2-specific
+   claim rests on vendor listings that contradict each other. The meter tests
+   close most of this, but cannot prove the absence of a path that only conducts
+   above some threshold. You are characterising an undocumented board.
+2. **One servo, one sample.** The datasheet prints ±10 % on stall torque, stall
+   current and no-load speed, and is internally inconsistent by 8 % on Kt and
+   2.4× on terminal resistance. **Any envelope carries ~±15 % before rig error.
+   Do not close SERVO-2 on a smaller margin.**
+3. **addr 63 is a board sensor, not a winding sensor.** It is the *correct* metric
+   for "when does the firmware cut out" and the *wrong* one for "is the winding
+   safe." A coreless winding hotspot is invisible to it.
+4. **Open air ≠ sealed printed leg next to a Jetson.** R_th generalises; absolute
+   temperature does not.
+5. **Over-temperature recovery is unspecified.** 7-11 documents how over-load,
+   over-current and over-voltage clear, and says nothing about over-hot. Measure
+   it: after a 70 °C cutoff, log how long until addr 63 falls below 60 °C. That
+   recovery time is the real duty-cycle constraint on the robot.
+6. **A thermal pass licenses nothing about gear life.** 8-1 warrants >100,000
+   cycles at **1/5 stall torque (0.98 N·m)** on a **33 % motion duty cycle**. A
+   continuous hold at 2.060 N·m is 2.1× that torque at 3× the duty. State
+   explicitly that a thermal pass means *only* "will not hit the 70 °C cutoff".
+7. **The weight falls the moment the servo trips — and reaching 70 °C is the
+   experiment's success condition.** Padding reduces the consequence, not the event.
 
 ## What the outcomes mean
 
 | result | conclusion | action |
 |---|---|---|
-| 2.060 N·m plateaus well under 70 °C | **SERVO-2 closed.** The derated ≤1.0 target was too conservative. | Ship v7 as-is. Retire the SERVO-2 check. |
-| 2.060 N·m reaches 70 °C but only after many minutes | Duty-cycle limited, not blocked | Set a run-time budget in the S.10 safety layer |
-| 2.060 N·m reaches 70 °C in ~1–2 min | **SERVO-2 is real and v7 is not enough** | Mass reduction or gearing (S.8), not another retrain — two retrains already showed weight alone cannot get there |
-| measured Kt differs a lot from 11 kg·cm/A | every current↔torque conversion in the project shifts | Re-derive `servo_torque_budget.md` §3 |
+| 2.060 N·m meets the ΔT bar | **SERVO-2 closed.** The derated ≤1.0 target was too conservative | Ship v7 as-is; retire the SERVO-2 check |
+| plateaus, but above the ΔT bar | Duty-cycle limited, not blocked | Set a run-time budget in the S.10 safety layer |
+| trips at 70 °C in ~1–2 min | **SERVO-2 is real and v7 is not enough** | Mass reduction or gearing (S.8) — two retrains already showed reward weight alone cannot get there |
+| measured Kt far from 11 kg·cm/A | every current↔torque conversion shifts | Re-derive `servo_torque_budget.md` §3 |
 
-## Write the results back into
+## Write results back into
 
-- `docs/jetson-mod/bench_results_servo.md` — raw logs and plots
-- `servo_torque_budget.md` — replace the derating assumptions with measurements
+- `docs/jetson-mod/bench_results_servo.md` — raw logs, the EEPROM dump, plots
+- `servo_torque_budget.md` — derating assumptions → measured R_th, τ, R_effective
 - `known_issues.md` **SERVO-2** — close it, or restate its real target
-- `task_plan_v2.md` **S.8** — its "UNVERIFIED" thermal thresholds become cited
-
-## Honest limits of this test
-
-- **One servo, one sample.** Feetech prints ±10 % on stall torque; unit spread is
-  real. This measures *your* servo.
-- **Open air, not the chassis.** The robot seals its servos in a printed body
-  with a Jetson inside. Real in-robot temperatures will be **worse**. Treat these
-  numbers as the optimistic bound and re-measure after assembly.
-- **The 70 °C cutoff is the firmware's, not a damage threshold.** Gears and
-  bearings may degrade below it over many cycles; this test says nothing about
-  100k-cycle wear.
+- `task_plan_v2.md` **S.8** — "UNVERIFIED" thermal thresholds become cited
