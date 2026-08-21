@@ -206,8 +206,21 @@ conductors together per polarity.
 3. `dmesg | tail` and `ls /dev/ttyACM*`. Expect `/dev/ttyACM0`, no driver needed.
 4. Confirm the software opens the port. `FD.exe` is Windows-only; on Linux use
    `feetech-servo-sdk` / `scservo_sdk`. **Decide this now, not at 11.1 V.**
-5. Meter on DC volts, header `GND` → `5V`. Flip the switch: expect ~5.0 V in one
-   position, ~3.3 V in the other. Return it to **5 V** and leave it.
+5. Meter on DC volts, black on header `GND`, red on header **`TXD`**. USB must be
+   connected. A UART transmit line idles **high**, so this reads the logic level
+   the switch actually selects: **~5 V or ~3.3 V** depending on position. Return
+   the switch to **5 V** and leave it.
+
+   > **Do not probe the `5V` pin to test the switch.** That pin is a fixed
+   > USB-derived power output for driving an external MCU; the switch acts on the
+   > *data* lines, not on it. Measured 2026-08-20: it reads **4.71 V in both
+   > switch positions**, which is correct behaviour, not a fault. (4.7 V rather
+   > than 5.0 V is the usual protection-diode/polyfuse drop off VBUS.)
+   >
+   > That reading is still useful for a different reason: it confirms the header
+   > `5V` pin is live off USB, which is exactly the rail **P3 and P5** test for
+   > isolation against the servo supply.
+
 6. Unplug USB.
 
 ### P2 — Ohm-map the board. Unpowered, USB out, nothing plugged in.
