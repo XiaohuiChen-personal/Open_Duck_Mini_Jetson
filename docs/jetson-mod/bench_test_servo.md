@@ -265,6 +265,37 @@ both ways, in **both** switch positions.
 | 0.3–0.7 V drop, **socket→header** | Diode-OR blocking the wrong way → treat as hard-tied |
 | 0.3–0.7 V drop, **header→socket** | Blocking correctly → continue, still do P5 |
 
+### P3b — USB connected, VOLTAGE ONLY. The direct test.
+
+> **Never use resistance or diode mode on a powered circuit.** The meter injects
+> its own test current, so readings are meaningless, and some meters are damaged
+> by it. Ω and diode mode are unpowered-only; once USB is in, volts only.
+
+P3 is a *passive* test, and a passive test cannot see a path that only conducts
+once the board is energised — a load switch, an ideal-diode controller or a
+P-FET ORing USB onto the servo rail all read open unpowered and turn on live.
+With USB connected that element is **on**, so one voltage reading settles it.
+
+USB connected. No external supply. **Nothing in any socket** (so the servo is not
+loading the rail).
+
+| # | black probe | red probe | what it answers |
+|---|---|---|---|
+| 1 | socket `G` pin | socket `V1` pin | **does USB 5 V reach the servo supply rail?** |
+| 2 | header `GND` | header `5V` | baseline — known good at 4.71 V |
+
+| reading on #1 | verdict |
+|---|---|
+| **~0.0 V** | USB does not feed the servo rail with nothing plugged in |
+| **~4.3–4.8 V** | **USB 5 V DOES reach the servo bus — the rails are coupled.** The vendor's "power the servo from USB for parameter tuning" feature is real and always-on → the through-board 11.1 V plan needs the split harness unless a blocking element is proven |
+
+This is more decisive than P3's resistance readings, and it costs one measurement
+at zero risk — nothing here exceeds 5 V.
+
+**It also explains the open question from the bus scan.** A scan with no external
+supply reported a servo at ID 1. If reading #1 shows ~4.7 V, then a servo plugged
+into the socket is powered from USB alone, and that reply was genuine.
+
 ### P4 — Set the supply properly, with no load
 
 Ramping the current knob up until the voltage holds **is not a way to set a
