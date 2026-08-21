@@ -265,6 +265,20 @@ both ways, in **both** switch positions.
 | 0.3–0.7 V drop, **socket→header** | Diode-OR blocking the wrong way → treat as hard-tied |
 | 0.3–0.7 V drop, **header→socket** | Blocking correctly → continue, still do P5 |
 
+**Measured 2026-08-20: all four readings OPEN** — resistance both directions,
+diode mode both directions.
+
+**PASS, and it rules out more than a short.** A P-channel MOSFET used to OR two
+rails has a **body diode that must conduct in one direction**, and a Schottky
+OR-diode likewise. Neither appears, so the two most likely passive/semi-passive
+coupling topologies are eliminated, not merely "not detected".
+
+**What survives this result:** a load-switch IC with back-to-back FETs (no
+exposed body-diode path), or any element whose off-state impedance is beyond the
+meter's range. Those turn **on** when the board is energised, which is exactly
+what P3b and P5 exist to catch. **A clean P3 is not permission to connect USB at
+11.1 V.**
+
 ### P3b — USB connected, VOLTAGE ONLY. The direct test.
 
 > **Never use resistance or diode mode on a powered circuit.** The meter injects
