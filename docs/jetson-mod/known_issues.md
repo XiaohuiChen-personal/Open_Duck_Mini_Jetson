@@ -124,6 +124,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [DOC-6](#doc-6) | `AGENTS.md` actuator snippet sets a field the code does not use | LOW | **FIXED 2026-08-09** |
 | [SERVO-1](#servo-1) | `neck_pitch` stalled against its end stop at 207 % of continuous | **HIGH** | ✅ **FIXED 2026-08-16** (v7: 0.0 % on stop, 28 % of rated) |
 | [SERVO-2](#servo-2) | Leg actuators run above the servo's rated torque | **HIGH** | **MITIGATED 2026-08-16** (174 % -> 131 %); remainder is mass/gearing, Task S.8 |
+| [HW-1](#hw-1) | Servo-bus adapter ties servo V to USB VBUS — 11.1 V reaches the host | **CRITICAL** | **MEASURED 2026-08-21**; hits the robot's wiring diagram, not only the bench |
 
 ---
 
@@ -1578,6 +1579,85 @@ more is broken than is.
   tensors are bit-identical to the checkpoint.
 
 ---
+
+
+---
+
+<a id="hw-1"></a>
+# HW — the physical build differs from what the wiring assumes
+
+## HW-1 · The servo-bus adapter ties servo V to USB VBUS — CRITICAL
+
+**Measured on the bench 2026-08-21**, FE-URT-2, nothing plugged into any socket,
+no external supply, USB only:
+
+| measurement | reading |
+|---|---|
+| socket `G` → socket `V1` | **4.94 V** |
+| header `GND` → header `5V` | 4.69 V |
+
+USB VBUS feeds the servo supply rail, always-on, with no software running.
+
+### The drop size identifies the element
+
+VBUS ≈ 5.0 V against `V1` at 4.94 V is a **0.06 V** drop — a MOSFET channel or a
+bare trace. A silicon diode costs 0.3–0.7 V and a Schottky 0.2–0.4 V, so **there
+is no blocking element in that path.** The header `5V` pin's 0.31 V drop is what
+a Schottky actually looks like, which is how we know the two nodes reach VBUS
+through *different* parts.
+
+**A MOSFET conducts in both directions once its channel is enhanced** — only the
+body diode is one-way. "It might block backwards" is not available as a hope.
+
+### Why the passive test missed it
+
+An unpowered resistance/diode sweep between socket `V1` and header `5V` read
+**open in all four directions**. That result was correct and irrelevant: the two
+nodes reach VBUS through separate elements, so the path between *them* is two
+parts back-to-back. **The host-facing node is USB VBUS itself**; the header `5V`
+pin was only ever *presumed* equivalent, and is not.
+
+Generalisation worth keeping: **an unpowered meter cannot characterise a circuit
+whose conduction is controlled by a supply that is not present.** Ohms mode is
+worse still — a junction's forward drop falls ~110 mV per decade of current, so
+at a 200 kΩ range's ~1 µA test current a real diode computes as ~320 kΩ and reads
+as "megohms, therefore isolated".
+
+### This is a robot design defect, not only a bench hazard
+
+`jetson_wiring_diagram.png` routes **Jetson USB-C → "Motor Control Board"**, with
+**11.1 V DC in** to that same board and the **servo bus out** to the neck and
+both legs. That is the identical topology. If the Motor Control Board is the
+URT-2 — or any adapter sharing this defect — energising the robot puts **11.1 V
+on the Jetson Orin Nano's USB port.**
+
+The exposure is not symmetric. VBUS on a PD-capable port has over-voltage
+protection and a replaceable eFuse. **D+/D− has an absolute maximum near 3.6 V,
+no external clamp is possible, and on a USB4-class port it runs through a
+non-replaceable retimer/mux.** A blown VBUS fuse is survivable; a blown mux is a
+motherboard.
+
+### Fix — the bus V wire must never reach the adapter
+
+The adapter needs **signal + ground only**. Battery 11.1 V runs directly to the
+servos, never through the board.
+
+- **Bench:** cut red and black in the 3-pin cable; both black ends share one
+  PSU(−) clip as a star ground; board-side red is insulated and unused; the `V1`
+  screw terminal stays permanently empty. See
+  [`bench_test_servo.md`](bench_test_servo.md).
+- **Robot:** the same rule, permanently. The bus harness carries V from the
+  battery to the servos; the adapter taps **S and GND only**.
+- **Do not** feed power through a servo's spare socket — the two sockets are
+  internally paralleled, so it arrives at the adapter anyway.
+
+### Still open
+
+- Whether the "Motor Control Board" in the wiring diagram is the URT-2 or a
+  different part. **Either way the diagram must show the bus V wire bypassing
+  it**, because the defect is invisible until measured and cannot be assumed
+  absent on a substitute.
+- `jetson_wiring_diagram.drawio` / `.png` are **not yet updated**.
 
 <a id="not-issues-verified-refutations"></a>
 # Not issues — verified refutations
