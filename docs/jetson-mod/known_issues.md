@@ -1707,6 +1707,7 @@ the bench ammeter.
 
 Full detail and the raw dump:
 [`bench_results/stage_b_register_findings.md`](bench_results/stage_b_register_findings.md).
+Consolidated bench reference: [`bench_results/README.md`](bench_results/README.md).
 
 **Dump `addr 13` and `addr 15` from all 14 servos at build time.** This is one
 unit; nothing establishes that the rest ship identically, and both registers
