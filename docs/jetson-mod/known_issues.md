@@ -126,6 +126,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [SERVO-2](#servo-2) | Leg actuators run above the servo's rated torque | **HIGH** | **MITIGATED 2026-08-16** (174 % -> 131 %); remainder is mass/gearing, Task S.8 |
 | [HW-1](#hw-1) | Servo-bus adapter ties servo V to USB VBUS — 11.1 V reaches the host | **CRITICAL** | **MEASURED 2026-08-21**; hits the robot's wiring diagram, not only the bench |
 | [HW-2](#hw-2) | Cited firmware thresholds are the datasheet's *configurable defaults*, not this servo's settings | **HIGH** | **MEASURED 2026-08-21**; real cutoff is 80 °C, not 70 °C |
+| [PLANT-11](#plant-11) | `armature = 0.040` is 87–99.7 % of joint inertia — every torque figure may be a simulation artifact | **CRITICAL** | **CONFIRMED 2026-08-21**; blocks retrain #3 |
 
 ---
 
@@ -1712,6 +1713,66 @@ Consolidated bench reference: [`bench_results/README.md`](bench_results/README.m
 **Dump `addr 13` and `addr 15` from all 14 servos at build time.** This is one
 unit; nothing establishes that the rest ship identically, and both registers
 change behaviour the policy depends on.
+
+
+---
+
+<a id="plant-11"></a>
+## PLANT-11 · `armature = 0.040` dominates the joint inertia — CRITICAL
+
+**Confirmed by computing the joint-space mass matrix** from
+`mini_bdx/robots/open_duck_mini_v2/robot_motors.xml` via `mj_fullM`:
+
+| joint | `M_jj` | armature | link alone | armature share |
+|---|---|---|---|---|
+| `*_ankle` | 0.040104 | 0.040 | **0.000104** | **99.7 %** |
+| `*_knee` | 0.041155 | 0.040 | 0.001155 | 97.2 % |
+| `*_hip_yaw` | 0.041669 | 0.040 | 0.001669 | 96.0 % |
+| `*_hip_pitch` | 0.044651 | 0.040 | 0.004651 | 89.6 % |
+| `*_hip_roll` | 0.046000 | 0.040 | 0.006000 | 87.0 % |
+
+**At the ankle the armature is 386× the real link inertia.** The simulated leg is
+almost entirely a phantom flywheel, and `τ = M q̈ + …` is therefore dominated by
+accelerating something that may not exist.
+
+### Why the value looks wrong
+
+`robot_cfg.py:109` sources it from "BAM id008". Reflected inertia is
+J_rotor × N² with N = 345, so 0.040 implies **J_rotor = 3.36e-7 kg·m²**. A 3–5 g
+coreless cup at r = 5–6 mm gives **0.75–1.8e-7** — the configured value is
+**2–5× high**, central estimate ~0.012.
+
+**Caveat worth stating:** BAM fits an *effective* parameter to real step
+responses, so it can legitimately absorb dynamics beyond rotor inertia. That is
+an argument for measuring it, not for assuming either value.
+
+### Why this is CRITICAL rather than HIGH
+
+**Every torque figure in this project rests on it.** If the true value is ~0.012,
+the same v7 trajectory lands at **0.86–1.30 N·m** instead of 2.060 — at or inside
+the ~1.2 N·m thermal target. Independent MuJoCo floating-base inverse dynamics
+puts the rigid-body load at **0.678 N·m**, reproducing
+`servo_torque_budget.md`'s ≈0.69 N·m gait floor by a different route.
+
+So the 2.060 N·m, the 1.910 A, the "136 % of rated" and the S.8 ACCEPT verdict
+may all be statements about **one unmeasured parameter**, not about the robot.
+
+**`τ ∝ w^−0.18` is not a tuning wall — it is the signature of a reward penalty
+fighting a fictitious inertia.**
+
+### What closes it — 45 min, no GPU, nothing to buy
+
+A frequency sweep on the bench servo, unloaded, at `torque_limit = 1000`
+(**every** existing bench log ran at 200, a duty clamp, so none can identify
+inertia). Sweep amplitude × period, fit
+`(Kt·I_rms)² = (J·A·ω²/√2)² + (b·A·ω/√2)² + c`.
+
+**The discriminator is decisive, not marginal.** At A = 20°, T = 0.54 s, `addr 69`
+should read roughly **143–183 counts** if J = 0.040, but only **~37** if
+J = 0.010. A 4–5× separation, well inside the 3.80 A trip.
+
+**Blocks retrain #3.** Retraining against a plant whose leg inertia is 87–99.7 %
+fiction produces a policy tuned to that fiction.
 
 <a id="not-issues-verified-refutations"></a>
 # Not issues — verified refutations

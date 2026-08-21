@@ -211,7 +211,7 @@ _Hardware specifications for the robot, Jetson Orin Nano, servos, batteries, and
 | Parameter | Value |
 |---|---|
 | Total height | ~420 mm (legs extended) |
-| Total mass (after mod) | ~2,657 g declared **and now simulated** — [PLANT-1](docs/jetson-mod/known_issues.md#plant-1) fixed 2026-08-11, `audit_plant_mass.py` exits 0. The true *build* is heavier: ~2,810 g once the Part-2 CAD delta is measured rather than assumed ([PLANT-10](docs/jetson-mod/known_issues.md#plant-10)) and the 4 booked-but-unmodelled 18650 cells are counted. Every policy through v5d was trained on the old 3,657 g plant and needs re-gating. |
+| Total mass (after mod) | **2,729 g** declared (verified: MuJoCo `body_mass.sum()` = 2.7290352) **and now simulated** — [PLANT-1](docs/jetson-mod/known_issues.md#plant-1) fixed 2026-08-11, `audit_plant_mass.py` exits 0. The true *build* is heavier: ~2,810 g once the Part-2 CAD delta is measured rather than assumed ([PLANT-10](docs/jetson-mod/known_issues.md#plant-10)) and the 4 booked-but-unmodelled 18650 cells are counted. Every policy through v5d was trained on the old 3,657 g plant and needs re-gating. **CORRECTED 2026-08-21:** the "~2,810 g true build" clause was stale pre-M4 text — the extra cells and the measured CAD delta are already in the ledger and in the model. |
 | **Mass Isaac actually simulates** | **2,657 g** — matches the authored mass since the PLANT-1 fix (2026-08-11) merged the massless root frame `base` into `trunk_assembly`. It was 3,657 g for every run up to and including v5d, because PhysX substituted a 1,000 g default for the unauthored root; see `docs/jetson-mod/known_issues.md#plant-1` |
 | DOFs | 15 joints + 1 head_roll = 16 actuators |
 | Servos | 14x Feetech STS3250 (12V, 50 kg.cm stall, 74.5g each) |
