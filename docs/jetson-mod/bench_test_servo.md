@@ -107,8 +107,53 @@ No official FE-URT-2 electrical document exists — Feetech's own URT-2 page ser
 URT-1 body text, and vendor listings contradict each other. So the question is
 settled **by meter, in pre-flight P3 and P5**, not by any datasheet.
 
+### ✅ DECISION: the split harness is the DEFAULT, not the fallback
+
+Adversarial review 2026-08-21 concluded that proving the board safe is not worth
+what it costs, because **an air gap cannot fail short and a semiconductor can.**
+
 ```
-   PSU (+) ──►  screw terminal  V1     ← only after P5 passes
+   PSU (+) ──────────────────►  servo Vcc   (red, servo side of the cut)
+   PSU (−) ──┬───────────────►  servo GND   (black, fat wire — star point)
+             └──[thin]───────►  board socket G   (signal reference only)
+   board 3-pin socket ──[black + white only]──►  servo
+   USB-C ────────────────────►  PC
+   screw terminal V1 ────────►  PERMANENTLY EMPTY
+```
+
+**Cut the red (Vcc) conductor in the 3-pin cable. Feed 11.1 V into the servo side
+of the cut. Leave the `V1` screw terminal empty forever; the board runs on USB
+alone.** The bus still works — `S` is a half-duplex signal referenced to the
+common ground, and the red wire is only power pass-through.
+
+Ground it as a **star at the servo connector**: a fat 18–20 AWG PSU(−) to the
+servo's black, and a thin wire to the board's socket `G` as a reference only.
+Servo return current then never crosses the board's ground plane.
+
+This single change removes, by construction rather than by inference:
+
+| risk | why it disappears |
+|---|---|
+| 11.1 V back-feeding the host USB port | the board never sees 11.1 V |
+| a load switch that is off cold and on when live | irrelevant — nothing to switch onto |
+| the board's *real* part ratings being URT-1's `DC6V-9V` | the rail never reaches the board |
+| servo return current through the board's ground plane | star ground |
+| a blocking element that fails short later | there is no element, only air |
+
+Cost: one cut conductor, ten minutes. **Everything below about powering through
+the board is retained only for the case where someone deliberately chooses that
+path, and it is not the recommended one.**
+
+> **If you must power through the board anyway**, the ordering matters more than
+> the current limit: see "mate cold, then ramp" in Stage B. And note that
+> hot-plugging USB into a live 11.1 V rail is the *more* dangerous ordering, not
+> the less — the PSU's output capacitor dumps into the host's VBUS node in
+> microseconds, while the constant-current loop needs 100 µs to milliseconds to
+> respond. **The current limit is not yet in the circuit when the damage happens.**
+
+```
+   powering through the board (NOT recommended):
+   PSU (+) ──►  screw terminal  V1     ← only after P3b and P5 pass
    PSU (−) ──►  screw terminal  G      (the one beside V1)
    3-pin socket  ──[stock cable]──►  servo
    USB-C ────────────────────────►  PC
@@ -163,6 +208,18 @@ beeper is threshold-triggered and will chirp through a capacitor.
 - **Never write EEPROM while the PSU is in CC.** A brownout mid-write bricks the
   servo's ID/baud, and there is exactly one servo.
 - **Connect ground first, disconnect it last.**
+- **Touch the two test leads together and confirm 0.0 Ω before every session.**
+  A broken lead reads `OL` — and `OL` is the PASS criterion on every isolation
+  test here. The two are indistinguishable, so an unverified lead can turn a
+  dangerous board into a clean bill of health.
+- **Resistance and diode mode are unpowered-only.** On a live circuit the meter
+  injects its own test current: the reading is meaningless and some meters are
+  damaged. Once anything is powered, **volts only**.
+- **Ohms mode alone can never clear a semiconductor path.** A junction's forward
+  drop falls ~110 mV per decade of current, so at the 200 kΩ range's ~1 µA test
+  current a real diode drops ~0.32 V and the meter computes **320 kΩ** — which
+  reads as "megohms, therefore isolated". **Diode mode, both polarities, is
+  mandatory** for any isolation claim.
 - The servo **will get hot enough to burn** — the case is aluminium (6-3), far
   worse than the plastic-cased STS3215. Never test temperature with a finger.
 
@@ -305,6 +362,39 @@ loading the rail).
 
 This is more decisive than P3's resistance readings, and it costs one measurement
 at zero risk — nothing here exceeds 5 V.
+
+### 🚨 MEASURED 2026-08-21 — COUPLED. The through-board plan is DEAD.
+
+| # | measurement | reading |
+|---|---|---|
+| 1 | socket `G` → socket `V1`, USB only | **4.94 V** |
+| 2 | header `GND` → header `5V`, USB only | 4.69 V |
+
+**USB VBUS feeds the servo supply rail.** The vendor's "power the servo from USB
+for parameter tuning" feature is real and **always-on**, with nothing plugged in
+and no software running.
+
+**The drop size identifies the element.** VBUS ≈ 5.0 V → `V1` at 4.94 V is a
+**0.06 V** drop: a MOSFET or a bare trace. A silicon diode costs 0.3–0.7 V and a
+Schottky 0.2–0.4 V, so **there is no blocking element in that path**. The header
+`5V` pin's larger 0.31 V drop is what a Schottky actually looks like — so the two
+nodes reach VBUS through *different* elements.
+
+**That is why P3 passed and was still wrong.** `V1` ↔ header `5V` traverses two
+back-to-back elements and reads open, while each is independently tied to VBUS.
+**P3 measured the wrong node pair.** The host-facing node is USB VBUS itself, not
+the header `5V` pin, which was only ever *presumed* to be equivalent.
+
+**Consequence:** 11.1 V on the `V1` terminal drives current straight into the
+host's VBUS through a ~0.06 V-drop path. A MOSFET conducts in **both** directions
+once its channel is enhanced — only its body diode is one-way — so "it might
+block backwards" is not available as a hope.
+
+> **This also resolves the ID-1 anomaly.** A bus scan with no external supply
+> reported a servo at ID 1, and echo was ruled out. With `V1` live at 4.94 V off
+> USB, a plugged-in servo is powered by USB alone and that reply was genuine.
+
+**→ Use the split harness. `V1` stays permanently empty.**
 
 **It also explains the open question from the bus scan.** A scan with no external
 supply reported a servo at ID 1. If reading #1 shows ~4.7 V, then a servo plugged
