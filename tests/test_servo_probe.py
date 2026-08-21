@@ -170,44 +170,82 @@ def test_baud_table_covers_the_scan_list():
 
 
 def _dump(**overrides):
+    """A dump that passes map validation, so tests can vary one field at a time."""
     registers = {name: {"addr": addr, "width": width, "value": None}
                  for addr, width, name in probe.REGISTERS}
-    registers["max_temperature_limit"]["value"] = 70
-    for key, value in overrides.items():
+    baseline = {"max_temperature_limit": 80, "present_voltage": 111, "id": 1,
+                "baud_code": 0, "present_position": 4094, "present_temperature": 33}
+    for key, value in {**baseline, **overrides}.items():
         registers[key]["value"] = value
     return {"id": 1, "baud": 1_000_000, "registers": registers}
 
 
-def test_register_map_validated_when_addr13_is_70():
-    notes = probe.annotate(_dump())
+def test_register_map_validated_by_independent_checks():
+    notes = probe.annotate(_dump(), expect_volts=11.1)
     assert any("VALIDATED" in n for n in notes)
+    assert not any(n.startswith("STOP") for n in notes)
 
 
-def test_register_map_rejected_when_addr13_is_not_70():
-    """The datasheet's over-hot cutoff is 70 C. If addr13 disagrees, the map is
-    for a different model and every other address in the dump is meaningless."""
-    dump = _dump()
-    dump["registers"]["max_temperature_limit"]["value"] = 80
-    notes = probe.annotate(dump)
+def test_real_servo_addr13_of_80_does_not_void_the_map():
+    """REGRESSION. An earlier version asserted addr13 == 70 (the datasheet's
+    over-hot figure) and declared the whole dump void otherwise. A real STS3250
+    ships addr13 = 80, so that check produced a false STOP on a good dump and
+    would have had a correct register map thrown away."""
+    notes = probe.annotate(_dump(max_temperature_limit=80), expect_volts=11.1)
+    assert any("VALIDATED" in n for n in notes)
+    assert not any(n.startswith("STOP") for n in notes)
+    finding = [n for n in notes if n.startswith("FIND") and "over-temperature" in n]
+    assert finding, "the 80-vs-70 delta must still be surfaced, just not as an abort"
+    assert "80" in finding[0] and "70" in finding[0]
+
+
+def test_map_is_rejected_when_voltage_contradicts_the_supply():
+    """The real integrity check: addr62 must agree with the measured supply."""
+    notes = probe.annotate(_dump(present_voltage=74), expect_volts=11.1)
     assert any(n.startswith("STOP") for n in notes)
 
 
+def test_map_is_rejected_when_too_few_checks_pass():
+    dump = _dump()
+    for key in ("id", "baud_code", "present_position", "present_temperature",
+                "present_voltage"):
+        dump["registers"][key]["value"] = None
+    notes = probe.annotate(dump)
+    assert any(n.startswith("STOP") and "independent checks" in n for n in notes)
+
+
+def test_protection_current_reports_both_candidate_units():
+    """addr69's LSB is unverified for this model and the candidates differ by
+    1.54x, which propagates into every torque number. Report both, decide later."""
+    notes = probe.annotate(_dump(protection_current=310), expect_volts=11.1)
+    find = [n for n in notes if "protection_current" in n]
+    assert find and "2.02" in find[0] and "3.10" in find[0]
+    assert "UNVERIFIED" in find[0]
+
+
+def test_datasheet_over_hot_constant_is_documented_as_the_weaker_source():
+    assert probe.DATASHEET_OVER_HOT_C == 70
+    src = (REPO / "scripts" / "servo_probe.py").read_text()
+    assert "REGISTER is what the firmware enforces" in src
+
+
 def test_clamped_torque_limit_is_flagged_as_void():
-    notes = probe.annotate(_dump(max_torque_limit=500))
+    notes = probe.annotate(_dump(max_torque_limit=500), expect_volts=11.1)
     assert any("VOID" in n for n in notes)
 
 
 def test_full_torque_limit_is_not_flagged():
-    notes = probe.annotate(_dump(max_torque_limit=1000, torque_limit=1000))
+    notes = probe.annotate(_dump(max_torque_limit=1000, torque_limit=1000), expect_volts=11.1)
     assert not any("VOID" in n for n in notes)
 
 
 def test_eeprom_lock_is_flagged():
-    assert any("lock is SET" in n for n in probe.annotate(_dump(lock=1)))
+    notes = probe.annotate(_dump(lock=1), expect_volts=11.1)
+    assert any("lock = 1" in n and "SILENTLY" in n for n in notes)
 
 
 def test_raised_min_voltage_is_flagged():
-    notes = probe.annotate(_dump(min_input_voltage=100))  # 10.0 V
+    notes = probe.annotate(_dump(min_input_voltage=100), expect_volts=11.1)  # 10.0 V
     assert any("low-battery" in n for n in notes)
 
 

@@ -1,0 +1,251 @@
+{
+  "id": 1,
+  "baud": 1000000,
+  "registers": {
+    "firmware_major": {
+      "addr": 0,
+      "width": 1,
+      "value": 3
+    },
+    "firmware_minor": {
+      "addr": 1,
+      "width": 1,
+      "value": 10
+    },
+    "servo_major": {
+      "addr": 3,
+      "width": 1,
+      "value": 9
+    },
+    "servo_minor": {
+      "addr": 4,
+      "width": 1,
+      "value": 11
+    },
+    "id": {
+      "addr": 5,
+      "width": 1,
+      "value": 1
+    },
+    "baud_code": {
+      "addr": 6,
+      "width": 1,
+      "value": 0
+    },
+    "return_delay": {
+      "addr": 7,
+      "width": 1,
+      "value": 0
+    },
+    "response_level": {
+      "addr": 8,
+      "width": 1,
+      "value": 1
+    },
+    "min_angle_limit": {
+      "addr": 9,
+      "width": 2,
+      "value": 0
+    },
+    "max_angle_limit": {
+      "addr": 11,
+      "width": 2,
+      "value": 4095
+    },
+    "max_temperature_limit": {
+      "addr": 13,
+      "width": 1,
+      "value": 80
+    },
+    "max_input_voltage": {
+      "addr": 14,
+      "width": 1,
+      "value": 160
+    },
+    "min_input_voltage": {
+      "addr": 15,
+      "width": 1,
+      "value": 60
+    },
+    "max_torque_limit": {
+      "addr": 16,
+      "width": 2,
+      "value": 1000
+    },
+    "phase": {
+      "addr": 18,
+      "width": 1,
+      "value": 12
+    },
+    "unloading_condition": {
+      "addr": 19,
+      "width": 1,
+      "value": 45
+    },
+    "led_alarm_condition": {
+      "addr": 20,
+      "width": 1,
+      "value": 45
+    },
+    "pos_p": {
+      "addr": 21,
+      "width": 1,
+      "value": 32
+    },
+    "pos_d": {
+      "addr": 22,
+      "width": 1,
+      "value": 32
+    },
+    "pos_i": {
+      "addr": 23,
+      "width": 1,
+      "value": 0
+    },
+    "min_startup_force": {
+      "addr": 24,
+      "width": 2,
+      "value": 0
+    },
+    "cw_dead_band": {
+      "addr": 26,
+      "width": 1,
+      "value": 0
+    },
+    "ccw_dead_band": {
+      "addr": 27,
+      "width": 1,
+      "value": 0
+    },
+    "protection_current": {
+      "addr": 28,
+      "width": 2,
+      "value": 310
+    },
+    "angular_resolution": {
+      "addr": 30,
+      "width": 1,
+      "value": 1
+    },
+    "position_offset": {
+      "addr": 31,
+      "width": 2,
+      "value": 0
+    },
+    "operation_mode": {
+      "addr": 33,
+      "width": 1,
+      "value": 0
+    },
+    "protective_torque": {
+      "addr": 34,
+      "width": 1,
+      "value": 20
+    },
+    "protection_time": {
+      "addr": 35,
+      "width": 1,
+      "value": 200
+    },
+    "overload_torque": {
+      "addr": 36,
+      "width": 1,
+      "value": 80
+    },
+    "speed_p": {
+      "addr": 37,
+      "width": 1,
+      "value": 10
+    },
+    "overcurrent_time": {
+      "addr": 38,
+      "width": 1,
+      "value": 250
+    },
+    "speed_i": {
+      "addr": 39,
+      "width": 1,
+      "value": 200
+    },
+    "torque_enable": {
+      "addr": 40,
+      "width": 1,
+      "value": 0
+    },
+    "acceleration": {
+      "addr": 41,
+      "width": 1,
+      "value": 0
+    },
+    "goal_position": {
+      "addr": 42,
+      "width": 2,
+      "value": 0
+    },
+    "goal_time": {
+      "addr": 44,
+      "width": 2,
+      "value": 0
+    },
+    "goal_speed": {
+      "addr": 46,
+      "width": 2,
+      "value": 0
+    },
+    "torque_limit": {
+      "addr": 48,
+      "width": 2,
+      "value": 1000
+    },
+    "lock": {
+      "addr": 55,
+      "width": 1,
+      "value": 1
+    },
+    "present_position": {
+      "addr": 56,
+      "width": 2,
+      "value": 4094
+    },
+    "present_speed": {
+      "addr": 58,
+      "width": 2,
+      "value": 0
+    },
+    "present_load": {
+      "addr": 60,
+      "width": 2,
+      "value": 0
+    },
+    "present_voltage": {
+      "addr": 62,
+      "width": 1,
+      "value": 112
+    },
+    "present_temperature": {
+      "addr": 63,
+      "width": 1,
+      "value": 33
+    },
+    "async_write_flag": {
+      "addr": 64,
+      "width": 1,
+      "value": 0
+    },
+    "servo_status": {
+      "addr": 65,
+      "width": 1,
+      "value": 0
+    },
+    "moving": {
+      "addr": 66,
+      "width": 1,
+      "value": 0
+    },
+    "present_current": {
+      "addr": 69,
+      "width": 2,
+      "value": 1
+    }
+  }
+}

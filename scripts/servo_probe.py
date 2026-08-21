@@ -50,6 +50,17 @@ BAUD_TABLE = {
 }
 SCAN_BAUDS = list(BAUD_TABLE.values())
 
+# Datasheet ST-3250-C001 A/0 line 7-11 says over-hot torque-off above 70 C.
+# Real units ship addr13 = 80. The REGISTER is what the firmware enforces.
+DATASHEET_OVER_HOT_C = 70
+
+# addr69 present_current unit is NOT established for this model. Feetech STS
+# docs commonly state 6.5 mA/LSB; a 10 mA/LSB reading is also plausible. The
+# two differ by 1.54x, which propagates into every torque number, so Stage C
+# must resolve it by comparing addr69 against the bench ammeter at a known
+# load rather than assuming either.
+CURRENT_LSB_CANDIDATES_MA = (6.5, 10.0)
+
 # (address, width, name). Widths are bytes; 2-byte values are LITTLE-endian on
 # STS/SMS (big-endian on SCS — getting this backwards silently garbles values).
 REGISTERS: list[tuple[int, int, str]] = [
@@ -259,23 +270,73 @@ def cmd_dump(port: str, baud: int, servo_id: int) -> dict:
     return out
 
 
-def annotate(dump: dict) -> list[str]:
+def annotate(dump: dict, expect_volts: float | None = None) -> list[str]:
     """Turn the raw dump into the checks Stage B actually gates on."""
     reg = {k: v["value"] for k, v in dump["registers"].items()}
     notes: list[str] = []
 
-    temp_limit = reg.get("max_temperature_limit")
-    if temp_limit == 70:
-        notes.append("OK   addr13 max_temperature_limit = 70 -> register map VALIDATED")
-    else:
-        notes.append(
-            f"STOP addr13 max_temperature_limit = {temp_limit}, expected 70. "
-            "The register map is wrong for this model; every address here is void."
-        )
+    # --- Validate the register map itself -------------------------------------
+    # An earlier version asserted addr13 == 70 (the datasheet's over-hot figure)
+    # and declared the whole map void otherwise. That was wrong: a real STS3250
+    # ships addr13 = 80, and the assertion produced a false STOP on a good dump.
+    # Validate instead on signals that are independently checkable.
+    checks_passed, checks = 0, []
 
     volts = reg.get("present_voltage")
     if volts is not None:
         notes.append(f"     present_voltage = {volts/10:.1f} V (addr62 raw {volts})")
+        if expect_volts is not None:
+            if abs(volts / 10 - expect_volts) <= 0.3:
+                checks_passed += 1
+                checks.append(f"addr62 {volts/10:.1f} V matches the supply {expect_volts:.1f} V")
+            else:
+                notes.append(
+                    f"STOP addr62 reads {volts/10:.1f} V but the supply is "
+                    f"{expect_volts:.1f} V. Either the map is wrong or the harness "
+                    "is dropping volts. Resolve before trusting any other address."
+                )
+        elif 40 <= volts <= 160:
+            checks_passed += 1
+            checks.append(f"addr62 {volts/10:.1f} V is a plausible pack voltage")
+
+    if reg.get("id") is not None and 0 <= reg["id"] <= 253:
+        checks_passed += 1
+        checks.append(f"addr5 id={reg['id']} is in range")
+    if reg.get("baud_code") in BAUD_TABLE:
+        checks_passed += 1
+        checks.append(f"addr6 baud_code {reg['baud_code']} -> {BAUD_TABLE[reg['baud_code']]}")
+    pos = reg.get("present_position")
+    if pos is not None and 0 <= pos <= 4095:
+        checks_passed += 1
+        checks.append(f"addr56 position {pos} is inside the 12-bit range")
+    temp = reg.get("present_temperature")
+    if temp is not None and 0 < temp < 100:
+        checks_passed += 1
+        checks.append(f"addr63 {temp} C is a plausible case temperature")
+
+    if checks_passed >= 4:
+        notes.append(f"OK   register map VALIDATED by {checks_passed} independent checks:")
+        notes.extend(f"       - {c}" for c in checks)
+    else:
+        notes.append(
+            f"STOP only {checks_passed} independent checks passed (need 4). "
+            "Treat every address in this dump as unverified."
+        )
+
+    # --- Over-temperature: report the delta, do not assume the datasheet wins --
+    temp_limit = reg.get("max_temperature_limit")
+    if temp_limit is not None:
+        if temp_limit == DATASHEET_OVER_HOT_C:
+            notes.append(f"     addr13 over-temperature cutoff = {temp_limit} C "
+                         "(matches datasheet 7-11)")
+        else:
+            notes.append(
+                f"FIND addr13 over-temperature cutoff = {temp_limit} C, but the "
+                f"datasheet's 7-11 over-hot text says {DATASHEET_OVER_HOT_C} C. "
+                "THE REGISTER IS WHAT THE FIRMWARE ACTUALLY ENFORCES. Use "
+                f"{temp_limit} C as the real cutoff and correct any doc citing "
+                f"{DATASHEET_OVER_HOT_C} C."
+            )
 
     temp = reg.get("present_temperature")
     if temp is not None:
@@ -290,7 +351,11 @@ def annotate(dump: dict) -> list[str]:
             )
 
     if reg.get("lock"):
-        notes.append("WARN addr55 lock is SET — EEPROM writes fail silently.")
+        notes.append(
+            "     addr55 lock = 1 (factory default). EEPROM writes fail SILENTLY "
+            "until it is cleared — which is protective for a read-only probe, but "
+            "means any future config change must read back what it wrote."
+        )
 
     min_v = reg.get("min_input_voltage")
     if min_v is not None and min_v > 90:
@@ -303,9 +368,22 @@ def annotate(dump: dict) -> list[str]:
     if status:
         notes.append(f"WARN addr65 servo_status = {status:#04x} {decode_status_bits(status)}")
 
-    baud_code = reg.get("baud_code")
-    if baud_code in BAUD_TABLE:
-        notes.append(f"     addr6 baud_code {baud_code} -> {BAUD_TABLE[baud_code]} baud")
+    prot = reg.get("protection_current")
+    if prot is not None:
+        lo, hi = (prot * c / 1000 for c in CURRENT_LSB_CANDIDATES_MA)
+        notes.append(
+            f"FIND addr28 protection_current = {prot} raw -> {lo:.2f} A @6.5 mA/LSB "
+            f"or {hi:.2f} A @10 mA/LSB. The LSB is UNVERIFIED for this model and the "
+            "two differ by 1.54x. Resolve in Stage C against the bench ammeter."
+        )
+
+    for key, addr, unit in (("protective_torque", 34, "%"),
+                            ("overload_torque", 36, "% of stall"),
+                            ("protection_time", 35, "x10 ms"),
+                            ("overcurrent_time", 38, "x10 ms")):
+        v = reg.get(key)
+        if v is not None:
+            notes.append(f"     addr{addr} {key} = {v} {unit}")
 
     return notes
 
@@ -370,6 +448,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--count", type=int, default=100)
     ap.add_argument("--watch", action="store_true", help="1 Hz telemetry")
     ap.add_argument("--seconds", type=float, default=60.0)
+    ap.add_argument("--expect-volts", type=float,
+                    help="supply voltage, used to validate the register map")
     ap.add_argument("--out", help="write JSON result here")
     args = ap.parse_args(argv)
 
@@ -392,7 +472,7 @@ def main(argv: list[str] | None = None) -> int:
             shown = "NO REPLY" if value is None else value
             print(f"  [{info['addr']:>3}] {name:<{width}}  {shown}")
         print()
-        for note in annotate(result):
+        for note in annotate(result, args.expect_volts):
             print(note)
     elif args.link_test:
         if args.id is None:

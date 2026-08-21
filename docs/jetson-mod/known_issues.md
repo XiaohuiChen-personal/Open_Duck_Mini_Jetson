@@ -125,6 +125,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [SERVO-1](#servo-1) | `neck_pitch` stalled against its end stop at 207 % of continuous | **HIGH** | ✅ **FIXED 2026-08-16** (v7: 0.0 % on stop, 28 % of rated) |
 | [SERVO-2](#servo-2) | Leg actuators run above the servo's rated torque | **HIGH** | **MITIGATED 2026-08-16** (174 % -> 131 %); remainder is mass/gearing, Task S.8 |
 | [HW-1](#hw-1) | Servo-bus adapter ties servo V to USB VBUS — 11.1 V reaches the host | **CRITICAL** | **MEASURED 2026-08-21**; hits the robot's wiring diagram, not only the bench |
+| [HW-2](#hw-2) | Cited firmware thresholds are the datasheet's *configurable defaults*, not this servo's settings | **HIGH** | **MEASURED 2026-08-21**; real cutoff is 80 °C, not 70 °C |
 
 ---
 
@@ -1658,6 +1659,58 @@ servos, never through the board.
   it**, because the defect is invisible until measured and cannot be assumed
   absent on a substitute.
 - `jetson_wiring_diagram.drawio` / `.png` are **not yet updated**.
+
+
+<a id="hw-2"></a>
+## HW-2 · The cited firmware thresholds are defaults, not this servo's settings — HIGH
+
+Datasheet §7-11 describes the electronic protections and says of them
+**`可自定义设定`** — *user configurable*. They are EEPROM registers. The project
+cites the documented defaults as though they were enforced values, and **this
+unit does not ship at those defaults.**
+
+Read from the physical servo 2026-08-21, register map validated by five
+independent checks including `addr62 = 111` matching the 11.1 V supply exactly:
+
+| protection | datasheet §7-11 | **this unit** | delta |
+|---|---|---|---|
+| over-temperature | 70 °C | **80 °C** (addr 13) | **+10 °C** |
+| over-voltage | > 14 V | **16.0 V** (addr 14) | +2 V |
+| under-voltage | < 4 V | **6.0 V** (addr 15) | **trips 2 V earlier** |
+| overload | 80 % stall / 2 s | 80 (addr 36), 200 (addr 35) | ✅ matches |
+| over-current | 3.8 A / 2 s | 310 raw (addr 28) | **unit unresolved** |
+
+### Where the wrong number is written
+
+- `servo_torque_budget.md`, `S8_torque_envelope.md`, `task_plan_v2.md` — all
+  70 °C
+- `S8_torque_envelope.md` further claims these thresholds are "**CITED** … no
+  longer UNVERIFIED". Half true. Citing a *configurable* default as an enforced
+  value is the defect, and it survives being correctly quoted.
+- `generate_policy_contract.py:239` hard-codes `servo_current_limit_a: 3.8`
+- `measure_joint_torque.py:175` derives `OC_NM = 4.099` from that 3.8 A
+
+### Why the under-voltage delta matters most
+
+**addr 15 = 6.0 V, not 4 V.** A 3S2P pack sags under load and this servo cuts
+torque at 6.0 V — mid-gait, on a low battery. That is a walking-failure mode, not
+a bench curiosity, and it is 2 V closer than the documentation implies.
+
+### addr 28 must not be converted to amps yet
+
+310 raw. Candidate LSBs give **2.02 A** (6.5 mA), **3.10 A** (10 mA) or **3.80 A**
+(12.26 mA — the value that would reproduce the datasheet figure). They span 1.9×
+and propagate into every current↔torque conversion. Resolve in Stage C against
+the bench ammeter.
+
+### Fix
+
+Full detail and the raw dump:
+[`bench_results/stage_b_register_findings.md`](bench_results/stage_b_register_findings.md).
+
+**Dump `addr 13` and `addr 15` from all 14 servos at build time.** This is one
+unit; nothing establishes that the rest ship identically, and both registers
+change behaviour the policy depends on.
 
 <a id="not-issues-verified-refutations"></a>
 # Not issues — verified refutations
