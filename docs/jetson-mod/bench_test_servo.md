@@ -121,14 +121,28 @@ what it costs, because **an air gap cannot fail short and a semiconductor can.**
    screw terminal V1 ────────►  PERMANENTLY EMPTY
 ```
 
-**Cut the red (Vcc) conductor in the 3-pin cable. Feed 11.1 V into the servo side
-of the cut. Leave the `V1` screw terminal empty forever; the board runs on USB
-alone.** The bus still works — `S` is a half-duplex signal referenced to the
-common ground, and the red wire is only power pass-through.
+**Break the red (Vcc) conductor between servo and board, feed 11.1 V into the
+servo side of the break, and leave the `V1` screw terminal empty forever; the
+board runs on USB alone.** The bus still works — `S` is a half-duplex signal
+referenced to the common ground, and red is only power pass-through.
 
-Ground it as a **star at the servo connector**: a fat 18–20 AWG PSU(−) to the
-servo's black, and a thin wire to the board's socket `G` as a reference only.
-Servo return current then never crosses the board's ground plane.
+**Preferred method — extract, don't cut.** At the **board end** of the cable,
+lift the small latch in the housing window with a sewing needle and slide the
+**red** and **black** contacts out. They re-latch when pushed back, so this is
+fully reversible and costs no hardware. Cutting works too but is permanent;
+prefer extraction and keep cutting as the fallback if the latches won't lift.
+
+After extraction the board end carries **white only**, so ground it as a **star
+at the servo connector**: fat PSU(−) to the servo's black tab, and a **thin**
+wire from PSU(−) to the board's `G` screw as a signal reference only. Servo
+return current then never crosses the board's ground plane.
+
+> **Why the servo's spare socket does NOT work as a power inlet.** The servo's
+> two sockets are internally paralleled, so 11.1 V injected at socket B appears
+> on socket A's V pin, runs down the red wire into the board's socket `V1` pin —
+> which this file now records as tied to USB VBUS through a 0.06 V drop. That
+> route puts 11.1 V on the host. **The red conductor must be broken. There is no
+> wiring arrangement that avoids it.**
 
 This single change removes, by construction rather than by inference:
 
