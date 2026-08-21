@@ -33,21 +33,68 @@ at a derived guess.
 | multimeter | independent current cross-check |
 | ~200 mm rigid arm + weights | applies known torque |
 
+## Pinout — go by COLOUR, never by position
+
+Feetech's [STS3215 datasheet][ds] (same 5264-3P connector as the STS3250) defines:
+
+| pin | function | wire |
+|---|---|---|
+| 1 | GND | **black** |
+| 2 | Vcc | **red** |
+| 3 | Signal (TTL) | **white** |
+
+"Left to right" flips when you turn the connector over. **Always identify by wire
+colour.** Reversed polarity destroys the servo — Feetech's own docs say so.
+
+[ds]: https://files.seeedstudio.com/products/Feetech/108090023_STS3215-C001_Datasheet.pdf
+
 ## Wiring — the servo is powered from the PSU, NOT through the adapter
 
-The FE-URT-1 is USB-powered with **500 mA over-current protection**. Putting a
-12 V, 4.2 A servo rail through it risks the board.
+Two independent reasons, both verified rather than assumed:
+
+1. The FE-URT-1's external-power screw terminal is **printed `DC6V-9V`**
+   ([Feetech][urt], [MakerBotics][mb]). Our pack is **11.1 V** — 23 % over the
+   printed rating.
+2. The board is USB-powered with **500 mA over-current protection**, and the
+   servo stalls at **4.2 A**. Even at a legal voltage the current alone is 8×.
+
+A board that fails shorted can put 11.1 V onto the host's USB 5 V rail. The cost
+of avoiding that is one connector operation, so we always avoid it.
+
+[urt]: https://www.feetechrc.com/FE-URT1-C001.html
+[mb]: https://makerbotics.com/product/mb-elc-servo-controller-urt1/
 
 ```
    PSU (+) ──────────────────►  servo VCC     (red)
    PSU (−) ──┬───────────────►  servo GND     (black)
              └───────────────►  adapter GND      ← common ground, REQUIRED
-   adapter signal ──────────►  servo Signal  (yellow/white)
+   adapter signal ──────────►  servo Signal  (white)
    USB ─────────────────────►  PC
 ```
 
-**Reversed polarity destroys the servo** — Feetech's own docs say so. Check red
-and black against the supply before switching the output on.
+### The cable is female on BOTH ends — that is correct, and it is the catch
+
+The stock Feetech 3-pin cable mates a servo socket to the adapter's header, so
+both ends are female housings. There is no bare end to land in the PSU's binding
+posts, and the servo's two sockets are **internally paralleled** — so any cable
+reaching the adapter also carries the 11.1 V rail to it. Plugging the cable in
+whole is exactly the failure mode above.
+
+The fix is a standard, fully reversible connector operation: **extract the red
+and black contacts from the ADAPTER end of the cable.** Lift the small latch in
+the housing window with a sewing needle and the crimped contact slides straight
+out; pushing it back in re-latches it. That leaves:
+
+- **white only** in the housing → adapter (signal, USB-powered, no rail)
+- **red and black** dangling as bare crimp tabs → alligator clips from the PSU
+
+Ground the adapter separately (PSU − to its terminal GND pin, which is the one
+nearest the 3-pin sockets). Signal return is milliamps; the servo's 4.2 A never
+touches the board.
+
+*If you would rather not touch the connector:* male-to-female Dupont jumpers let
+you build the same split harness with no disassembly. Order them now — Step 0a
+below does not need them, so nothing is blocked while they ship.
 
 ## Safety
 
@@ -59,16 +106,64 @@ and black against the supply before switching the output on.
 
 ---
 
-## Step 0 — bring-up, current-limited (5 min)
+## Step 0a — power only. No adapter, no USB, no PC. (10 min)
 
-1. Wire as above with the **PSU output OFF**.
-2. Set **11.1 V** (your robot's real pack voltage, not 12 V) and current limit
-   **0.3 A**.
-3. Switch output on. Expect ~0.05–0.1 A idle.
-   - **Current pinned at 0.3 A and voltage collapsed → wiring fault. Stop.**
-4. Raise the limit to **5.0 A** only once idle current looks sane.
+Deliberately the smallest possible blast radius: if something is wrong with the
+supply, the polarity, or the servo, this step finds it with **nothing else
+connected that can be damaged**. It also needs no connector surgery — plug one
+cable end into the servo and use the free end as a breakout.
 
-**Record:** idle current, and whether the supply held 11.1 V.
+**Set the supply BEFORE anything is connected:**
+
+1. Output **OFF**. Nothing in the binding posts.
+2. Set voltage to **11.1 V** — the robot's real 3S2P pack voltage, *not* 12 V.
+   (Momentarily enabling the output with no load to read the display is fine;
+   switch it back off.)
+3. Turn the **current knob fully counter-clockwise** (to zero).
+
+**Then connect:**
+
+4. Insert a male pin into the free connector end's **red** socket and another
+   into its **black** socket — a male Dupont jumper, a stripped 22 AWG solid
+   wire, or a straightened paperclip all work. Keep them splayed apart; they
+   must not touch each other.
+5. Alligator-clip **PSU (+) → red** and **PSU (−) → black**. Check the colours
+   twice. Leave **white unconnected** — never put the supply on the signal wire.
+
+**Then ramp:**
+
+6. Output **ON**. Because current is dialled to zero, the supply starts in
+   constant-current mode and the voltage display will read near 0 V.
+7. Turn the current knob **slowly clockwise** until the voltage display rises to
+   and holds **11.1 V**. Read the current at that point — that is idle draw.
+
+This ramp is self-protecting: a short or reversed connection means the voltage
+*never* climbs no matter how far you turn. That is the whole point of doing it
+this way rather than presetting a limit.
+
+| observation | meaning |
+|---|---|
+| Voltage reaches 11.1 V at **~0.05–0.1 A** | Healthy. Proceed. |
+| Voltage stays low, current climbs past ~0.5 A | Short or reversed polarity. **Output OFF immediately.** |
+| Voltage reaches 11.1 V at **0.00 A** | No connection — pins not seated. |
+| Any smell, heat, or noise | **Output OFF.** Stop and report. |
+
+8. Leave it powered ~60 s. The case must stay at room temperature — an idle
+   servo does no work and must not warm up at all.
+9. Output **OFF** before touching anything.
+
+**Record:** idle current, the voltage the supply actually held, and case
+temperature after 60 s.
+
+> The servo will not move and will make no sound. That is a **pass**, not a
+> failure — it holds no position until it is commanded over the bus in Step 0b.
+
+## Step 0b — add the adapter (after 0a passes)
+
+Only now does the FE-URT-1 join the circuit, using the split harness from the
+wiring section above. Re-verify with the multimeter, **before plugging in USB**,
+that there is **no continuity between the 11.1 V rail and the adapter's Vcc pin**.
+Then raise the current limit to **5.0 A** for the loaded steps that follow.
 
 ## Step 1 — talk to the servo (10 min)
 
