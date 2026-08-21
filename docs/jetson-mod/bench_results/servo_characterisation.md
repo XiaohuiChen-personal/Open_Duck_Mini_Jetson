@@ -19,13 +19,13 @@ must still make are anchored to data rather than invented.
 | **idle case temperature** | **33–34 °C** at 26–27 °C ambient | addr 63, flat over 75 s | high |
 | **R_th (board path, idle)** | **≈ 32 K/W** | ΔT 7.5 K ÷ 0.232 W | **low** — see §4 |
 | **`goal_speed` unit** | **counts/s** | commanded 200, measured 200.5 counts/s over 9.2 s | **high** — direct |
-| **running friction** | **≈ 40 ‰ of stall ≈ 0.196 N·m** | addr 60, constant velocity, unloaded | medium — includes gearbox drag |
-| **`addr 60` load unit** | **per-mille of stall (0–1000)** | pins at exactly `torque_limit`=200 | **high** — see §2 |
+| **running friction** | **0.1–0.2 N·m** | addr 60 at constant velocity; 0.196 uncorrected, ~0.10 after back-EMF | **low** — the two readings do not close |
+| **`addr 60` load unit** | **per-mille PWM DUTY** (not torque) | pins at exactly `torque_limit`=200 | high — see §2 |
 | **tracking error, gentle** | mean 3.1°, max 10.9° | ±17.6°, 4 s sinusoid, speed 300 | high |
 | **voltage sag under load** | **0.3–0.4 V** (11.2 → 10.8 V) | PSU panel + addr 62 | medium — harness + supply |
 | **peak power, unloaded motion** | **0.454 W** (41 mA) | PSU panel, gentle sweep | high |
 
-## 2. 🚨 `addr 60` reports the LIMITER, not delivered torque
+## 2. 🚨 `addr 60` is PWM DUTY, and it reports the LIMITER when the clamp binds
 
 **The single most important finding for Stage C.**
 
@@ -41,9 +41,33 @@ circular — you get back the number you set.
 > reading in the thermal run is void.** The 20 % cap is correct for exploratory
 > motion and wrong for measurement.
 
-## 3. The duty staircase — the servo was torque-limited, never thermally limited
+**CORRECTED 2026-08-21 — `addr 60` is per-mille PWM duty, not torque**, and
+`torque_limit` clamps duty. At low speed back-EMF is negligible, so a 20 % duty
+clamp still permits 0.20 × 11.1 / 1.2 = **1.85 A → 2.0 N·m**. Therefore:
 
-Seven levels, 45 s each, centred at 2048, `torque_limit` 200 (0.98 N·m):
+- **`torque_limit` cannot serve as a hardware torque backstop** for a retrained
+  policy. The only real limits are the driver's 4.2 A clamp and the supply.
+- The staircase was **not** bounded to 0.98 N·m as originally written here.
+
+## 3. The duty staircase — ⚠️ PROVES NOTHING THERMAL. See the correction below.
+
+> **CORRECTION 2026-08-21.** This section originally read "the servo was
+> torque-limited, never thermally limited" and claimed two decades of
+> acceleration demand. **Strike both.** Adversarial review established:
+> - **No PSU current was logged.** `staircase.json` carries only servo-side
+>   `voltage` and `current_raw`, so the 3 K rise is **one observation against two
+>   unknowns** and is consistent with τ anywhere from 5 to 60 minutes.
+> - **It was speed-saturated from level 3**, not torque-saturated: level 3 needs
+>   1885 counts/s and `goal_speed` was 1000.
+> - **The 0.61 s command loop aliased past Nyquist** against 0.6–1.0 s periods.
+>   "The servo could not follow" describes commanding un-followable garbage at an
+>   un-followable rate.
+>
+> The table below is retained as a record of what was run. **Do not derive a
+> thermal conclusion from it.**
+
+Seven levels, 45 s each, centred at 2048, `torque_limit` 200 (a **duty** clamp —
+see §2, it does *not* bound torque to 0.98 N·m):
 
 | lvl | swing | period | speed | at cap | tracking err (mean) | temp |
 |---|---|---|---|---|---|---|
@@ -73,12 +97,16 @@ at level 3, each surrounded by 34 °C neighbours. This is why aborts now require
 
 - **Idle and low-duty power.** 21 mA idle and 41 mA under gentle motion are
   direct panel readings and are solid.
-- **Friction.** ~40 ‰ at constant velocity, unloaded, is a clean steady-state
-  reading and is the best available anchor for **PLANT-6**.
+- **Friction, loosely.** ~40 ‰ duty at constant velocity is a clean steady-state
+  reading, but converting it to torque requires the back-EMF correction: 0.196
+  N·m uncorrected, ~0.10 N·m corrected, and **the two do not close.** Quote it as
+  **0.1–0.2 N·m** and note `addr 60` cannot pin it better. Still the best
+  available anchor for **PLANT-6**.
 - **`goal_speed` in counts/s** is directly measured and can be relied on.
-- **Thermal insensitivity at low load.** 3 K over 5 minutes of aggressive
-  unloaded motion says the servo is nowhere near stressed without an external
-  load. Useful as a **lower bound**.
+- **Thermal insensitivity at low load**, weakly. 3 K over 5 minutes of unloaded
+  motion says the servo is not stressed without an external load. It is a
+  **lower bound only** — with no bus-current log the input power is unknown, so
+  no R_th or τ can be fitted from it.
 
 ### NOT safe to extrapolate
 
@@ -92,21 +120,38 @@ at level 3, each surrounded by 34 °C neighbours. This is why aborts now require
   tiny. Saturation of the limiter is not thermal loading.
 - **The current LSB.** Still unresolved — see §5.
 
-## 5. Why the current LSB is still unresolved
+## 5. ✅ The current LSB is RESOLVED: 12.258 mA/count
 
-`addr 69` reached 38 raw counts at peak. Reconciling that against the load
-register gives implied LSBs of 24–85 mA, matching **none** of the candidates
-(6.5 / 10 / 12.26 mA). Two reasons, both structural:
+`addr 28 protection_current = 310`. Datasheet 7-11 documents the over-current
+trip at **3.8 A**. And 3.8 / 310 = **12.258 mA/count**, exactly.
 
-1. **Load was pinned at the limiter** (§2), so it is not a torque measurement and
-   cannot calibrate current.
-2. **4 Hz sampling of a dynamic system aliases.** Load and current are read in
-   separate transactions milliseconds apart, on a signal changing far faster.
+A register named `protection_current` sitting precisely on the documented
+protection threshold is the only self-consistent reading, and it discriminates
+cleanly: 6.5 mA/count would put the trip at 2.02 A and 10 mA/count at 3.10 A,
+neither of which corresponds to anything in the datasheet.
 
-**The resolution requires a steady state with a known torque** — i.e. a lever arm
-and a weight, held still, with `torque_limit` at 1000. Until then, **treat every
-amp figure derived from `addr 69` or `addr 28` as unverified**, which also leaves
-`addr 28 = 310` un-convertible (2.02 / 3.10 / 3.80 A depending on LSB).
+**Consequences:**
+- Peak `addr 69` across the whole bench campaign was 38 counts = **0.466 A**,
+  which is **24 %** of the 1.910 A the shipped policy demands. Nothing tripped
+  because nothing was tested.
+- The longest contiguous run above the 3.80 A clamp in the v7 trace is **0.08 s**
+  against a 2 s protection window, so **no firmware protection stands between
+  this policy and the winding.**
+
+**Still open (this is not the same question):** the *effective circuit
+resistance*. See §5b.
+
+## 5b. R = 2.86 Ω is deleted, not merely down-weighted
+
+The 2.86 Ω figure came from 12 V / 4.2 A — back-calculated from a number this
+document already identifies as a **driver current clamp**, not V/R. If it were
+real, the driver would contribute 2.86 − 1.2 = 1.66 Ω and therefore dissipate
+1.66 × 4.2² = **29 W in the MOSFETs at stall**, inside a 74.5 g servo whose entire
+board idles at 0.232 W. That is not survivable and not plausible.
+
+**Use R ≈ 1.4 Ω** (1.2 Ω measured at 5-10, plus a hot-copper correction). Every
+"@2.86 Ω" column elsewhere in this directory is an upper bound retained for
+audit, not a live estimate.
 
 ## 6. Consequences for Stage C
 

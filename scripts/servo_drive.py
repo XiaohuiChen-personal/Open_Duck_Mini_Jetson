@@ -16,8 +16,13 @@ either unrecoverable or can injure someone.
 2. **Writing 128 to addr 40 is refused unconditionally.** Datasheet 7-14: that
    is the centering command and it RE-ZEROES the servo midpoint. It would
    silently invalidate every joint zero downstream.
-3. **Torque is capped** (`--torque-limit`, default 200/1000 = 20 %) so no command
-   can reach the 4.9 N.m stall. The servo has no mechanical end stop.
+3. **`torque_limit` is a DUTY clamp, not a torque cap.** CORRECTED 2026-08-21:
+   addr48 limits PWM duty in per-mille, and at low speed back-EMF is negligible,
+   so 20 % duty into a 1.2 ohm winding still draws 0.20*11.1/1.2 = 1.85 A =
+   **2.0 N.m** -- not the 0.98 N.m that "20 % of stall" implies. The real
+   backstops are the driver's 4.2 A clamp and the PSU current limit. Keep the
+   default low anyway (it does bound duty, and therefore speed and heating), but
+   **do not rely on it to bound torque.** The servo has no mechanical end stop.
 4. **Torque is disabled on every exit path** — normal return, exception,
    Ctrl-C, or abort. If this process dies, the servo goes limp rather than
    holding or fighting.
@@ -73,7 +78,7 @@ WRITABLE: dict[int, tuple[int, str]] = {
 CENTERING_MAGIC = 128          # addr40 <- 128 re-zeroes the midpoint (7-14)
 POSITION_MAX = 4095            # 12-bit encoder
 TORQUE_LIMIT_MAX = 1000        # full scale
-DEFAULT_TORQUE_LIMIT = 200     # 20 % of stall
+DEFAULT_TORQUE_LIMIT = 200     # 20 % DUTY -- ~2.0 N.m at stall, NOT 0.98
 DEFAULT_GOAL_SPEED = 300       # conservative; units unverified for this model
 
 # Abort thresholds, in real units. addr13 on this unit is 80 C.

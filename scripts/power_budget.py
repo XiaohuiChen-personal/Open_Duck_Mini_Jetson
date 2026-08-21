@@ -13,15 +13,18 @@ The torque trace changes with every retrain, and a stale wattage table is worse
 than none — it looks authoritative. Point this at whichever `*_torque.npz` is
 current and the budget follows.
 
-THE UNRESOLVED FACTOR
----------------------
+RESISTANCE — 2.86 Ω IS REJECTED (2026-08-21)
+--------------------------------------------
 Datasheet ST-3250-C001 A/0 prints terminal resistance 1.2 Ω (5-10) AND stall
-current 4.2 A at 12 V (5-5). 12/1.2 = 10 A, so those cannot both describe the
-same circuit: 4.2 A is a driver clamp, not V/R. The effective resistance is
-therefore either ~1.2 Ω (winding only) or ~2.86 Ω (12/4.2, the whole path).
-That is a **2.4x** swing in dissipation and it is unresolved on the bench —
-see docs/jetson-mod/bench_results/servo_characterisation.md §5. Both bounds are
-reported for every figure; never quote one alone.
+current 4.2 A at 12 V (5-5). 12/1.2 = 10 A, so 4.2 A is a driver clamp, not V/R.
+An earlier revision therefore carried 12/4.2 = 2.86 Ω as a competing "total path"
+figure. **That is rejected by reductio:** it implies 1.66 Ω of driver resistance
+dissipating 1.66 x 4.2^2 = 29 W in the MOSFETs at stall, inside a 74.5 g servo
+whose entire board idles at 0.232 W.
+
+Use **R = 1.4 Ω** (1.2 measured, plus a hot-copper correction), band 1.2-1.6.
+The 2.86 Ω column is retained ONLY as an audit upper bound -- never quote it as
+a live estimate. See bench_results/sustained_torque.md §1.
 """
 
 from __future__ import annotations
@@ -36,7 +39,9 @@ KT_NM_PER_A = KT_KGCM_PER_A * KGCM_TO_NM
 R_WINDING_OHM = 1.2           # 5-10 terminal resistance
 STALL_CURRENT_A = 4.2         # 5-5
 NOMINAL_V = 12.0              # 1-1 rated voltage, used only to derive R_total
-R_TOTAL_OHM = NOMINAL_V / STALL_CURRENT_A   # 2.857 Ω — the competing figure
+R_TOTAL_OHM = NOMINAL_V / STALL_CURRENT_A   # 2.857 Ω — REJECTED, kept for audit
+R_HOT_OHM = 1.6            # 1.2 Ω cold + hot-copper correction; the working upper
+R_CENTRAL_OHM = 1.4        # use this
 
 # --- measured on the bench 2026-08-21 ---------------------------------------
 IDLE_CURRENT_A = 0.021        # per servo, torque disabled, 11.1 V
@@ -139,8 +144,10 @@ def report(b: dict, markdown: bool = False) -> str:
     for mode_w, (plo, phi) in b["pack"].items():
         lines.append(f"  + Jetson {mode_w:>2} W  => PACK {plo:6.3f} A .. {phi:6.3f} A")
     lines.append("")
-    lines.append(f"  Kt = {KT_NM_PER_A:.4f} N·m/A;  R = {R_WINDING_OHM} Ω .. "
-                 f"{R_TOTAL_OHM:.3f} Ω (UNRESOLVED, {R_TOTAL_OHM/R_WINDING_OHM:.1f}x)")
+    lines.append(f"  Kt = {KT_NM_PER_A:.4f} N·m/A")
+    lines.append(f"  R  = {R_WINDING_OHM}-{R_HOT_OHM} Ω, central {R_CENTRAL_OHM} Ω. "
+                 f"The @{R_TOTAL_OHM:.2f} Ω column is a REJECTED audit bound "
+                 "(implies 29 W in the driver at stall) — do not quote it.")
     return "\n".join(lines)
 
 

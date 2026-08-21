@@ -34,6 +34,7 @@ disagree.
 | [`sweep_test.json`](sweep_test.json) | 2 min gentle sweep, 198 samples |
 | [`staircase.json`](staircase.json) | 7-level duty staircase, 518 samples |
 | [`power_budget_v7.json`](power_budget_v7.json) | pack load derived from the v7 torque trace |
+| [`sustained_torque.md`](sustained_torque.md) | **the sustained-torque answer and the retrain decision** |
 
 Reproduce with `scripts/servo_probe.py` (read-only), `scripts/servo_drive.py`
 (write-capable, SRAM allowlist), `scripts/power_budget.py`.
@@ -52,12 +53,12 @@ Reproduce with `scripts/servo_probe.py` (read-only), `scripts/servo_drive.py`
 | **min input voltage** | **6.0 V** (addr 15) | 4 V (7-11) | high |
 | overload threshold | 80 % stall (addr 36) | 80 % (7-11) | ✅ agree |
 | overload duration | 2.0 s (addr 35 = 200) | 2 s (7-11) | ✅ agree |
-| protection current | **310 raw** (addr 28) | 3.8 A (7-11) | **units unresolved** |
+| protection current | **310 raw = 3.80 A** @ 12.258 mA/count | 3.8 A (7-11) | high — **resolved**, matches exactly |
 | torque limits | 1000 / 1000, full scale | — | high |
 | `goal_speed` unit | **counts/s** | undocumented | high — direct |
-| `addr 60` load unit | **per-mille of stall** | undocumented | high |
+| `addr 60` load unit | **per-mille PWM DUTY**, not torque | undocumented | high |
 | `addr 69` current | **winding, not bus** | undocumented | high — see §4 |
-| running friction | **≈ 40 ‰ ≈ 0.196 N·m** | undocumented | medium |
+| running friction | **0.1–0.2 N·m** (readings do not close) | undocumented | low |
 | voltage sag under load | **0.3–0.4 V** | — | medium |
 | encoder range | 0–4095, 12-bit | — | high |
 | tracking error, gentle | mean 3.1°, max 10.9° | — | high |
@@ -154,9 +155,10 @@ of servos.
 
 | question | why it is open | what closes it |
 |---|---|---|
-| **current LSB** (6.5 / 10 / 12.26 mA) | load was pinned at the limiter, and 4 Hz sampling of a dynamic signal aliases | steady hold at a **known** torque, `torque_limit = 1000` |
-| **`addr 28` in amps** | depends on the LSB above | same |
-| **effective resistance** 1.2 vs 2.86 Ω | datasheet self-contradiction | `R = P_measured / (addr 69)²` at a known load |
+| ~~current LSB~~ | **RESOLVED: 12.258 mA/count** — 310 × 12.258 = 3.80 A, the documented trip | — |
+| ~~`addr 28` in amps~~ | **RESOLVED: 3.80 A** | — |
+| **effective resistance** (1.2–1.6 Ω; 2.86 Ω **rejected**) | hot-copper correction unmeasured | locked-rotor duty sweep, ~2 min |
+| **bay ambient** | never measured; **dominates the sustained-torque answer** | thermocouple, ~30 min |
 | **motor-path R_th** | only the board path was measured | loaded thermal run to plateau |
 | **sustained torque** | no load could be applied | lever arm + weights |
 | **unit-to-unit spread** | **one** servo | dump `addr 13` / `addr 15` from all 14 at build time |
