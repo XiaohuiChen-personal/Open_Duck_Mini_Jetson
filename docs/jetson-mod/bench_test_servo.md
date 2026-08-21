@@ -54,7 +54,7 @@ line numbers. Where this document previously relied on a third-party table for a
 | NICE-POWER 30 V/10 A bench supply | power **and** the current reference | have |
 | banana→alligator leads | PSU to the wire stubs | have |
 | multimeter | independent cross-check | have |
-| **~1 m 24 AWG solid wire** | **BLOCKING** — see "wire stubs" below | salvage Cat5e |
+| ~1 m 24 AWG solid wire | fallback only — clips grip the screw heads fine | salvage Cat5e |
 | **non-contact IR thermometer** | 70 °C aluminium case is a contact burn | **buy** |
 | second 5264-3P cable | split-harness fallback + spare | **buy** |
 | ~200 mm rigid arm + weights | applies known torque | build |
@@ -166,22 +166,33 @@ beeper is threshold-triggered and will chirp through a capacitor.
 - The servo **will get hot enough to burn** — the case is aluminium (6-3), far
   worse than the plastic-cased STS3215. Never test temperature with a finger.
 
-## Before anything: build two wire stubs — BLOCKING
+## Landing the PSU on the screw terminal
 
-**Alligator clips cannot land on a 5.08 mm screw terminal.** The screws are
-5.08 mm apart, clip bodies are 8–20 mm wide, and a clip cannot enter a screw
-clamp at all. Banana-to-fork-spade leads do not fit either. This is the single
-missing part that makes the wiring step unexecutable.
+**Bench finding 2026-08-20: alligator clips DO grip these screw heads directly,
+and hold.** A review had asserted this was impossible (clip jaws 8–20 mm vs
+5.08 mm screw spacing) and called it blocking. Measured on the actual board, it
+is not. The assertion was wrong; the procedure below reflects what works.
 
-**Free source available today: a dead Cat5e Ethernet patch cable.** It contains
-eight 24 AWG solid copper conductors (0.51 mm) — exactly what a 5.08 mm clamp
-wants, and solid wire leaves no stray strands. A 60 mm stub is ~5 mΩ.
+Clipping to the screw heads is fine, but it introduces one failure mode that a
+landed wire does not: **two clips 5.08 mm apart can touch each other, or slip and
+land somewhere else.** Either is a dead short across the supply. So:
 
-- Cut **two stubs of different lengths — 30 mm and 60 mm** (so they cannot be
-  confused), strip 8 mm at the terminal end and ~25 mm at the clip end.
-- Land them, torque the screws, **tug-test each**, and bend the free ends into a
-  V so the alligator clips sit 40+ mm apart with air between them.
-- For Stage C, twist two conductors together per polarity.
+- **Orient the clips pointing away from each other**, insulating boots slid fully
+  forward, and support the banana leads so their stiffness cannot lever a clip off.
+- **Tape over both `V2` screws and the 2.54 mm header** *before* clipping, so a
+  slipped clip lands on insulation instead of the 12–24 V rail or the 5 V input.
+- **Then verify, meter in Ω mode, with both clips attached and the PSU off:
+  resistance across the two clips must read OPEN.** A low reading means the jaws
+  are touching or bridging. **Re-run this check after every re-clip** — it is the
+  whole safety argument for this method, and it takes five seconds.
+- **Tug-test each clip** before switching the output on.
+
+*Fallback if a clip ever proves unreliable under load:* a dead Cat5e patch cable
+gives eight 24 AWG solid conductors (0.51 mm), ideal for a 5.08 mm clamp and
+leaving no stray strands. Cut two stubs at **different lengths — 30 mm and
+60 mm** — so they cannot be confused, strip 8 mm at the terminal end and ~25 mm
+at the clip end, and bend the free ends into a V. For Stage C, twist two
+conductors together per polarity.
 
 ---
 
