@@ -229,9 +229,29 @@ Probe each of the four terminal screws against each pin of the TTL socket.
 
 | expected | if not |
 |---|---|
-| **Exactly one** screw < 1 Ω to one socket pin — that is the TTL **V** | Two screws low to the same pin → the positive rails are shared → **STOP, split harness** |
-| **All four** screws < 1 Ω to the socket `G` pin | Expected — grounds are common |
+| **Exactly one** screw < 1 Ω to the socket's `V` pin — that is the TTL supply | Two screws low to the same pin → the positive rails are shared → **STOP, split harness** |
+| **Both `G` screws** < 1 Ω to the socket `G` pin | Expected — grounds are common |
+| The `V2` screw open to every TTL socket pin | Otherwise the rails are not separate → **STOP** |
+| The socket `S` pin open to all four screws | Otherwise signal is tied to a power rail → **STOP** |
 | Any reading of a few hundred ohms | Reading through active circuitry → **STOP** |
+
+**Measured 2026-08-20** (`0.1` = connected at ~0.1 Ω, `—` = open):
+
+|  | socket `G` | socket `V1` | socket `S` |
+|---|---|---|---|
+| screw `G` (V1 side) | **0.1** | — | — |
+| screw `V1` | — | **0.1** | — |
+| screw `G` (V2 side) | **0.1** | — | — |
+| screw `V2` | — | — | — |
+
+**PASS.** Exactly one screw feeds the TTL supply pin, so the two terminals'
+positive rails are **not** shared. `V2` reaches nothing on our bus. Signal is
+isolated from both rails. No mid-range readings, so nothing was measured through
+active circuitry.
+
+> **What this does NOT establish.** P2 compares screws to socket pins only. It
+> says nothing about the **USB-derived rail**, which is the path that can reach
+> the host. That is P3's job, and P2 passing is not evidence for it.
 
 ### P3 — Isolation, passive half. **This is the test that protects your PC.**
 
