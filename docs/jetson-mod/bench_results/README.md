@@ -104,23 +104,41 @@ draw.
 | idle, steady | 33–34 °C at 26–27 °C ambient, 0.232 W → **R_th ≈ 32 K/W** |
 | 2 min gentle motion | 33 → 34 °C |
 | 5.25 min duty staircase | 34 → 37 °C, monotonic, **not plateaued** |
-| thermal mass estimate | 74.5 g × ~700 J/kg·K ≈ **52 J/K** → **τ ≈ 26 min** |
 
-> **R_th ≈ 32 K/W must not be applied to motor heating.** At idle the dissipation
-> is control electronics and `addr 63` is a board sensor; the winding-to-sensor
-> path is different and unmeasured. Applied naively to 4.4 W it predicts ~140 K
-> of rise. Treat it as a board-path figure with an unquantified relationship to
-> the motor path.
+> **RETRACTED 2026-08-21 — both the R_th figure and the time constant.**
+>
+> **32 K/W is a board→case SPREADING resistance, not the servo's.** At idle with
+> torque disabled, the heat source (regulator, MCU, bus transceiver) and the
+> sensor (`addr 63`) are the same object. Roughly 29 of the 32 K/W never appears
+> in the winding path at all. Name the path whenever it is quoted.
+>
+> **"τ ≈ 26 min" is withdrawn, and it was self-refuting.** There are three time
+> constants — winding 20–60 s, board 25–30 s, bulk 8–15 min — and the **fast** one
+> governs the failure mode: at 4.4 W the winding is 90 % of the way to its steady
+> rise in **~70 seconds**. A 26-minute figure invites the belief that brief high
+> torque is thermally free. It is not. And if τ really were 26 min, the 75 s idle
+> test reached 4.7 % of steady state and measured nothing — so the estimate
+> refutes its own premise.
+>
+> **The staircase proves nothing thermal.** No PSU current was logged, so the 3 K
+> rise is one observation against two unknowns and fits τ from 5 to 60 min.
 
-**No loaded thermal data exists.** The staircase saturated the torque *command*
-but the horn was unloaded, so delivered torque stayed tiny. **Saturating a
-limiter is not thermal loading.**
+**No loaded thermal data exists.** The staircase was **speed**-saturated, not
+torque-saturated, and the horn was unloaded, so delivered torque stayed tiny.
+**Saturating a limiter is not thermal loading.**
+
+For the model that replaces this, and the sustained-torque answer, see
+[`sustained_torque.md`](sustained_torque.md).
 
 ## 6. Electrical load of the whole robot
 
-From the v7 torque trace via `scripts/power_budget.py`. Both resistance bounds
-are shown because the datasheet contradicts itself — 1.2 Ω (5-10) against
-12 V / 4.2 A = 2.86 Ω (5-5) — a **2.4×** swing that the bench could not resolve.
+From the v7 torque trace via `scripts/power_budget.py`.
+
+> **Use the @1.2 Ω column.** The @2.86 Ω column is a **rejected** audit bound,
+> retained only so the rejection is auditable: 12 V / 4.2 A back-calculates from
+> a *driver clamp*, and would imply 1.66 Ω of driver resistance dissipating
+> **29 W in the MOSFETs at stall** inside a 74.5 g servo whose whole board idles
+> at 0.232 W. Working value is **R = 1.4 Ω** (band 1.2–1.6).
 
 | | @1.2 Ω | @2.86 Ω |
 |---|---|---|
