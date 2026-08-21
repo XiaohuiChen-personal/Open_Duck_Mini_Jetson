@@ -180,21 +180,28 @@ def test_arm_refuses_when_position_cannot_be_read():
 # ------------------------------------------------------------------ aborts --
 
 
-def test_nonzero_status_byte_aborts():
+def _abort_after_debounce(sample):
+    """Faults must persist for ABORT_CONSECUTIVE samples before aborting."""
     d = _driver()
-    assert d.check_abort({"status": 0x04, "temperature": 30, "voltage": 11.1})
+    reason = None
+    for _ in range(drive.ABORT_CONSECUTIVE):
+        reason = d.check_abort(sample)
+    return reason
+
+
+def test_nonzero_status_byte_aborts():
+    assert _abort_after_debounce({"status": 0x04, "temperature": 30, "voltage": 11.1})
 
 
 def test_overtemperature_aborts_before_the_firmware_does():
-    d = _driver()
-    assert d.check_abort({"status": 0, "temperature": drive.ABORT_TEMP_C, "voltage": 11.1})
+    assert _abort_after_debounce(
+        {"status": 0, "temperature": drive.ABORT_TEMP_C, "voltage": 11.1})
 
 
 def test_supply_sag_aborts():
     """A sagging rail means the PSU has gone into CC — the run is invalid and a
     brownout mid-write is how EEPROM gets corrupted."""
-    d = _driver()
-    assert d.check_abort({"status": 0, "temperature": 30, "voltage": 8.5})
+    assert _abort_after_debounce({"status": 0, "temperature": 30, "voltage": 8.5})
 
 
 def test_healthy_telemetry_does_not_abort():
@@ -207,3 +214,50 @@ def test_probe_module_remains_write_free():
     src = (REPO / "scripts" / "servo_probe.py").read_text()
     assert "INST_WRITE" not in src
     assert "0x03" not in src.replace("0x03,", "")  # no write opcode smuggled in
+
+
+# ------------------------------------------------- regressions from the bench --
+
+
+def test_load_signs_on_bit_10_not_bit_15():
+    """MEASURED 2026-08-21: 63 of 198 sweep samples read ~1080 raw. Signed on
+    bit 15 that decodes as a large POSITIVE load; the register signs on bit 10
+    and it actually means -76 per-mille. The error is silent and would have
+    corrupted every load number in the thermal run."""
+    assert drive.decode_load(1100) == -76
+    assert drive.decode_load(1080) == -56
+    assert drive.decode_load(76) == 76
+    assert drive.decode_load(0) == 0
+
+
+def test_load_magnitude_never_exceeds_full_scale_after_decoding():
+    for raw in range(0, 2048):
+        assert abs(drive.decode_load(raw)) <= 1023
+
+
+def test_a_single_glitched_sample_does_not_abort():
+    """MEASURED 2026-08-21: one sample in 198 read 49 C while every neighbour
+    read 33-34 C. A 1-sample abort rule turns comms noise into a spurious stop,
+    which is how operators learn to ignore aborts."""
+    d = _driver()
+    hot = {"status": 0, "temperature": 70, "voltage": 11.1}
+    ok = {"status": 0, "temperature": 34, "voltage": 11.1}
+    assert d.check_abort(hot) is None          # 1st fault: no abort
+    assert d.check_abort(ok) is None           # recovered, counter resets
+    assert d.check_abort(hot) is None          # 1st again
+    assert d.check_abort(hot) is None          # 2nd
+    assert d.check_abort(hot) is not None      # 3rd consecutive -> abort
+
+
+def test_sustained_fault_still_aborts_and_says_how_many():
+    d = _driver()
+    hot = {"status": 0, "temperature": 70, "voltage": 11.1}
+    reason = None
+    for _ in range(drive.ABORT_CONSECUTIVE):
+        reason = d.check_abort(hot)
+    assert reason and "consecutive" in reason
+
+
+def test_per_sample_fault_test_is_still_available_undebounced():
+    assert drive.Driver._abort_reason({"status": 0x20, "temperature": 30,
+                                       "voltage": 11.1})

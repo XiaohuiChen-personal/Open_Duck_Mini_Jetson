@@ -167,10 +167,23 @@ def to_int(raw: bytes) -> int:
     return int.from_bytes(raw, "little")
 
 
-def to_signed_magnitude(value: int, bits: int = 15) -> int:
-    """Load and current use sign-magnitude: the top bit is direction."""
+# Sign-magnitude direction bits differ per register and getting this wrong is
+# SILENT: a bit-15 decode leaves addr60 values like 1080 looking like a huge
+# positive load when they mean -76. Measured 2026-08-21: 63 of 198 sweep samples
+# were affected.
+LOAD_SIGN_BIT = 10       # addr60 present_load: magnitude 0..1023, bit10 = direction
+CURRENT_SIGN_BIT = 15    # addr69 present_current
+
+
+def to_signed_magnitude(value: int, bits: int = CURRENT_SIGN_BIT) -> int:
+    """Sign-magnitude decode. `bits` is the DIRECTION bit index, not the width."""
     sign_bit = 1 << bits
     return -(value & (sign_bit - 1)) if value & sign_bit else value
+
+
+def decode_load(value: int) -> int:
+    """addr60 present_load -> signed per-mille. Direction is bit 10."""
+    return to_signed_magnitude(value, LOAD_SIGN_BIT)
 
 
 def decode_status_bits(error: int) -> list[str]:
@@ -418,7 +431,7 @@ def cmd_watch(port: str, baud: int, servo_id: int, seconds: float) -> None:
             elapsed = time.time() - start
             print(
                 f"{elapsed:6.1f}  {pos if pos is not None else '--':>6} "
-                f"{to_signed_magnitude(load) if load is not None else '--':>6} "
+                f"{decode_load(load) if load is not None else '--':>6} "
                 f"{volt/10 if volt is not None else '--':>5} "
                 f"{temp if temp is not None else '--':>4} "
                 f"{to_signed_magnitude(curr) if curr is not None else '--':>6} "

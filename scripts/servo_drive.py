@@ -51,7 +51,7 @@ import time
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 from servo_probe import (  # noqa: E402  - local sibling module
     BAUD_TABLE, HEADER, INST_PING, INST_READ, checksum, decode_status,
-    decode_status_bits, to_int, to_signed_magnitude,
+    decode_load, decode_status_bits, to_int, to_signed_magnitude,
 )
 
 INST_WRITE = 0x03
@@ -79,6 +79,12 @@ DEFAULT_GOAL_SPEED = 300       # conservative; units unverified for this model
 # Abort thresholds, in real units. addr13 on this unit is 80 C.
 ABORT_TEMP_C = 60
 ABORT_STATUS_NONZERO = True
+
+# A single sample must never abort a run. Measured 2026-08-21: one sample in a
+# 198-sample sweep read 49 C while every neighbour read 33-34 C. That is a comms
+# glitch, and a 1-sample abort rule turns it into a spurious stop -- or, worse,
+# trains the operator to ignore aborts.
+ABORT_CONSECUTIVE = 3
 
 
 class UnsafeWrite(Exception):
@@ -127,6 +133,7 @@ class Driver:
         self.id = servo_id
         self.torque_limit = min(torque_limit, TORQUE_LIMIT_MAX)
         self.samples: list[dict] = []
+        self._fault_run = 0
         self._armed = False
 
     # -- transport ---------------------------------------------------------
@@ -170,20 +177,33 @@ class Driver:
         raw_curr = self.read(69, 2)
         return {
             "position": self.read(56, 2),
-            "load": to_signed_magnitude(raw_load) if raw_load is not None else None,
+            "load": decode_load(raw_load) if raw_load is not None else None,
             "voltage": (lambda v: v / 10 if v is not None else None)(self.read(62, 1)),
             "temperature": self.read(63, 1),
             "current_raw": to_signed_magnitude(raw_curr) if raw_curr is not None else None,
             "status": self.read(65, 1),
         }
 
-    def check_abort(self, t: dict) -> str | None:
+    @staticmethod
+    def _abort_reason(t: dict) -> str | None:
+        """Per-sample fault test. Debouncing is the caller's job."""
         if ABORT_STATUS_NONZERO and t.get("status"):
             return f"status byte {t['status']:#04x} {decode_status_bits(t['status'])}"
         if t.get("temperature") is not None and t["temperature"] >= ABORT_TEMP_C:
             return f"temperature {t['temperature']} C >= {ABORT_TEMP_C} C"
         if t.get("voltage") is not None and t["voltage"] < 9.0:
             return f"supply sagged to {t['voltage']} V — PSU is in CC"
+        return None
+
+    def check_abort(self, t: dict) -> str | None:
+        """Abort only after ABORT_CONSECUTIVE faulty samples in a row."""
+        reason = self._abort_reason(t)
+        if reason is None:
+            self._fault_run = 0
+            return None
+        self._fault_run = getattr(self, "_fault_run", 0) + 1
+        if self._fault_run >= ABORT_CONSECUTIVE:
+            return f"{reason} (for {self._fault_run} consecutive samples)"
         return None
 
     # -- lifecycle ---------------------------------------------------------

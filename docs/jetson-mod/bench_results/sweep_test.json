@@ -1,0 +1,1986 @@
+{
+  "outcome": "completed",
+  "torque_limit": 200,
+  "samples": [
+    {
+      "t": 0.0,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 0.61,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 1.22,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 1.84,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 2.45,
+      "goal": 3966,
+      "position": 4055,
+      "load": 64,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 3.05,
+      "goal": 3895,
+      "position": 3926,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 3.67,
+      "goal": 3994,
+      "position": 3934,
+      "load": 1088,
+      "voltage": 11.2,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 4.27,
+      "goal": 4095,
+      "position": 4033,
+      "load": 1092,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 4.89,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 5.49,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 6.1,
+      "goal": 4063,
+      "position": 4063,
+      "load": 64,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 6.71,
+      "goal": 3915,
+      "position": 4024,
+      "load": 56,
+      "voltage": 11.2,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 7.32,
+      "goal": 3919,
+      "position": 3919,
+      "load": 1032,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 7.92,
+      "goal": 4071,
+      "position": 3958,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 8.53,
+      "goal": 4095,
+      "position": 4095,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 9.14,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 9.75,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 10.36,
+      "goal": 3988,
+      "position": 4056,
+      "load": 64,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 10.96,
+      "goal": 3895,
+      "position": 3949,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 11.57,
+      "goal": 3971,
+      "position": 3934,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 12.18,
+      "goal": 4095,
+      "position": 4010,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 12.79,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 13.4,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 14.01,
+      "goal": 4093,
+      "position": 4093,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 14.61,
+      "goal": 3930,
+      "position": 4053,
+      "load": 64,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 15.22,
+      "goal": 3907,
+      "position": 3907,
+      "load": 60,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 15.83,
+      "goal": 4042,
+      "position": 3946,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 16.44,
+      "goal": 4095,
+      "position": 4081,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 17.05,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 17.66,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 18.27,
+      "goal": 4014,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.2,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 18.87,
+      "goal": 3898,
+      "position": 3975,
+      "load": 44,
+      "voltage": 11.2,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 19.48,
+      "goal": 3949,
+      "position": 3937,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 20.09,
+      "goal": 4095,
+      "position": 3988,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 20.7,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 21.31,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 21.92,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.2,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 22.52,
+      "goal": 3948,
+      "position": 4055,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 23.13,
+      "goal": 3899,
+      "position": 3908,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 23.74,
+      "goal": 4016,
+      "position": 3938,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 24.35,
+      "goal": 4095,
+      "position": 4055,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 24.96,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 25.57,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 26.18,
+      "goal": 4039,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 26.79,
+      "goal": 3905,
+      "position": 4000,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 27.4,
+      "goal": 3932,
+      "position": 3933,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 28.0,
+      "goal": 4095,
+      "position": 3971,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 28.61,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 29.22,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 29.83,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 30.44,
+      "goal": 3967,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 31.05,
+      "goal": 3895,
+      "position": 3928,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 31.66,
+      "goal": 3992,
+      "position": 3934,
+      "load": 1096,
+      "voltage": 11.2,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 32.27,
+      "goal": 4095,
+      "position": 4031,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 32.88,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 33.49,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 34.09,
+      "goal": 4065,
+      "position": 4065,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 34.7,
+      "goal": 3916,
+      "position": 4026,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 35.31,
+      "goal": 3918,
+      "position": 3918,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 35.92,
+      "goal": 4070,
+      "position": 3957,
+      "load": 1088,
+      "voltage": 11.2,
+      "temperature": 49,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 36.53,
+      "goal": 4095,
+      "position": 4095,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 37.14,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 37.75,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 38.36,
+      "goal": 3988,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 38.97,
+      "goal": 3895,
+      "position": 3949,
+      "load": 52,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 39.58,
+      "goal": 3971,
+      "position": 3933,
+      "load": 1100,
+      "voltage": 11.2,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 40.19,
+      "goal": 4095,
+      "position": 4009,
+      "load": 1092,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 40.79,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 41.4,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 42.01,
+      "goal": 4090,
+      "position": 4090,
+      "load": 4,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 42.62,
+      "goal": 3928,
+      "position": 4051,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 43.23,
+      "goal": 3907,
+      "position": 3907,
+      "load": 60,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 43.84,
+      "goal": 4044,
+      "position": 3946,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 44.45,
+      "goal": 4095,
+      "position": 4082,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 45.05,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 45.66,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 46.27,
+      "goal": 4011,
+      "position": 4055,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 46.88,
+      "goal": 3898,
+      "position": 3972,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 47.49,
+      "goal": 3951,
+      "position": 3937,
+      "load": 1100,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 48.1,
+      "goal": 4095,
+      "position": 3989,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 48.71,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 49.32,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 49.93,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 50.53,
+      "goal": 3946,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 51.14,
+      "goal": 3900,
+      "position": 3906,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 51.75,
+      "goal": 4019,
+      "position": 3939,
+      "load": 1096,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 52.36,
+      "goal": 4095,
+      "position": 4058,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 52.97,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 53.58,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 54.19,
+      "goal": 4037,
+      "position": 4055,
+      "load": 60,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 54.79,
+      "goal": 3905,
+      "position": 3998,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 55.4,
+      "goal": 3933,
+      "position": 3933,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 56.01,
+      "goal": 4095,
+      "position": 3971,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 56.62,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 57.23,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 57.84,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 58.45,
+      "goal": 3966,
+      "position": 4055,
+      "load": 64,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 59.05,
+      "goal": 3895,
+      "position": 3926,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 59.67,
+      "goal": 3994,
+      "position": 3934,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 60.27,
+      "goal": 4095,
+      "position": 4033,
+      "load": 1076,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 60.88,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 61.49,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 62.1,
+      "goal": 4063,
+      "position": 4063,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 62.71,
+      "goal": 3915,
+      "position": 4024,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 63.32,
+      "goal": 3919,
+      "position": 3919,
+      "load": 1032,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 63.92,
+      "goal": 4071,
+      "position": 3957,
+      "load": 1084,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 64.53,
+      "goal": 4095,
+      "position": 4095,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 65.14,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 65.75,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 66.35,
+      "goal": 3989,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 66.96,
+      "goal": 3895,
+      "position": 3950,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 67.57,
+      "goal": 3970,
+      "position": 3934,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 68.18,
+      "goal": 4095,
+      "position": 4009,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 68.79,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 69.4,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 70.0,
+      "goal": 4094,
+      "position": 4094,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 70.61,
+      "goal": 3931,
+      "position": 4054,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 71.22,
+      "goal": 3906,
+      "position": 3906,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 71.83,
+      "goal": 4041,
+      "position": 3944,
+      "load": 1084,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 72.44,
+      "goal": 4095,
+      "position": 4080,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 73.05,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 73.65,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 74.26,
+      "goal": 4015,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 74.87,
+      "goal": 3899,
+      "position": 3976,
+      "load": 60,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 75.48,
+      "goal": 3948,
+      "position": 3938,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 76.09,
+      "goal": 4095,
+      "position": 3986,
+      "load": 1076,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 76.69,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 33,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 77.3,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 77.91,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 78.52,
+      "goal": 3948,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 5,
+      "status": 0
+    },
+    {
+      "t": 79.13,
+      "goal": 3899,
+      "position": 3909,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 79.74,
+      "goal": 4014,
+      "position": 3938,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 80.34,
+      "goal": 4095,
+      "position": 4052,
+      "load": 1076,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 80.95,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 81.56,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 82.17,
+      "goal": 4042,
+      "position": 4055,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 82.78,
+      "goal": 3907,
+      "position": 4002,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 83.38,
+      "goal": 3930,
+      "position": 3930,
+      "load": 1084,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 83.99,
+      "goal": 4092,
+      "position": 3968,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 84.6,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 85.21,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 85.82,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 86.43,
+      "goal": 3970,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 87.04,
+      "goal": 3895,
+      "position": 3931,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 87.65,
+      "goal": 3989,
+      "position": 3934,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 88.25,
+      "goal": 4095,
+      "position": 4028,
+      "load": 1080,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 88.86,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 89.47,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 90.08,
+      "goal": 4069,
+      "position": 4069,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 90.69,
+      "goal": 3918,
+      "position": 4030,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 91.29,
+      "goal": 3915,
+      "position": 3915,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 91.9,
+      "goal": 4064,
+      "position": 3953,
+      "load": 1096,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 92.51,
+      "goal": 4095,
+      "position": 4095,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 93.12,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 93.73,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 94.34,
+      "goal": 3993,
+      "position": 4056,
+      "load": 60,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 94.95,
+      "goal": 3895,
+      "position": 3954,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 95.55,
+      "goal": 3966,
+      "position": 3935,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 2,
+      "status": 0
+    },
+    {
+      "t": 96.16,
+      "goal": 4095,
+      "position": 4004,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 96.77,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 97.38,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 97.99,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 98.59,
+      "goal": 3934,
+      "position": 4056,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 99.2,
+      "goal": 3905,
+      "position": 3905,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 99.81,
+      "goal": 4036,
+      "position": 3944,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 100.42,
+      "goal": 4095,
+      "position": 4075,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 101.03,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 101.64,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 102.25,
+      "goal": 4019,
+      "position": 4056,
+      "load": 64,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 102.85,
+      "goal": 3900,
+      "position": 3980,
+      "load": 60,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 103.46,
+      "goal": 3945,
+      "position": 3939,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 104.07,
+      "goal": 4095,
+      "position": 3984,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 104.68,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 105.29,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 105.9,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 106.51,
+      "goal": 3951,
+      "position": 4055,
+      "load": 60,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 107.12,
+      "goal": 3898,
+      "position": 3912,
+      "load": 56,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 107.73,
+      "goal": 4011,
+      "position": 3937,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 108.33,
+      "goal": 4095,
+      "position": 4050,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 108.94,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 109.55,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 110.16,
+      "goal": 4045,
+      "position": 4055,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 110.77,
+      "goal": 3908,
+      "position": 4005,
+      "load": 68,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 111.38,
+      "goal": 3928,
+      "position": 3928,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 111.98,
+      "goal": 4090,
+      "position": 3966,
+      "load": 1080,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 112.59,
+      "goal": 4095,
+      "position": 4095,
+      "load": 1032,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 113.2,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 113.81,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 114.41,
+      "goal": 3973,
+      "position": 4055,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 115.02,
+      "goal": 3895,
+      "position": 3934,
+      "load": 56,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 115.63,
+      "goal": 3986,
+      "position": 3934,
+      "load": 1096,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 4,
+      "status": 0
+    },
+    {
+      "t": 116.24,
+      "goal": 4095,
+      "position": 4024,
+      "load": 1076,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 116.85,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 117.46,
+      "goal": 4095,
+      "position": 4095,
+      "load": 0,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 118.07,
+      "goal": 4074,
+      "position": 4074,
+      "load": 76,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 1,
+      "status": 0
+    },
+    {
+      "t": 118.68,
+      "goal": 3920,
+      "position": 4034,
+      "load": 68,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    },
+    {
+      "t": 119.28,
+      "goal": 3914,
+      "position": 3914,
+      "load": 1028,
+      "voltage": 11.2,
+      "temperature": 34,
+      "current_raw": 0,
+      "status": 0
+    },
+    {
+      "t": 119.89,
+      "goal": 4060,
+      "position": 3952,
+      "load": 1088,
+      "voltage": 11.1,
+      "temperature": 34,
+      "current_raw": 3,
+      "status": 0
+    }
+  ]
+}
