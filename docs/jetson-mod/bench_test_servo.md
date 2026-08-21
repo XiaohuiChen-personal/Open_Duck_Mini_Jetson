@@ -527,6 +527,30 @@ The old "0.05–0.1 A" pass band matched **neither** datasheet figure and is del
 
 **Record:** idle current, held voltage, case temperature after 60 s.
 
+### MEASURED 2026-08-21 — PASS
+
+| quantity | measured | expected | source |
+|---|---|---|---|
+| supply voltage | **11.1 V**, holding, CV | 11.1 V | — |
+| idle current | **21 mA** | 24 mA | datasheet 5-6 |
+| power | **0.232 W** | 11.1 × 0.021 = 0.233 W | arithmetic checks |
+| motion | none | none | servo holds nothing until commanded |
+| LED | **steady red** | — | see below |
+
+**The harness proof, taken with 11.1 V live on the servo and USB unplugged:**
+
+> **board socket `V1` pin → `G` = 0.097 V.**
+
+That is floating leakage, not a connection — a failed break would read 11.1 V.
+**This is the measurement that licenses connecting USB**, and it must be repeated
+after any change to the harness.
+
+**On the LED: steady ≠ alarm.** A *flashing* red LED on these servos is the
+over-voltage alarm signature, the well-known symptom of running a 7.4 V-rated
+unit at 12 V. A steady LED is power-on indication. The datasheet documents no LED
+behaviour whatsoever — this is community knowledge, so treat it as provisional
+until Stage B reads registers 14, 62 and 65 directly.
+
 > The servo will not move and will make no sound. That is a **pass** — it holds
 > no position until commanded over the bus.
 
