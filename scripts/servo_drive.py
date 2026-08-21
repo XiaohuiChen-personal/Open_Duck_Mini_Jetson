@@ -192,6 +192,34 @@ class Driver:
 
     # -- telemetry ---------------------------------------------------------
 
+    def telemetry_fast(self) -> dict | None:
+        """All of addr 56..70 in ONE round trip.
+
+        The per-register path costs six serial transactions per sample, which
+        caps the loop near 30-60 Hz and cannot resolve a 0.45 s period. It also
+        smears a sample across ~10 ms, so position and current describe
+        different instants -- fatal when fitting inertia against acceleration.
+        """
+        raw = self.read_block(56, 15)
+        if raw is None:
+            return None
+        return {
+            "position": to_int(raw[0:2]),
+            "speed": to_signed_magnitude(to_int(raw[2:4])),
+            "load": decode_load(to_int(raw[4:6])),
+            "voltage": raw[6] / 10,
+            "temperature": raw[7],
+            "status": raw[9],
+            "moving": raw[10],
+            "current_raw": to_signed_magnitude(to_int(raw[13:15])),
+        }
+
+    def read_block(self, address: int, width: int) -> bytes | None:
+        body = bytes([self.id, 4, INST_READ, address, width])
+        packet = HEADER + body + bytes([checksum(body)])
+        got = self._txrx(packet, width)
+        return got if got is not None and len(got) == width else None
+
     def telemetry(self) -> dict:
         raw_load = self.read(60, 2)
         raw_curr = self.read(69, 2)
@@ -370,6 +398,73 @@ def run_staircase(driver: Driver, seconds_per_level: float, interval: float) -> 
     return "completed"
 
 
+# Amplitudes (counts) x periods (s) for the inertia identification. Chosen so
+# that J*A*w^2 and b*A*w separate: w spans 3.1..14.0 rad/s, so the inertial term
+# (w^2) grows ~20x across the sweep while the viscous term (w) grows ~4.5x.
+FREQ_AMPLITUDES = (114, 171, 227)          # 10, 15, 20 degrees
+FREQ_PERIODS = (2.0, 1.2, 0.8, 0.6, 0.45)  # seconds
+FREQ_CYCLES = 16
+
+
+def run_freq_sweep(driver: Driver, out_rows: list, settle_s: float = 0.4) -> str:
+    """Amplitude x period sweep for inertia identification.
+
+    MUST run at torque_limit = 1000. Every earlier bench log used 200, which is
+    a DUTY clamp -- the servo was speed-limited, not torque-limited, so none of
+    that data can identify inertia. See known_issues.md PLANT-11.
+    """
+    import math
+
+    if driver.torque_limit < TORQUE_LIMIT_MAX:
+        return (f"REFUSED: torque_limit is {driver.torque_limit}, must be "
+                f"{TORQUE_LIMIT_MAX}. A duty clamp makes the fit meaningless.")
+
+    centre = driver.arm()
+    driver.write(41, 0)                     # acceleration limit off
+    driver.write(46, 0)                     # goal_speed 0 = unlimited
+    print(f"# armed at {centre}, torque_limit={driver.torque_limit}")
+
+    for amplitude in FREQ_AMPLITUDES:
+        if centre - amplitude < 0 or centre + amplitude > POSITION_MAX:
+            print(f"# amplitude {amplitude}: SKIPPED, does not fit at {centre}")
+            continue
+        for period in FREQ_PERIODS:
+            duration = FREQ_CYCLES * period
+            print(f"# --- A={amplitude} counts ({amplitude*360/4096:.1f} deg), "
+                  f"T={period}s, w={2*math.pi/period:.2f} rad/s, {duration:.1f}s")
+            start = time.time()
+            n, first = 0, None
+            while True:
+                elapsed = time.time() - start
+                if elapsed >= duration:
+                    break
+                goal = int(centre + amplitude * math.sin(2 * math.pi * elapsed / period))
+                driver.write(42, max(0, min(POSITION_MAX, goal)))
+                t = driver.telemetry_fast()
+                if t is None:
+                    continue
+                if first is None:
+                    first = elapsed
+                n += 1
+                row = {"amplitude": amplitude, "period": period, "t": elapsed,
+                       "goal": goal, **t}
+                out_rows.append(row)
+                reason = driver.check_abort(t)
+                if reason:
+                    return f"ABORT at A={amplitude} T={period}: {reason}"
+            rate = n / max(elapsed - (first or 0), 1e-6)
+            samples_per_cycle = rate * period
+            flag = "" if samples_per_cycle >= 10 else "  <-- TOO FEW, drop this period"
+            print(f"#     {n} samples, {rate:.0f} Hz, "
+                  f"{samples_per_cycle:.1f} per cycle{flag}")
+            # let the servo settle between conditions so runs stay independent
+            driver.write(42, centre)
+            settle_until = time.time() + settle_s
+            while time.time() < settle_until:
+                driver.telemetry_fast()
+    return "completed"
+
+
 # -------------------------------------------------------------------- main ---
 
 
@@ -393,6 +488,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--staircase", action="store_true",
                     help="step through the characterisation duty levels")
     ap.add_argument("--level-seconds", type=float, default=45.0)
+    ap.add_argument("--freq-sweep", action="store_true",
+                    help="amplitude x period sweep for inertia ID (PLANT-11)")
     ap.add_argument("--release", action="store_true", help="torque off and exit")
     ap.add_argument("--out", help="write the sample log here as JSON")
     args = ap.parse_args(argv)
@@ -418,13 +515,15 @@ def main(argv: list[str] | None = None) -> int:
         elif args.goto is not None:
             outcome = run_goto(driver, args.goto, args.goto_speed,
                                args.seconds, args.interval)
+        elif args.freq_sweep:
+            outcome = run_freq_sweep(driver, driver.samples)
         elif args.staircase:
             outcome = run_staircase(driver, args.level_seconds, args.interval)
         elif args.sweep:
             outcome = run_sweep(driver, args.amplitude, args.period,
                                 args.seconds, args.interval)
         else:
-            ap.error("pick one of --hold / --sweep / --goto / --staircase / --release")
+            ap.error("pick one of --hold / --sweep / --goto / --staircase / --freq-sweep / --release")
     except KeyboardInterrupt:
         outcome = "interrupted"
     except UnsafeWrite as exc:
