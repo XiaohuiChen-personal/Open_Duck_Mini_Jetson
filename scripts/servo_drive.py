@@ -86,6 +86,21 @@ ABORT_STATUS_NONZERO = True
 # trains the operator to ignore aborts.
 ABORT_CONSECUTIVE = 3
 
+# Characterisation staircase: (amplitude counts, period s, goal_speed).
+# Acceleration demand scales as amplitude/period^2, so this spans roughly two
+# decades of mechanical duty while staying inside the torque cap. The point is
+# to produce a CURVE -- current and temperature against duty -- so that loads we
+# cannot apply on this bench can be extrapolated rather than guessed.
+STAIRCASE = [
+    (200, 4.0, 300),
+    (400, 3.0, 500),
+    (600, 2.0, 1000),
+    (800, 1.5, 1500),
+    (1000, 1.0, 2000),
+    (1200, 0.8, 3000),
+    (1500, 0.6, 4000),
+]
+
 
 class UnsafeWrite(Exception):
     """Raised instead of transmitting anything the safety model forbids."""
@@ -292,6 +307,64 @@ def run_sweep(driver: Driver, amplitude: int, period: float,
         time.sleep(interval)
 
 
+def run_goto(driver: Driver, target: int, speed: int, timeout: float,
+             interval: float) -> str:
+    """Move to an absolute position slowly, then report the settled error."""
+    here = driver.arm()
+    driver.write(46, speed)
+    driver.write(42, max(0, min(POSITION_MAX, target)))
+    print(f"# armed at {here}; moving to {target} at goal_speed={speed}")
+    start = time.time()
+    while time.time() - start < timeout:
+        t = driver.telemetry()
+        elapsed = time.time() - start
+        _log(driver, t, elapsed, target)
+        reason = driver.check_abort(t)
+        if reason:
+            return f"ABORT: {reason}"
+        if t["position"] is not None and abs(t["position"] - target) <= 8:
+            return "completed"
+        time.sleep(interval)
+    return "completed (timeout, may not have settled)"
+
+
+def run_staircase(driver: Driver, seconds_per_level: float, interval: float) -> str:
+    """Step through STAIRCASE, logging every sample tagged with its level."""
+    import math
+
+    centre = driver.arm()
+    print(f"# armed at {centre}; {len(STAIRCASE)} levels x {seconds_per_level}s")
+    for index, (amplitude, period, speed) in enumerate(STAIRCASE, start=1):
+        lo = max(0, centre - amplitude)
+        hi = min(POSITION_MAX, centre + amplitude)
+        if hi - lo < amplitude:
+            print(f"# level {index}: SKIPPED — +/-{amplitude} does not fit at {centre}")
+            continue
+        driver.write(46, speed)
+        print(f"# --- level {index}: +/-{amplitude} counts "
+              f"({amplitude * 360 / 4096:.1f} deg), period {period}s, speed {speed}, "
+              f"accel proxy {amplitude / period ** 2:.0f}")
+        start = time.time()
+        while True:
+            elapsed = time.time() - start
+            if elapsed >= seconds_per_level:
+                break
+            goal = int(centre + amplitude * math.sin(2 * math.pi * elapsed / period))
+            goal = max(lo, min(hi, goal))
+            driver.write(42, goal)
+            t = driver.telemetry()
+            t["level"] = index
+            t["amplitude"] = amplitude
+            t["period"] = period
+            t["goal_speed"] = speed
+            _log(driver, t, elapsed, goal)
+            reason = driver.check_abort(t)
+            if reason:
+                return f"ABORT at level {index}: {reason}"
+            time.sleep(interval)
+    return "completed"
+
+
 # -------------------------------------------------------------------- main ---
 
 
@@ -309,6 +382,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sweep", action="store_true", help="sinusoidal position sweep")
     ap.add_argument("--amplitude", type=int, default=200, help="sweep half-range, counts")
     ap.add_argument("--period", type=float, default=4.0, help="sweep period, s")
+    ap.add_argument("--goto", type=int, metavar="POS",
+                    help="move to an absolute position (0..4095) and settle")
+    ap.add_argument("--goto-speed", type=int, default=200)
+    ap.add_argument("--staircase", action="store_true",
+                    help="step through the characterisation duty levels")
+    ap.add_argument("--level-seconds", type=float, default=45.0)
     ap.add_argument("--release", action="store_true", help="torque off and exit")
     ap.add_argument("--out", help="write the sample log here as JSON")
     args = ap.parse_args(argv)
@@ -331,11 +410,16 @@ def main(argv: list[str] | None = None) -> int:
             outcome = "released"
         elif args.hold:
             outcome = run_hold(driver, args.seconds, args.interval)
+        elif args.goto is not None:
+            outcome = run_goto(driver, args.goto, args.goto_speed,
+                               args.seconds, args.interval)
+        elif args.staircase:
+            outcome = run_staircase(driver, args.level_seconds, args.interval)
         elif args.sweep:
             outcome = run_sweep(driver, args.amplitude, args.period,
                                 args.seconds, args.interval)
         else:
-            ap.error("pick one of --hold / --sweep / --release")
+            ap.error("pick one of --hold / --sweep / --goto / --staircase / --release")
     except KeyboardInterrupt:
         outcome = "interrupted"
     except UnsafeWrite as exc:
