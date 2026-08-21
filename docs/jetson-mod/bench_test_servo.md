@@ -152,6 +152,24 @@ which measures 4.94 V off USB VBUS. Tape it off so it cannot touch anything.
 > transceiver and out through **USB ground into the host**. Cutting black removes
 > that failure mode entirely.
 
+### Harness acceptance — run these before every power-on
+
+Meter in resistance mode, unpowered, cable plugged into **both** board and servo.
+**Touch the probes together first and confirm 0.0 Ω** — a broken lead reads `OL`,
+and `OL` is the pass condition on check 1.
+
+| # | measure | expect | proves |
+|---|---|---|---|
+| 1 | board socket `V1` pin ↔ servo-side red | **open** | the break works — the entire point |
+| 2 | servo-side red ↔ servo Vcc pin | connected | power still reaches the servo |
+| 3 | board socket `G` ↔ servo-side black | connected | shared ground reference intact |
+| 4 | servo-side red ↔ the black junction | **open** | the supply is not shorted |
+
+**BUILT AND VERIFIED 2026-08-21 — all four pass.**
+
+If check 1 ever shows continuity, the harness is defeated and the host is exposed
+again. **Re-run all four after any re-clip, re-tape or re-route.**
+
 > **Why the servo's spare socket does NOT work as a power inlet.** The servo's
 > two sockets are internally paralleled, so 11.1 V injected at socket B appears
 > on socket A's V pin, runs down the red wire into the board's socket `V1` pin —
