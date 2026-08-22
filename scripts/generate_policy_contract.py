@@ -236,16 +236,34 @@ def build():
         # held 2 s", so this is 0.8 x stall exactly. Writing 3.923 (the rounded
         # figure used in prose) would drift from its own definition.
         "servo_overload_trip_nm": round(0.8 * 4.903, 6),
+        # CONFIRMED from the servo's own EEPROM 2026-08-21: addr28
+        # protection_current = 310 raw at 12.258 mA/count = 3.800 A, matching
+        # datasheet 7-11 exactly. That agreement is what resolved the LSB.
         "servo_current_limit_a": 3.8,
         "servo_current_limit_window_s": 2.0,
         "servo_overload_window_s": 2.0,
-        "servo_firmware_temp_cutout_c": 70,
+        # MEASURED, and it is NOT the datasheet's 70. Datasheet 7-11 says these
+        # protections are 可自定义设定 -- user configurable -- and this unit
+        # ships at addr13 = 80. The register is what the firmware enforces.
+        # known_issues.md HW-2.
+        "servo_firmware_temp_cutout_c": 80,
+        "servo_firmware_temp_cutout_source": "addr13, read from the servo 2026-08-21 (datasheet text says 70)",
+        # MEASURED addr15/addr14. The UNDER-voltage limit is the one that
+        # reaches the robot: a 3S2P pack sags under load and this servo cuts
+        # torque at 6.0 V, not the 4 V the datasheet text implies.
+        "servo_min_input_voltage_v": 6.0,
+        "servo_max_input_voltage_v": 16.0,
         # ENGINEERING CHOICES, not measurements. Both sit BELOW the firmware
         # cutout so the runtime stops the robot in a controlled way before the
         # firmware drops torque without warning — a silent torque-off mid-stride
         # is a fall.
         "servo_temp_warn_c": 55,
         "servo_temp_stop_c": 65,
+        # 55/65 were chosen to sit below a believed 70 C cutout. The real
+        # cutout is 80 C, so they are now 25/15 K below it rather than 15/5 K --
+        # MORE conservative than intended. Deliberately not relaxed: addr63 is a
+        # BOARD sensor and the winding runs far hotter than it reports, so the
+        # extra margin is buying real protection, not lost performance.
         "servo_temp_thresholds_are": "ENGINEERING CHOICE, not measured — see S.8b",
         "servo_limits_source": (
             "Feetech ST-3250-C001 product specification, Edition A/0 (2024-01-16), "
