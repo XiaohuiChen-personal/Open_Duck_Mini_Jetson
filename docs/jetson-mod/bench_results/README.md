@@ -34,7 +34,10 @@ disagree.
 | [`sweep_test.json`](sweep_test.json) | 2 min gentle sweep, 198 samples |
 | [`staircase.json`](staircase.json) | 7-level duty staircase, 518 samples |
 | [`power_budget_v7.json`](power_budget_v7.json) | pack load derived from the v7 torque trace |
-| [`sustained_torque.md`](sustained_torque.md) | **the sustained-torque answer and the retrain decision** |
+| [`sustained_torque.md`](sustained_torque.md) | the sustained-torque limit and the retrain analysis |
+| [**`GO_NO_GO.md`**](GO_NO_GO.md) | **⭐ should the project continue? YES — read this first** |
+| [`step_test.json`](step_test.json) | step responses that measured the armature |
+| [`inertia_fit.json`](inertia_fit.json) | the armature fit: 0.00843 kg·m² |
 
 Reproduce with `scripts/servo_probe.py` (read-only), `scripts/servo_drive.py`
 (write-capable, SRAM allowlist), `scripts/power_budget.py`.
