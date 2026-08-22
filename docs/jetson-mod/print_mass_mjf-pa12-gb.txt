@@ -1,0 +1,43 @@
+process : mjf-pa12-gb  (PA12 glass-bead filled)
+profile : solid — powder/resin parts have no infill parameter
+
+part                               qty   vol cm3   g/piece   g total  how
+battery_pack_lid                     1     23.64     30.73     30.73  solid
+body_back                            1     95.45    124.08    124.08  solid
+body_front                           1    135.44    176.07    176.07  solid
+body_middle_bottom                   1    145.80    189.55    189.55  solid
+body_middle_top                      1     76.26     99.14     99.14  solid
+bulb                                 1      1.69      2.20      2.20  solid
+flash_light_module                   1     12.52     16.28     16.28  solid
+flash_reflector_interface            1      2.21      2.87      2.87  solid
+foot_bottom_pla                      2     15.88     20.65     41.30  solid
+foot_bottom_tpu                      2     23.60     28.79     57.58  solid
+foot_side                            2     21.45     27.88     55.77  solid
+foot_top                             2     39.65     51.55    103.10  solid
+head                                 1    229.35    298.16    298.16  solid
+head_bot_sheet                       1     65.91     85.68     85.68  solid
+head_pitch_to_yaw                    1     13.55     17.61     17.61  solid
+head_roll_mount                      1     13.37     17.38     17.38  solid
+head_yaw_to_roll                     1     29.42     38.25     38.25  solid
+knee_to_ankle_left_sheet             4      8.26     10.74     42.95  solid
+knee_to_ankle_right_sheet            4      6.54      8.50     34.02  solid
+left_antenna_holder                  1      2.93      3.81      3.81  solid
+left_cache                           1     64.61     83.99     83.99  solid
+left_eye                             1      1.43      1.86      1.86  solid
+left_roll_to_pitch                   1     29.64     38.53     38.53  solid
+leg_spacer                           4      7.05      9.17     36.66  solid
+neck_left_sheet                      1      8.06     10.48     10.48  solid
+neck_right_sheet                     1      6.16      8.01      8.01  solid
+right_antenna_holder                 1      2.93      3.81      3.81  solid
+right_cache                          1     64.61     83.99     83.99  solid
+right_eye                            1      4.63      6.02      6.02  solid
+right_roll_to_pitch                  1     29.64     38.53     38.53  solid
+roll_motor_bottom                    2      8.49     11.04     22.09  solid
+roll_motor_top                       2      9.18     11.93     23.86  solid
+speaker_interface                    1      1.80      2.35      2.35  solid
+speaker_stand                        1      6.99      9.08      9.08  solid
+thermal_partition                    1     13.07     16.99     16.99  solid
+trunk_bottom                         1     22.24     28.91     28.91  solid
+trunk_top                            1    144.68    188.08    188.08  solid
+------------------------------------------------------------------------------
+TOTAL                               52   1571.94             2039.75

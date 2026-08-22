@@ -1,0 +1,28 @@
+MJCF: /home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/mini_bdx/robots/open_duck_mini_v2/robot_motors.xml
+trunk_assembly unique mesh instances: 35
+`cell` poses currently in the model: 2
+  cell #1  x[  -138.6,  -120.6]  y[   -19.5,    -1.5]  z[     0.0,    65.0]  mm
+  cell #2  x[  -138.6,  -120.6]  y[     1.5,    19.5]  z[     0.0,    65.0]  mm
+
+fit check, 2 cells + 1 holder(s) as authored in the MJCF:
+  pack vs usb_c_charger                  0.00 mm^3
+  pack vs body_back                    513.67 mm^3   <-- INTERFERENCE
+  pack vs body_middle_bottom             0.00 mm^3
+  pack vs power_switch                   0.00 mm^3
+  pack vs bms                            0.00 mm^3
+  pack vs battery_pack_lid             384.69 mm^3   <-- INTERFERENCE
+  pack vs body_middle_top                0.00 mm^3
+  pack vs trunk_bottom                   0.00 mm^3
+  pack vs trunk_top                      0.00 mm^3
+  WORST                              513.67 mm^3   (tolerance 5.0)
+
+VERDICT: FAIL
+
+--- BREAKDOWN (cells vs holder), added by hand from the same tool ---
+CELLS ONLY  : battery_pack_lid 384.69 mm^3, everything else 0.00
+HOLDER ONLY : body_back        513.67 mm^3, everything else 0.00
+
+Both interferences are PRE-EXISTING in the upstream 2-cell model. They are not
+caused by the 6-cell work. Recorded here so the M3 acceptance criterion is
+"no worse than this baseline on the shared meshes", not an absolute zero that
+the shipped robot has never met.

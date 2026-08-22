@@ -1,0 +1,43 @@
+process : fdm-asa  (ASA filament)
+profile : 3 perimeters / 20% infill (TPU sole at 40%)
+
+part                               qty   vol cm3   g/piece   g total  how
+battery_pack_lid                     1     23.64     16.46     16.46  sliced
+body_back                            1     95.45     85.74     85.74  sliced
+body_front                           1    135.44     68.17     68.17  sliced
+body_middle_bottom                   1    145.80     91.58     91.58  sliced
+body_middle_top                      1     76.26     73.88     73.88  sliced
+bulb                                 1      1.69      1.76      1.76  sliced
+flash_light_module                   1     12.52      8.03      8.03  sliced
+flash_reflector_interface            1      2.21      2.37      2.37  sliced
+foot_bottom_pla                      2     15.88      9.23     18.46  sliced
+foot_bottom_tpu                      2     23.60     18.39     36.78  sliced
+foot_side                            2     21.45     14.97     29.94  sliced
+foot_top                             2     39.65     24.50     49.00  sliced
+head                                 1    229.35    190.69    190.69  sliced
+head_bot_sheet                       1     65.91     52.41     52.41  sliced
+head_pitch_to_yaw                    1     13.55     12.75     12.75  sliced
+head_roll_mount                      1     13.37     11.37     11.37  sliced
+head_yaw_to_roll                     1     29.42     19.02     19.02  sliced
+knee_to_ankle_left_sheet             4      8.26      7.91     31.64  sliced
+knee_to_ankle_right_sheet            4      6.54      7.21     28.84  sliced
+left_antenna_holder                  1      2.93      3.15      3.15  sliced
+left_cache                           1     64.61     57.06     57.06  sliced:rot-x
+left_eye                             1      1.43      1.56      1.56  sliced
+left_roll_to_pitch                   1     29.64     21.75     21.75  sliced
+leg_spacer                           4      7.05      5.49     21.96  sliced
+neck_left_sheet                      1      8.06      6.13      6.13  sliced
+neck_right_sheet                     1      6.16      5.79      5.79  sliced
+right_antenna_holder                 1      2.93      3.15      3.15  sliced
+right_cache                          1     64.61     57.32     57.32  sliced:rot-x
+right_eye                            1      4.63      4.83      4.83  sliced
+right_roll_to_pitch                  1     29.64     21.75     21.75  sliced
+roll_motor_bottom                    2      8.49      7.31     14.62  sliced
+roll_motor_top                       2      9.18      6.88     13.76  sliced
+speaker_interface                    1      1.80      1.88      1.88  sliced
+speaker_stand                        1      6.99      6.93      6.93  sliced
+thermal_partition                    1     13.07     13.66     13.66  sliced
+trunk_bottom                         1     22.24     13.54     13.54  sliced
+trunk_top                            1    144.68     65.41     65.41  sliced
+------------------------------------------------------------------------------
+TOTAL                               52   1571.94             1163.14

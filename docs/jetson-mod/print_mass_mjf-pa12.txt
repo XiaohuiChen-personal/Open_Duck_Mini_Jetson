@@ -1,0 +1,43 @@
+process : mjf-pa12  (HP 3D HR PA12, finished part incl. porosity)
+profile : solid — powder/resin parts have no infill parameter
+
+part                               qty   vol cm3   g/piece   g total  how
+battery_pack_lid                     1     23.64     23.88     23.88  solid
+body_back                            1     95.45     96.40     96.40  solid
+body_front                           1    135.44    136.79    136.79  solid
+body_middle_bottom                   1    145.80    147.26    147.26  solid
+body_middle_top                      1     76.26     77.02     77.02  solid
+bulb                                 1      1.69      1.71      1.71  solid
+flash_light_module                   1     12.52     12.65     12.65  solid
+flash_reflector_interface            1      2.21      2.23      2.23  solid
+foot_bottom_pla                      2     15.88     16.04     32.09  solid
+foot_bottom_tpu                      2     23.60     28.79     57.58  solid
+foot_side                            2     21.45     21.66     43.33  solid
+foot_top                             2     39.65     40.05     80.10  solid
+head                                 1    229.35    231.64    231.64  solid
+head_bot_sheet                       1     65.91     66.57     66.57  solid
+head_pitch_to_yaw                    1     13.55     13.68     13.68  solid
+head_roll_mount                      1     13.37     13.50     13.50  solid
+head_yaw_to_roll                     1     29.42     29.72     29.72  solid
+knee_to_ankle_left_sheet             4      8.26      8.34     33.37  solid
+knee_to_ankle_right_sheet            4      6.54      6.61     26.43  solid
+left_antenna_holder                  1      2.93      2.96      2.96  solid
+left_cache                           1     64.61     65.26     65.26  solid
+left_eye                             1      1.43      1.44      1.44  solid
+left_roll_to_pitch                   1     29.64     29.93     29.93  solid
+leg_spacer                           4      7.05      7.12     28.48  solid
+neck_left_sheet                      1      8.06      8.14      8.14  solid
+neck_right_sheet                     1      6.16      6.22      6.22  solid
+right_antenna_holder                 1      2.93      2.96      2.96  solid
+right_cache                          1     64.61     65.26     65.26  solid
+right_eye                            1      4.63      4.68      4.68  solid
+right_roll_to_pitch                  1     29.64     29.93     29.93  solid
+roll_motor_bottom                    2      8.49      8.58     17.16  solid
+roll_motor_top                       2      9.18      9.27     18.53  solid
+speaker_interface                    1      1.80      1.82      1.82  solid
+speaker_stand                        1      6.99      7.06      7.06  solid
+thermal_partition                    1     13.07     13.20     13.20  solid
+trunk_bottom                         1     22.24     22.46     22.46  solid
+trunk_top                            1    144.68    146.13    146.13  solid
+------------------------------------------------------------------------------
+TOTAL                               52   1571.94             1597.57

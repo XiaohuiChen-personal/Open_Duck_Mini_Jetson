@@ -103,10 +103,10 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [SHELL-3](#shell-3) | Launcher dispatches `--algorithm` to a deleted script and records success | LOW | dead code |
 | [SHELL-4](#shell-4) | Queue's GPU-busy predicate is blind to eval and play jobs | LOW | dormant script |
 | [SHELL-5](#shell-5) | Training watchdog fails open on a parse error | MEDIUM | future runs |
-| [ART-1](#art-1) | `policy.onnx` is gitignored while its weight sidecar is committed | HIGH | reproducibility |
+| [ART-1](#art-1) | `policy.onnx` was gitignored while its weight sidecar was committed | HIGH | ✅ **FIXED 2026-08-22** |
 | [ART-2](#art-2) | The shipped policy's provenance parent (`v6_robust`) is not in git | MEDIUM | **REFRAMED 2026-08-15** |
 | [ART-3](#art-3) | `usd/config.yaml` records a deleted worktree as the asset source | LOW | **FIXED 2026-08-11** by the USD regen |
-| [ART-4](#art-4) | `.gitignore` ignores `*.txt` repo-wide — any future prompt library or fixture is silently untracked | MEDIUM | Phase 4/5 |
+| [ART-4](#art-4) | `.gitignore` ignored `*.txt` repo-wide — evidence files vanished silently | MEDIUM | ✅ **FIXED 2026-08-22** (12 files recovered) |
 | [DEPLOY-1](#deploy-1) | The ONNX omits `action_scale` and `q_default` entirely | HIGH | **MITIGATED 2026-08-13** (R3: sidecar ships with the policy; graph unchanged) |
 | [DEPLOY-2](#deploy-2) | The normalizer epsilon is in the graph but not in the checkpoint | MEDIUM | Phase 4 |
 | [DEPLOY-3](#deploy-3) | 4 of the 59 observation dims cannot be measured on hardware | HIGH | **FIXED 2026-08-13** (M0/M0b) |

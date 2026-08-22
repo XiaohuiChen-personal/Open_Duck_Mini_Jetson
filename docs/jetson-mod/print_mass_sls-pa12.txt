@@ -1,0 +1,43 @@
+process : sls-pa12  (EOS PA2200 finished part; verify with your bureau)
+profile : solid — powder/resin parts have no infill parameter
+
+part                               qty   vol cm3   g/piece   g total  how
+battery_pack_lid                     1     23.64     22.93     22.93  solid
+body_back                            1     95.45     92.58     92.58  solid
+body_front                           1    135.44    131.37    131.37  solid
+body_middle_bottom                   1    145.80    141.43    141.43  solid
+body_middle_top                      1     76.26     73.97     73.97  solid
+bulb                                 1      1.69      1.64      1.64  solid
+flash_light_module                   1     12.52     12.14     12.14  solid
+flash_reflector_interface            1      2.21      2.14      2.14  solid
+foot_bottom_pla                      2     15.88     15.41     30.82  solid
+foot_bottom_tpu                      2     23.60     28.79     57.58  solid
+foot_side                            2     21.45     20.81     41.61  solid
+foot_top                             2     39.65     38.46     76.93  solid
+head                                 1    229.35    222.47    222.47  solid
+head_bot_sheet                       1     65.91     63.93     63.93  solid
+head_pitch_to_yaw                    1     13.55     13.14     13.14  solid
+head_roll_mount                      1     13.37     12.97     12.97  solid
+head_yaw_to_roll                     1     29.42     28.54     28.54  solid
+knee_to_ankle_left_sheet             4      8.26      8.01     32.05  solid
+knee_to_ankle_right_sheet            4      6.54      6.35     25.38  solid
+left_antenna_holder                  1      2.93      2.85      2.85  solid
+left_cache                           1     64.61     62.67     62.67  solid
+left_eye                             1      1.43      1.38      1.38  solid
+left_roll_to_pitch                   1     29.64     28.75     28.75  solid
+leg_spacer                           4      7.05      6.84     27.36  solid
+neck_left_sheet                      1      8.06      7.82      7.82  solid
+neck_right_sheet                     1      6.16      5.98      5.98  solid
+right_antenna_holder                 1      2.93      2.85      2.85  solid
+right_cache                          1     64.61     62.67     62.67  solid
+right_eye                            1      4.63      4.49      4.49  solid
+right_roll_to_pitch                  1     29.64     28.75     28.75  solid
+roll_motor_bottom                    2      8.49      8.24     16.48  solid
+roll_motor_top                       2      9.18      8.90     17.80  solid
+speaker_interface                    1      1.80      1.75      1.75  solid
+speaker_stand                        1      6.99      6.78      6.78  solid
+thermal_partition                    1     13.07     12.68     12.68  solid
+trunk_bottom                         1     22.24     21.57     21.57  solid
+trunk_top                            1    144.68    140.34    140.34  solid
+------------------------------------------------------------------------------
+TOTAL                               52   1571.94             1536.58

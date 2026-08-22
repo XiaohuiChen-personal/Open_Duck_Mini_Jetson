@@ -1,0 +1,43 @@
+process : sla-tough  (tough photopolymer, cured)
+profile : solid — powder/resin parts have no infill parameter
+
+part                               qty   vol cm3   g/piece   g total  how
+battery_pack_lid                     1     23.64     27.19     27.19  solid
+body_back                            1     95.45    109.76    109.76  solid
+body_front                           1    135.44    155.75    155.75  solid
+body_middle_bottom                   1    145.80    167.68    167.68  solid
+body_middle_top                      1     76.26     87.70     87.70  solid
+bulb                                 1      1.69      1.95      1.95  solid
+flash_light_module                   1     12.52     14.40     14.40  solid
+flash_reflector_interface            1      2.21      2.54      2.54  solid
+foot_bottom_pla                      2     15.88     18.27     36.53  solid
+foot_bottom_tpu                      2     23.60     28.79     57.58  solid
+foot_side                            2     21.45     24.67     49.33  solid
+foot_top                             2     39.65     45.60     91.20  solid
+head                                 1    229.35    263.75    263.75  solid
+head_bot_sheet                       1     65.91     75.79     75.79  solid
+head_pitch_to_yaw                    1     13.55     15.58     15.58  solid
+head_roll_mount                      1     13.37     15.37     15.37  solid
+head_yaw_to_roll                     1     29.42     33.84     33.84  solid
+knee_to_ankle_left_sheet             4      8.26      9.50     38.00  solid
+knee_to_ankle_right_sheet            4      6.54      7.52     30.09  solid
+left_antenna_holder                  1      2.93      3.37      3.37  solid
+left_cache                           1     64.61     74.30     74.30  solid
+left_eye                             1      1.43      1.64      1.64  solid
+left_roll_to_pitch                   1     29.64     34.08     34.08  solid
+leg_spacer                           4      7.05      8.11     32.43  solid
+neck_left_sheet                      1      8.06      9.27      9.27  solid
+neck_right_sheet                     1      6.16      7.09      7.09  solid
+right_antenna_holder                 1      2.93      3.37      3.37  solid
+right_cache                          1     64.61     74.30     74.30  solid
+right_eye                            1      4.63      5.32      5.32  solid
+right_roll_to_pitch                  1     29.64     34.08     34.08  solid
+roll_motor_bottom                    2      8.49      9.77     19.54  solid
+roll_motor_top                       2      9.18     10.55     21.10  solid
+speaker_interface                    1      1.80      2.07      2.07  solid
+speaker_stand                        1      6.99      8.03      8.03  solid
+thermal_partition                    1     13.07     15.03     15.03  solid
+trunk_bottom                         1     22.24     25.58     25.58  solid
+trunk_top                            1    144.68    166.38    166.38  solid
+------------------------------------------------------------------------------
+TOTAL                               52   1571.94             1811.03

@@ -225,3 +225,51 @@ class TestRobotURDF:
         tree = ET.parse(os.path.join(ROBOT_DIR, "robot.urdf"))
         content = ET.tostring(tree.getroot(), encoding="unicode")
         assert "thermal_partition" in content
+
+
+# ------------------------------------------------- ART-1 / ART-4 guards ------
+
+
+def test_the_exported_onnx_survives_a_fresh_clone():
+    """ART-1: `*.onnx` was ignored while the 774 KB weight sidecar
+    policy.onnx.data WAS tracked, so a clean checkout got an orphan sidecar and
+    onnxruntime failed with a confusing external-data error. jetson_runtime
+    loads this graph, so an unreproducible runtime is a real blocker."""
+    import subprocess
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    graph = "exported_policies/v7_servo_safe_ppo/policy.onnx"
+    tracked = subprocess.run(["git", "ls-files", "--error-unmatch", graph],
+                             cwd=repo, capture_output=True).returncode == 0
+    assert tracked, f"{graph} is not tracked; a fresh clone cannot run the runtime"
+    sidecar = subprocess.run(["git", "ls-files", "--error-unmatch", graph + ".data"],
+                             cwd=repo, capture_output=True).returncode == 0
+    assert sidecar, "the weight sidecar must be tracked alongside its graph"
+
+
+def test_training_scratch_onnx_is_still_ignored():
+    """The ART-1 fix must not start tracking every stray training export.
+
+    Probes an UNTRACKED path: gitignore does not apply to already-tracked files,
+    so testing BEST_WALK_ONNX.onnx (committed before the rule existed) would
+    prove nothing.
+    """
+    import subprocess
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    out = subprocess.run(["git", "check-ignore", "some_training_scratch.onnx"],
+                         cwd=repo, capture_output=True)
+    assert out.returncode == 0, \
+        "a stray root-level .onnx should still be ignored; the negation is too broad"
+
+
+def test_docs_txt_evidence_is_not_swallowed():
+    """ART-4: `*.txt` was ignored repo-wide, so evidence files vanished
+    silently -- the S.8 bench notes had to be renamed to .md to survive at all.
+    Anything under docs/ must be trackable."""
+    import subprocess
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    probe = "docs/jetson-mod/print_mass_fdm-pla_p2_i15.txt"
+    if not os.path.exists(os.path.join(repo, probe)):
+        import pytest
+        pytest.skip(f"{probe} absent")
+    out = subprocess.run(["git", "check-ignore", probe], cwd=repo, capture_output=True)
+    assert out.returncode != 0, f"{probe} is ignored; docs/ evidence must be tracked"

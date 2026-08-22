@@ -15,6 +15,18 @@ experiments/RL/new/logs/
 experiments/RL/new/sac/
 experiments/RL/new/ppo/
 *.zip
-*.txt
+
+# ART-4: this ignored EVERY .txt repo-wide, which silently swallowed evidence
+# files (the S.8 bench notes had to be renamed to .md to survive). Narrowed to
+# the training scratch that actually needs ignoring.
+experiments/**/*.txt
+logs/**/*.txt
+
+# ART-1: this ignored the exported graph while its weight sidecar
+# (policy.onnx.data, 774 KB) WAS tracked, so a fresh clone got an orphan sidecar
+# and onnxruntime failed with a confusing external-data error. The exported
+# policy is the deliverable -- jetson_runtime/policy.py loads it -- so it must
+# survive a clean checkout.
 *.onnx
+!exported_policies/**/*.onnx
 .training_runs/
