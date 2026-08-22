@@ -127,10 +127,22 @@ def gates():
         check("6c", "ref RMS within 1.0 deg of v6_robust",
               f"{v7['reference_tracking_rms_deg']:.3f} vs {ctl['reference_tracking_rms_deg']:.3f}", d <= 1.0)
 
-    BARS = [("pusheval_v4def", "push, v4 rule", 1.0),
-            ("pusheval_v5def", "push, v5 rule", 1.0),
-            ("wrencheval",     "sustained wrench", 80.0),
-            ("obstacleeval",   "obstacle graze", 12.0)]
+    # The on-disk suffixes still say v4def/v5def because that is what the
+    # artifacts are named, but "v4"/"v5" refer to POLICY GENERATIONS, not to what
+    # the eval measures — which is why they read as gibberish in a report. The
+    # labels below say what is actually being counted. See
+    # docs/jetson-mod/eval_fall_rules.md.
+    BARS = [
+        # Flat, EMPTY arena. Nothing exists to collide with, so "trunk contact
+        # > 1 N" can only mean trunk-on-GROUND — i.e. it is a strict fall
+        # detector that also catches stumbles a height threshold would miss.
+        ("pusheval_v4def", "push recovery, strict fall (empty arena)", 1.0),
+        # Contact-rich world. v5 is trained to treat trunk contact as
+        # survivable, so only genuine falls count.
+        ("pusheval_v5def", "push recovery, contact-tolerant fall", 1.0),
+        ("wrencheval",     "sustained wrench", 80.0),
+        ("obstacleeval",   "obstacle graze (obstacles present)", 12.0),
+    ]
     for suf, label, bar in BARS:
         a = agg(f"v7_servo_safe_{suf}")
         if a is None:

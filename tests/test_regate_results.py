@@ -183,3 +183,46 @@ class TestM2657IsTheCorrectedPlant:
                 f"{name} was measured against USD {recorded!r} but "
                 f"{self.DIRNAME}/README.md declares {declared!r} — a result "
                 "from another robot model is in this directory.")
+
+
+# --------------------------------------------- eval naming / fall rules ------
+
+from pathlib import Path  # noqa: E402  - local to this section
+
+
+def test_gate_labels_describe_what_is_measured_not_a_policy_version():
+    """'v4 rule' / 'v5 rule' name POLICY GENERATIONS, not measurements, and a
+    reader cannot tell what was counted. Misread once during the 2026-08-22
+    re-gate. See docs/jetson-mod/eval_fall_rules.md."""
+    src = (Path(__file__).resolve().parents[1]
+           / "scripts" / "check_v7_acceptance.py").read_text()
+    assert '"push, v4 rule"' not in src
+    assert '"push, v5 rule"' not in src
+    assert "strict fall (empty arena)" in src
+    assert "contact-tolerant fall" in src
+
+
+def test_the_empty_arena_fact_is_recorded():
+    """The v4 push world places NO obstacles, so 'trunk contact > 1 N' can only
+    mean trunk-on-ground. A 0.000 % there means it never fell -- NOT that it
+    dodged obstacles."""
+    doc = (Path(__file__).resolve().parents[1]
+           / "docs" / "jetson-mod" / "eval_fall_rules.md")
+    assert doc.exists(), "eval_fall_rules.md is the reference for this trap"
+    text = doc.read_text()
+    assert "no obstacles at all" in text
+    assert "obstacle_frac" in text
+
+
+def test_the_push_world_really_has_no_obstacles():
+    """Guards the claim itself: if a future edit adds obstacles to the robust
+    track, the doc above becomes wrong and the 0.000 % changes meaning."""
+    import re
+    src = (Path(__file__).resolve().parents[1] / "isaac_lab_env"
+           / "open_duck_mini_v2" / "env_cfg.py").read_text()
+    m = re.search(r"class OpenDuckPushEvalEnvCfg\(([^)]*)\):(.*?)(?=\n@configclass)",
+                  src, re.S)
+    assert m, "OpenDuckPushEvalEnvCfg not found"
+    assert "obstacle" not in m.group(2).lower(), \
+        "the strict push eval now places obstacles; eval_fall_rules.md is stale"
+    assert "Robust" in m.group(1), "it should still inherit the obstacle-free robust cfg"
