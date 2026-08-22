@@ -132,8 +132,13 @@ def test_position_cap_fires_even_on_a_well_formed_two_byte_value():
 
 
 class _FakeSerial:
-    def __init__(self):
+    def __init__(self, response: bytes = b""):
         self.writes = []
+        self.response = response
+
+    @property
+    def in_waiting(self):
+        return len(self.response)
 
     def reset_input_buffer(self):
         pass
@@ -142,16 +147,18 @@ class _FakeSerial:
         self.writes.append(data)
 
     def read(self, n):
-        return b""          # never acknowledge; exercises the failure path
+        out, self.response = self.response[:n], self.response[n:]
+        return out
 
     def close(self):
         pass
 
 
-def _driver():
+def _driver(response: bytes = b""):
     d = drive.Driver.__new__(drive.Driver)
-    d.ser = _FakeSerial()
+    d.ser = _FakeSerial(response)
     d.id, d.torque_limit, d.samples, d._armed = 1, 200, [], False
+    d.reply_timeout = 0.001      # tests must not wait on a real deadline
     return d
 
 
@@ -261,3 +268,53 @@ def test_sustained_fault_still_aborts_and_says_how_many():
 def test_per_sample_fault_test_is_still_available_undebounced():
     assert drive.Driver._abort_reason({"status": 0x20, "temperature": 30,
                                        "voltage": 11.1})
+
+
+# ------------------------------------------------- read-rate regression -----
+
+
+def test_a_missing_reply_costs_at_most_the_reply_timeout():
+    """MEASURED 2026-08-22: pyserial's read(n) blocks until n bytes arrive OR
+    the timeout expires. Requesting a generous window therefore cost the FULL
+    50 ms on every transaction, pinning the control loop at 10 Hz and aliasing
+    every sweep period below ~1 s. The transport must poll, not block."""
+    import time as _t
+    d = _driver()
+    d.reply_timeout = 0.02
+    start = _t.perf_counter()
+    assert d.read(56, 2) is None
+    assert _t.perf_counter() - start < 0.10, "transport is blocking, not polling"
+
+
+def _status_frame(servo_id: int, error: int, params: bytes) -> bytes:
+    body = bytes([servo_id, len(params) + 2, error]) + params
+    return drive.HEADER + body + bytes([drive.checksum(body)])
+
+
+def test_a_reply_is_parsed_without_waiting_for_the_full_window():
+    reply = _status_frame(1, 0, bytes([0x34, 0x12]))
+    d = _driver(reply)
+    d.reply_timeout = 1.0
+    import time as _t
+    start = _t.perf_counter()
+    assert d.read(56, 2) == 0x1234
+    assert _t.perf_counter() - start < 0.05, "returned late despite data present"
+
+
+def test_a_frame_for_another_id_is_not_accepted():
+    """0xFF 0xFF occurs inside payload data. Syncing on the first header and
+    trusting the checksum admits false locks: measured 2026-08-22, that
+    corrupted 0.1% of samples at ~700 Hz, one reading 150 C between neighbours
+    of 35 C, aborting a 4-minute sweep."""
+    other = _status_frame(9, 0, bytes([0x34, 0x12]))
+    assert _driver(other).read(56, 2) is None
+
+
+def test_a_frame_of_the_wrong_length_is_not_accepted():
+    assert _driver(_status_frame(1, 0, bytes([0x01]))).read(56, 2) is None
+
+
+def test_a_valid_frame_after_a_false_header_is_still_found():
+    noise = b"\xff\xff\x09\x02\x00\xf4"          # well-formed, wrong ID
+    good = _status_frame(1, 0, bytes([0x34, 0x12]))
+    assert _driver(noise + good).read(56, 2) == 0x1234

@@ -126,7 +126,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [SERVO-2](#servo-2) | Leg actuators run above the servo's rated torque | **HIGH** | **MITIGATED 2026-08-16** (174 % -> 131 %); remainder is mass/gearing, Task S.8 |
 | [HW-1](#hw-1) | Servo-bus adapter ties servo V to USB VBUS — 11.1 V reaches the host | **CRITICAL** | **MEASURED 2026-08-21**; hits the robot's wiring diagram, not only the bench |
 | [HW-2](#hw-2) | Cited firmware thresholds are the datasheet's *configurable defaults*, not this servo's settings | **HIGH** | **MEASURED 2026-08-21**; real cutoff is 80 °C, not 70 °C |
-| [PLANT-11](#plant-11) | `armature = 0.040` is 87–99.7 % of joint inertia — every torque figure may be a simulation artifact | **CRITICAL** | **CONFIRMED 2026-08-21**; blocks retrain #3 |
+| [PLANT-11](#plant-11) | `armature = 0.040` is **4.75× the measured 0.00843** — every torque figure is inflated | **CRITICAL** | **MEASURED 2026-08-22**; blocks retrain #3 |
 
 ---
 
@@ -1718,6 +1718,35 @@ change behaviour the policy depends on.
 ---
 
 <a id="plant-11"></a>
+## PLANT-11 · `armature = 0.040` is 4.75× the measured value — CRITICAL
+
+### ✅ MEASURED 2026-08-22 — **0.00843 kg·m²**
+
+Step-response identification on the bench servo, 11.1 V, unloaded, torque
+saturated. Raw log: [`bench_results/step_test.json`](bench_results/step_test.json),
+fit: [`inertia_fit.json`](bench_results/inertia_fit.json).
+
+| | |
+|---|---|
+| **measured armature** | **0.00843 kg·m²** |
+| configured | 0.040 — **4.75× too high** |
+| spread across 12 trials | 0.0076 – 0.0098 |
+| **IQR** | **0.0005** |
+| mean R² | 0.9973 |
+
+**The result does not depend on step size.** 400, 800 and 1200-count steps all
+land at ~0.0085, which is what distinguishes a physical quantity from a
+windowing artifact.
+
+**The discrimination is not marginal.** At the measured saturated torque of
+1.82 N·m, an armature of 0.040 would produce **45 rad/s²**. The servo delivered
+**210 rad/s²**.
+
+The measurement sits just below the independently-derived geometric band
+(0.009–0.021 from a 3–5 g coreless cup at r = 5–6 mm), corroborating it.
+
+### The original finding, retained
+
 ## PLANT-11 · `armature = 0.040` dominates the joint inertia — CRITICAL
 
 **Confirmed by computing the joint-space mass matrix** from

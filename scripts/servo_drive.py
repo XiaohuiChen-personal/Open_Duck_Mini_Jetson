@@ -150,6 +150,7 @@ class Driver:
         import serial
 
         self.ser = serial.Serial(port, baud, timeout=0.05)
+        self.reply_timeout = 0.010      # per-transaction ceiling, not a fixed cost
         self.id = servo_id
         self.torque_limit = min(torque_limit, TORQUE_LIMIT_MAX)
         self.samples: list[dict] = []
@@ -159,25 +160,64 @@ class Driver:
     # -- transport ---------------------------------------------------------
 
     def _txrx(self, packet: bytes, expect_params: int) -> bytes | None:
+        """Write, then read only as long as bytes are actually still arriving.
+
+        pyserial's read(n) blocks until it has n bytes OR the timeout expires.
+        Requesting a generous window therefore costs the FULL timeout on every
+        transaction: with timeout=0.05 and two transactions per control step the
+        loop pins at 10 Hz, which aliases every period below ~1 s. Measured
+        2026-08-22. Poll in_waiting instead and return the instant a complete
+        frame has landed.
+        """
         self.ser.reset_input_buffer()
         self.ser.write(packet)
-        window = self.ser.read(len(packet) + expect_params + 6)
-        if not window:
+
+        want = expect_params + 6
+        buf = b""
+        deadline = time.perf_counter() + self.reply_timeout
+        while time.perf_counter() < deadline:
+            pending = self.ser.in_waiting
+            if pending:
+                buf += self.ser.read(pending)
+                body = buf[len(packet):] if buf.startswith(packet) else buf
+                start = body.find(HEADER)
+                if start >= 0 and len(body) - start >= want:
+                    break
+            else:
+                time.sleep(0.0002)
+        if not buf:
             return None
-        if window.startswith(packet):          # half-duplex echo
-            window = window[len(packet):]
-        start = window.find(HEADER)
-        if start < 0 or len(window) - start < 6:
-            return None
-        frame = window[start:]
-        total = frame[3] + 4
-        if len(frame) < total:
-            return None
-        try:
-            _, _, params = decode_status(frame[:total])
-        except ValueError:
-            return None
-        return params
+        if buf.startswith(packet):          # half-duplex echo
+            buf = buf[len(packet):]
+        return self._parse(buf, expect_params)
+
+    def _parse(self, window: bytes, expect_params: int) -> bytes | None:
+        """Find a frame that is OURS, not merely one that checksums.
+
+        0xFF 0xFF occurs inside payload data, so syncing on the first header and
+        trusting the checksum admits false locks. Measured 2026-08-22: at ~700 Hz
+        that corrupted 0.1 % of samples, one of which read 150 C between
+        neighbours of 35 C and aborted a 4-minute sweep. Require the ID and the
+        length to match what we asked for, and keep searching if they do not.
+        """
+        want_len = expect_params + 2
+        start = 0
+        while True:
+            start = window.find(HEADER, start)
+            if start < 0:
+                return None
+            frame = window[start:]
+            if len(frame) < expect_params + 6:
+                return None
+            if frame[2] == self.id and frame[3] == want_len:
+                try:
+                    _, _, params = decode_status(frame[:want_len + 4])
+                except ValueError:
+                    start += 2
+                    continue
+                if len(params) == expect_params:
+                    return params
+            start += 2
 
     def read(self, address: int, width: int) -> int | None:
         body = bytes([self.id, 4, INST_READ, address, width])
@@ -401,9 +441,18 @@ def run_staircase(driver: Driver, seconds_per_level: float, interval: float) -> 
 # Amplitudes (counts) x periods (s) for the inertia identification. Chosen so
 # that J*A*w^2 and b*A*w separate: w spans 3.1..14.0 rad/s, so the inertial term
 # (w^2) grows ~20x across the sweep while the viscous term (w) grows ~4.5x.
-FREQ_AMPLITUDES = (114, 171, 227)          # 10, 15, 20 degrees
+FREQ_AMPLITUDES = (400, 700, 1000)         # 35, 61, 88 degrees
+# Sized 2026-08-22 after a 10-20 deg sweep returned I_rms of 2.8-4.3
+# counts -- addr69's 12.258 mA quantisation floor. Inertial torque
+# scales with amplitude, so 4x the swing lifts the signal clear of it.
 FREQ_PERIODS = (2.0, 1.2, 0.8, 0.6, 0.45)  # seconds
 FREQ_CYCLES = 16
+# Commanding goal_position faster than this makes the servo's internal profile
+# generator restart before it can accelerate: measured 2026-08-22, writing at
+# ~700 Hz pinned every condition to ~405 counts/s regardless of amplitude, while
+# the servo's actual capability is ~4000 counts/s. 50 Hz is also the robot's
+# real control rate, so this characterises the servo as it will be driven.
+FREQ_COMMAND_HZ = 50.0
 
 
 def run_freq_sweep(driver: Driver, out_rows: list, settle_s: float = 0.4) -> str:
@@ -433,14 +482,17 @@ def run_freq_sweep(driver: Driver, out_rows: list, settle_s: float = 0.4) -> str
             print(f"# --- A={amplitude} counts ({amplitude*360/4096:.1f} deg), "
                   f"T={period}s, w={2*math.pi/period:.2f} rad/s, {duration:.1f}s")
             start = time.time()
-            n, first = 0, None
+            n, first, next_cmd, goal = 0, None, 0.0, centre
             while True:
                 elapsed = time.time() - start
                 if elapsed >= duration:
                     break
-                goal = int(centre + amplitude * math.sin(2 * math.pi * elapsed / period))
-                driver.write(42, max(0, min(POSITION_MAX, goal)))
-                t = driver.telemetry_fast()
+                if elapsed >= next_cmd:      # command at FREQ_COMMAND_HZ...
+                    goal = int(centre + amplitude
+                               * math.sin(2 * math.pi * elapsed / period))
+                    driver.write(42, max(0, min(POSITION_MAX, goal)))
+                    next_cmd = elapsed + 1.0 / FREQ_COMMAND_HZ
+                t = driver.telemetry_fast()  # ...but sample as fast as we can
                 if t is None:
                     continue
                 if first is None:
@@ -461,6 +513,73 @@ def run_freq_sweep(driver: Driver, out_rows: list, settle_s: float = 0.4) -> str
             driver.write(42, centre)
             settle_until = time.time() + settle_s
             while time.time() < settle_until:
+                driver.telemetry_fast()
+    return "completed"
+
+
+STEP_SIZES = (400, 800, 1200)     # counts
+STEP_REPEATS = 4
+STEP_WINDOW_S = 0.5
+
+
+def run_step_test(driver: Driver, out_rows: list) -> str:
+    """Step-response identification. The method the frequency sweep could not be.
+
+    A smooth sinusoid keeps the position error small, so the proportional
+    controller commands little duty: measured 2026-08-22, addr69 sat at ~3 counts
+    (0.038 A) across every sweep condition, which is the quantisation floor. A
+    large step maximises the error, the servo commits FULL duty (load = 1000),
+    and current peaks at ~180 counts (2.2 A) -- 60x the signal.
+
+    During the launch transient the servo is torque-saturated and starting from
+    rest, so tau ~= Kt*I is constant and q(t) = q0 + 0.5*a*t^2. Fitting `a` from
+    position and averaging I over the same window gives J = (Kt*I - tau_f)/a.
+    """
+    if driver.torque_limit < TORQUE_LIMIT_MAX:
+        return (f"REFUSED: torque_limit is {driver.torque_limit}, must be "
+                f"{TORQUE_LIMIT_MAX}. The step must saturate torque to be usable.")
+
+    centre = driver.arm()
+    driver.write(41, 0)
+    driver.write(46, 0)
+    trial = 0
+    for size in STEP_SIZES:
+        for rep in range(STEP_REPEATS):
+            here = driver.read(56, 2)
+            if here is None:
+                return "ABORT: lost position feedback"
+            direction = 1 if here < POSITION_MAX / 2 else -1
+            target = here + direction * size
+            if not 0 <= target <= POSITION_MAX:
+                direction = -direction
+                target = here + direction * size
+            driver.write(42, here)
+            driver.write(40, 1)
+            settle = time.time() + 0.35
+            while time.time() < settle:
+                driver.telemetry_fast()
+
+            trial += 1
+            print(f"# --- step {trial}: {size} counts, {here} -> {target}")
+            driver.write(42, target)
+            t0 = time.perf_counter()
+            n = 0
+            while time.perf_counter() - t0 < STEP_WINDOW_S:
+                t = driver.telemetry_fast()
+                if t is None:
+                    continue
+                n += 1
+                out_rows.append({"trial": trial, "size": size, "repeat": rep,
+                                 "direction": direction, "start": here,
+                                 "target": target,
+                                 "t": time.perf_counter() - t0, **t})
+                reason = driver.check_abort(t)
+                if reason:
+                    return f"ABORT on step {trial}: {reason}"
+            print(f"#     {n} samples, {n / STEP_WINDOW_S:.0f} Hz")
+            driver.write(40, 0)
+            rest = time.time() + 0.5
+            while time.time() < rest:
                 driver.telemetry_fast()
     return "completed"
 
@@ -490,6 +609,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--level-seconds", type=float, default=45.0)
     ap.add_argument("--freq-sweep", action="store_true",
                     help="amplitude x period sweep for inertia ID (PLANT-11)")
+    ap.add_argument("--step-test", action="store_true",
+                    help="step-response inertia identification (PLANT-11)")
     ap.add_argument("--release", action="store_true", help="torque off and exit")
     ap.add_argument("--out", help="write the sample log here as JSON")
     args = ap.parse_args(argv)
@@ -515,6 +636,8 @@ def main(argv: list[str] | None = None) -> int:
         elif args.goto is not None:
             outcome = run_goto(driver, args.goto, args.goto_speed,
                                args.seconds, args.interval)
+        elif args.step_test:
+            outcome = run_step_test(driver, driver.samples)
         elif args.freq_sweep:
             outcome = run_freq_sweep(driver, driver.samples)
         elif args.staircase:
