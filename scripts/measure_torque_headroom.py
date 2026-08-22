@@ -5,7 +5,9 @@ Pure numpy over the recorded traces. No hardware, no GPU.
 
 Percentiles alone cannot answer the question that matters, because **every
 Feetech protection is duration-based**: over-current trips at >3.8 A held 2 s,
-overload at >80 % of stall held 2 s, over-temperature at >70 degC. A 40 ms spike
+overload at >80 % of stall held 2 s, over-temperature at >80 degC
+(MEASURED addr13, 2026-08-22; the datasheet TEXT says 70 but 7-11 calls these
+protections user-configurable and this unit does not ship at the default). A 40 ms spike
 and a 2 s sustained load are completely different risks and look identical in a
 p99. So this also reports the longest CONSECUTIVE run above each threshold.
 

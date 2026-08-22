@@ -93,3 +93,37 @@ waiting — the symptom is CPU spinning near 100 % with GPU idle.
 
 **G-R3, the video audit, is a manual frame-by-frame review and remains
 outstanding.** It is the owner's sign-off (`task_plan_v2.md` S.0).
+
+---
+
+## Isaac shutdown hang — operational, recurring, and it cost hours
+
+**`record_reference_trace.py` and `measure_head_motion.py` write their output and
+then hang instead of exiting.** Observed three times on 2026-08-22.
+
+The symptom is easy to misread as a slow run:
+
+- **~100 % CPU with the GPU at 0 %**
+- no further log output
+- **the artifact is already on disk and complete**
+
+The turn trace wrote its `.npz` in **50 seconds** and then hung; an earlier
+`head_turn` sat like that for **an hour** before being killed, and its standalone
+re-run finished in ~90 s. Nothing is being computed during the hang.
+
+**Wait on the artifact, not on the process:**
+
+```bash
+./isaaclab.sh -p script.py --out "$OUT" ... &
+for i in $(seq 1 150); do
+  [ -s "$OUT" ] && { sleep 3; pkill -9 -f script.py; break; }
+  sleep 10
+done
+```
+
+**Related, and self-inflicted:** launching a second Isaac job while one is still
+hanging produces
+`Disabling key-value database because another kit process is locking it`
+and the second job dies early. That is what truncated the first trace re-record
+after only `fwd`. **One Isaac job at a time, and confirm the previous one is
+actually gone — not merely finished.**
