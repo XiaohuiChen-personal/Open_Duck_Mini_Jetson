@@ -1666,10 +1666,10 @@ servos, never through the board.
 
 ### Still open
 
-- Whether the "Motor Control Board" in the wiring diagram is the URT-2 or a
-  different part. **Either way the diagram must show the bus V wire bypassing
-  it**, because the defect is invisible until measured and cannot be assumed
-  absent on a substitute.
+- ~~Whether the "Motor Control Board" is the URT-2~~ — **CONFIRMED by the owner
+  2026-08-22: it is the FE-URT-2.** So the measured 4.94 V on `V1` off USB VBUS
+  applies directly to the robot, not by analogy. The diagram must route the bus
+  V wire around it.
 - `jetson_wiring_diagram.drawio` / `.png` are **not yet updated**.
 
 

@@ -4141,7 +4141,7 @@ Corrections to the original graph, and why:
 | S.2 Record Isaac reference traces | YES | S.1 | — |
 | S.3 Decide DEPLOY-3 (antennas) | PARTIAL | S.2 | Make the call; it may cost a retrain |
 | S.8 Torque / current / thermal envelope | PARTIAL | S.2 | Supply the STS3250 datasheet |
-| S.8c Redraw the wiring diagram for HW-1 | YES | S.8b | Confirm what the "Motor Control Board" actually is |
+| S.8c Redraw the wiring diagram for HW-1 | YES | S.8b | — (board CONFIRMED as FE-URT-2, 2026-08-22) |
 | S.4 Hardware-free runtime core | YES | S.1, S.2, S.3 | — |
 | S.5 Jetson inference + parity | PARTIAL | S.4 | Own a Jetson; run it |
 | S.6 Measure loop latency | PARTIAL | S.5 | Physical bench with servos powered |
