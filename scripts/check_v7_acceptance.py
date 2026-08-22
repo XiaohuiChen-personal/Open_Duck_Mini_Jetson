@@ -25,7 +25,13 @@ import sys
 import numpy as np
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RES = os.path.join(REPO, "docs", "jetson-mod", "eval_results_rebuild")
+# The plant changed (PLANT-11/PLANT-6, 2026-08-22), so the same policy must be
+# re-scored against freshly produced artifacts. Point these at the new run
+# rather than overwriting the old-plant record, which is the evidence for what
+# the inflated armature did.
+RES = os.environ.get("V7_RESULTS_DIR",
+                     os.path.join(REPO, "docs", "jetson-mod", "eval_results_rebuild"))
+ART = os.environ.get("V7_ARTIFACT_PREFIX", os.path.join(REPO, "v7"))
 
 CONT_NM = 1.569
 OVERLOAD_NM = 3.923
@@ -138,9 +144,9 @@ def gates():
 
 
 def main() -> int:
-    torque(os.path.join(REPO, "v7_torque.npz"))
-    head(os.path.join(REPO, "v7_head_straight.npz"), "straight", True)
-    head(os.path.join(REPO, "v7_head_turn.npz"), "turn", False)
+    torque(f"{ART}_torque.npz")
+    head(f"{ART}_head_straight.npz", "straight", True)
+    head(f"{ART}_head_turn.npz", "turn", False)
     gates()
 
     w = max(len(b) for _, b, _, _, _ in rows)
