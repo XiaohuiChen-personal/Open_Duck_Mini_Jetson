@@ -66,7 +66,17 @@ class TestRobotCfgModule:
         content = open(cfg_path).read()
         assert "stiffness=45.53" in content, "kp (stiffness) should be 45.53"
         assert "damping=1.346" in content, "kd (damping) should be 1.346"
-        assert "armature=0.040" in content, "armature should be 0.040"
+        # PLANT-11 2026-08-22: BAM's 0.040 was measured to be 4.74x too high.
+        # The bench value supersedes it; see bench_results/GO_NO_GO.md.
+        assert "STS3250_ARMATURE = 0.00843" in content, \
+            "armature should be the measured 0.00843, not BAM's 0.040"
+        assert "armature=STS3250_ARMATURE" in content, \
+            "both STS3250 actuator groups should use the measured armature"
+        # PLANT-6 2026-08-22: MuJoCo applies one frictionloss both at rest and
+        # in motion; Isaac's `friction` is rest-only, so without this the gait
+        # ran frictionless.
+        assert "dynamic_friction=0.200" in content, \
+            "dry friction must act during motion, not only at rest"
         assert "friction=0.200" in content, "friction should be 0.200"
 
         assert abs(consts["STS3250_EFFORT_LIMIT_NM"] - 4.903) < 1e-6, (

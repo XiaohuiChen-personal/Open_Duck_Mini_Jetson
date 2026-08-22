@@ -161,10 +161,12 @@ def test_kt_is_the_output_shaft_constant():
     assert fi.KT_NM_PER_A == pytest.approx(1.0787, abs=1e-4)
 
 
-def test_configured_armature_matches_the_repo():
+def test_the_plant_correction_has_been_applied():
+    """PLANT-11 fix landed 2026-08-22. This guards against a revert: the
+    measured 0.00843 must be what the simulation uses, not BAM's 0.040."""
     src = (REPO / "isaac_lab_env" / "open_duck_mini_v2" / "robot_cfg.py").read_text()
-    assert f"armature={fi.CONFIGURED_ARMATURE}" in src, \
-        "robot_cfg.py changed; update CONFIGURED_ARMATURE and re-read PLANT-11"
+    assert "STS3250_ARMATURE = 0.00843" in src
+    assert "armature=0.040" not in src, "BAM's inflated armature is back"
 
 
 def test_the_plausible_band_excludes_the_configured_value():

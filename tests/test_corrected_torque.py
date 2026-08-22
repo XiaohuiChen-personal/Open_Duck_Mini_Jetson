@@ -23,10 +23,12 @@ def test_armature_constants_match_the_bench_measurement():
     assert cte.ARMATURE_MEASURED == pytest.approx(0.00843, abs=1e-5)
 
 
-def test_configured_armature_still_matches_the_repo():
+def test_the_plant_correction_has_been_applied():
+    """PLANT-11 fix landed 2026-08-22. This guards against a revert: the
+    measured 0.00843 must be what the simulation uses, not BAM's 0.040."""
     src = (REPO / "isaac_lab_env" / "open_duck_mini_v2" / "robot_cfg.py").read_text()
-    assert f"armature={cte.ARMATURE_CONFIGURED}" in src, \
-        "robot_cfg.py changed — the correction may already be applied"
+    assert "STS3250_ARMATURE = 0.00843" in src
+    assert "armature=0.040" not in src, "BAM's inflated armature is back"
 
 
 def test_ratio_is_smallest_where_the_link_is_lightest():

@@ -511,13 +511,24 @@ damping, not the effort limit. This compounds with [PLANT-1](#plant-1): two
 independent reasons to over-command a real servo.
 
 <a id="plant-6"></a>
-## PLANT-6 · Joint dry friction is inactive during motion — MEDIUM
+## PLANT-6 · Joint dry friction is inactive during motion — MEDIUM — ✅ **FIXED 2026-08-22**
 
-> **Still open, and it makes S.8's numbers optimistic.** Dry friction is
-> inactive during motion and BAM's viscous term is dropped, so the
-> `applied_torque` that S.8 measured is not faithful motor torque. Recorded here
-> because [`sim2real/S8_torque_envelope.md`](sim2real/S8_torque_envelope.md)
-> cites this as one of its three under-sampling caveats.
+> **FIXED by `dynamic_friction=0.200` on both STS3250 actuator groups**
+> (`robot_cfg.py`). MuJoCo applies ONE `frictionloss` both at rest and in
+> motion; Isaac splits it, and `dynamic_friction=None` means "read from the
+> USD", which authors none → 0.0. BAM's dry friction was therefore present only
+> when the robot stood still.
+>
+> **HALF OF THIS ENTRY WAS WRONG.** "BAM's viscous term is dropped" is false —
+> it is already inside the D gain:
+> `kt²/R + friction_viscous = 0.7207592 + 0.6256393 = 1.3463985 = kd` (R = 1.615 Ω,
+> verified 2026-08-22). Setting `viscous_friction` as this entry implied would
+> **double-count** it, so it is deliberately left unset. A pleasing side-effect:
+> that implied R ≈ 1.615 Ω independently corroborates the ~1.6 Ω hot-copper
+> figure used in [`bench_results/sustained_torque.md`](bench_results/sustained_torque.md),
+> and further discredits the rejected 2.86 Ω.
+>
+> The original text is retained below.
 
 Isaac splits MuJoCo's single `frictionloss` into three parameters; only the
 first is set.

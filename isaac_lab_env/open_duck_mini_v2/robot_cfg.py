@@ -32,6 +32,10 @@ _USD_PATH = os.path.join(
 # what the vendor will stand behind, and a policy trained against it cannot
 # learn a gait the servo physically cannot execute.
 STS3250_EFFORT_LIMIT_NM = 4.903        # 50 kg.cm datasheet stall
+# Reflected rotor inertia, MEASURED 2026-08-22 by step-response identification
+# on the bench servo. Supersedes BAM id008's 0.040, which is 4.74x too high.
+# docs/jetson-mod/bench_results/GO_NO_GO.md, known_issues.md PLANT-11.
+STS3250_ARMATURE = 0.00843
 STS3250_CONTINUOUS_NM = 1.569          # 16 kg.cm = Feetech 'Rated Torque'
 # Feetech does NOT call this continuous or thermal, and publishes no duty-cycle
 # curve; it is a 25 C free-air bench figure. For a sealed chassis with a Jetson
@@ -106,9 +110,34 @@ OPEN_DUCK_MINI_V2_CFG = ArticulationCfg(
     # Source: kscalelabs/sysid feetech/sts3250/params/id008-params/m1.json
     #   kp (stiffness): 45.53  — BAM id008 MuJoCo export
     #   kd (damping):   1.346  — BAM id008 MuJoCo export
-    #   armature:       0.040  — BAM id008
+    #   armature:       0.040  — BAM id008  ** SUPERSEDED, see below **
     #   friction:       0.200  — BAM id008 frictionloss
     #   effort_limit:   8.716  — BAM id008 forcerange
+    #
+    # PLANT-11 FIX 2026-08-22 — armature 0.040 -> 0.00843, MEASURED on the
+    # bench servo by step-response identification (12 trials x 3 step sizes,
+    # IQR 0.0005, mean R^2 0.9973; docs/jetson-mod/bench_results/GO_NO_GO.md).
+    # BAM's 0.040 is 4.74x too high and was 87-99.7 % of the simulated joint
+    # inertia -- 386x the real link at the ankle -- so the sim charged the
+    # policy for accelerating a flywheel that does not exist. Corroborated
+    # independently by rotor geometry (3-5 g coreless cup, r 5-6 mm, 345:1 ->
+    # 0.009-0.021) and by the discrimination itself: at the measured 1.82 N.m
+    # saturated torque, 0.040 predicts 45 rad/s^2 and the servo delivered 210.
+    #
+    # PLANT-6 FIX 2026-08-22 — dynamic_friction added.
+    # MuJoCo applies ONE `frictionloss` both at rest and in motion. Isaac splits
+    # it: `friction` caps effort only AT REST, `dynamic_friction` is what acts
+    # during motion, and leaving it None means "read from the USD", which
+    # authors no joint friction -> 0.0. So BAM's dry friction was present when
+    # the robot stood still and absent for the entire gait, which flatters the
+    # policy. Setting both to 0.200 reproduces MuJoCo's semantics.
+    #
+    # NOT fixed, deliberately: `viscous_friction` stays unset. BAM's viscous
+    # term is ALREADY inside the D gain --
+    #   kt^2/R + friction_viscous = 0.7207592 + 0.6256393 = 1.3463985 = kd
+    # (with R = 1.615 ohm) -- so setting it separately would DOUBLE-COUNT it.
+    # known_issues.md PLANT-6 previously said the viscous term "is dropped";
+    # that half of the entry is wrong.
     actuators={
         "legs": ImplicitActuatorCfg(
             joint_names_expr=[
@@ -117,8 +146,9 @@ OPEN_DUCK_MINI_V2_CFG = ArticulationCfg(
             ],
             stiffness=45.53,
             damping=1.346,
-            armature=0.040,
+            armature=STS3250_ARMATURE,      # PLANT-11: measured, was 0.040
             friction=0.200,
+            dynamic_friction=0.200,         # PLANT-6: acts during motion
             effort_limit_sim=STS3250_EFFORT_LIMIT_NM,
         ),
         "head": ImplicitActuatorCfg(
@@ -132,8 +162,9 @@ OPEN_DUCK_MINI_V2_CFG = ArticulationCfg(
             ],
             stiffness=45.53,
             damping=1.346,
-            armature=0.040,
+            armature=STS3250_ARMATURE,      # PLANT-11: measured, was 0.040
             friction=0.200,
+            dynamic_friction=0.200,         # PLANT-6: acts during motion
             effort_limit_sim=STS3250_EFFORT_LIMIT_NM,
         ),
         # PLANT-4 FIX (Task M0b). The antennas keep AN actuator -- without one
