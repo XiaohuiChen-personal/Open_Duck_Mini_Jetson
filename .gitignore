@@ -30,3 +30,9 @@ logs/**/*.txt
 *.onnx
 !exported_policies/**/*.onnx
 .training_runs/
+
+# play.py writes its ONNX export and video NEXT TO THE CHECKPOINT. Both are
+# scratch: the export is byte-identical to the tracked policy.onnx, and audit
+# videos are copied into docs/jetson-mod/eval_results_*/videos/ deliberately.
+exported_policies/*/exported/
+exported_policies/*/videos/
