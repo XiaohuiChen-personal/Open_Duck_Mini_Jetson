@@ -127,7 +127,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [HW-1](#hw-1) | Servo-bus adapter ties servo V to USB VBUS — 11.1 V reaches the host | **CRITICAL** | **MEASURED 2026-08-21**; hits the robot's wiring diagram, not only the bench |
 | [HW-2](#hw-2) | Cited firmware thresholds are the datasheet's *configurable defaults*, not this servo's settings | **HIGH** | **MEASURED 2026-08-21**; real cutoff is 80 °C, not 70 °C |
 | [PLANT-11](#plant-11) | `armature = 0.040` is **4.75× the measured 0.00843** — every torque figure is inflated | **CRITICAL** | **MEASURED 2026-08-22**; blocks retrain #3 |
-| [POSE-1](#pose-1) | The head is held rolled ~17° and pitched down ~11° for the whole gait — the camera rides with it | **MEDIUM** | **MEASURED 2026-08-23**; spotted in the video audit |
+| [POSE-1](#pose-1) | The head is held rolled ~17° and pitched down ~11° for the whole gait — the camera rides with it | **HIGH** | **OWNER: blocks sim-to-real confidence, retrain acceptable** (2026-08-23) |
 
 ---
 
@@ -1817,7 +1817,7 @@ fiction produces a policy tuned to that fiction.
 
 
 <a id="pose-1"></a>
-## POSE-1 · The head is permanently canted, and the camera rides with it — MEDIUM
+## POSE-1 · The head is permanently canted, and the camera rides with it — HIGH
 
 **Spotted by the owner in the G-R3 video audit 2026-08-23** ("the head always
 slants to the lower right"), then measured. It is real and it is steady.
@@ -1860,18 +1860,74 @@ what broke other bars in v7b.
    *centring* — so a 17° permanent lean satisfies every bar. The gate measures
    whether the head can move, never whether it is level.
 
-### Options, none taken yet
+### 🔴 OWNER DECISION 2026-08-23
 
-| option | cost | note |
-|---|---|---|
-| **Accept, correct in software** | ~0 | de-rotate the camera image by the measured roll; needs the roll to be *stable*, which it is (sd 1–2°) |
-| Raise `joint_deviation_head` | a retrain | the v7b lesson says a weight big enough to matter may break other bars |
-| Add a `head_roll`-specific level term | a retrain | narrower than the above; targets the one joint that dominates |
-| Mount the camera on a roll-compensating bracket | hardware | fixes the image, not the torque |
+> **"The head tilt makes the robot not a good candidate for sim-to-real for now
+> and so we should address it seriously. I do not mind retraining."**
 
-**Recommendation: software de-rotation**, because the roll is steady enough to
-subtract and it costs no GPU time. Revisit only if a future retrain happens for
-another reason.
+Severity raised **MEDIUM → HIGH**. Software de-rotation is **no longer the
+recommendation** — it was chosen to avoid GPU cost, and that constraint has been
+lifted. **A retrain aimed at the pose is on the table.**
+
+Deferred to a dedicated research pass; **not** to be bolted onto another task.
+
+### What the mass actually is — a correction
+
+An earlier note in this entry said "19.8 % of the robot is canted 17°". **That
+was wrong.** 19.8 % is what `neck_pitch` carries. The *roll* only moves what is
+distal to `head_roll`:
+
+| joint | moves | subtree mass | % of robot |
+|---|---|---|---|
+| `neck_pitch` | whole head + neck stack | 541.6 g | 19.8 % |
+| `head_pitch` | — | 455.2 g | 16.7 % |
+| `head_yaw` | — | 442.5 g | 16.2 % |
+| **`head_roll`** | `head_assembly` + antennas | **348.9 g** | **12.8 %** |
+
+Build-up: `trunk_assembly` 1188.9 g → `neck_pitch_assembly` 86.4 →
+`head_pitch_to_yaw` 12.8 → `neck_yaw_assembly` 93.5 → **`head_assembly` 341.7**
+→ antennas 2 × 3.6. `head_assembly` alone is **63 % of the head stack**.
+
+The MJCF stores a lumped mass per body, so it cannot be decomposed into
+camera/servo/shell from the model, and `scripts/part_mass_table.json` has no head
+entries — the Phase-M rebuild covered printed trunk parts only.
+
+### Options, with retraining now permitted
+
+| option | cost | fixes tilt | fixes gaze | fixes torque | fixes CoM |
+|---|---|---|---|---|---|
+| software de-rotation | ~0 | ✅ | ❌ | ❌ | ❌ |
+| raise `joint_deviation_head` | retrain | ✅ | ✅ | ✅ | ✅ |
+| add a `head_roll`-specific level term | retrain | ✅ | partial | ✅ | ✅ |
+| camera bracket compensation | hardware | ✅ | partial | ❌ | ❌ |
+| reduce `head_assembly` mass | CAD + print | ❌ | ❌ | partial | partial |
+
+**Do software de-rotation anyway** — it is free, the encoder data is already on
+the bus, and it helps until a retrain lands. It is a stopgap, not the fix.
+
+### Research questions for the dedicated pass
+
+1. **Is the head cant CAUSING the leg asymmetry, or merely correlated?**
+   `hip_yaw` L/R = 0.69 and `hip_roll` = 0.81 — the two lateral-balance joints —
+   while the sagittal `hip_pitch` (1.00) and `knee` (0.96) are near-symmetric.
+   Suggestive, unproven. **The clean test is one GPU run:** re-measure torque with
+   the head joints forced to zero and see whether `hip_yaw`/`hip_roll`
+   symmetrise.
+2. **Why does the policy prefer the cant at all?** It costs continuous torque and
+   earns a −0.067 penalty. Something must pay for it, or it is an unpunished
+   random walk from initialisation. Check whether the sign is seed-dependent by
+   inspecting an earlier generation (v6d, v5d) for the same lean.
+3. **What weight would actually centre the head, and what does it break?** v7b
+   showed a torque weight large enough to matter broke two other bars. Sweep the
+   head weight the same way *before* committing 5 GPU-hours.
+4. **Is an L1 deviation penalty even the right form?** It is linear, so it gives
+   the same marginal push at 1° as at 17°. A term that grows with angle, or a
+   barrier past a few degrees, may hold centre without distorting the gait.
+5. **How much field of view does the 15° pitch-down actually cost?** Turns "is
+   it a problem" into a number for the Duck Embody work.
+6. **Does the cant survive the PLANT-11 fix in older policies?** All three traces
+   here are v7 on the corrected plant. If v6d leans the same way, it is a reward
+   -structure problem; if not, something changed.
 
 ### Add a gate bar
 
