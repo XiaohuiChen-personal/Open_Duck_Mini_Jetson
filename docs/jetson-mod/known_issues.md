@@ -127,6 +127,7 @@ so anything scoped to `DuckContactRewards` does not touch the shipped policy.
 | [HW-1](#hw-1) | Servo-bus adapter ties servo V to USB VBUS — 11.1 V reaches the host | **CRITICAL** | **MEASURED 2026-08-21**; hits the robot's wiring diagram, not only the bench |
 | [HW-2](#hw-2) | Cited firmware thresholds are the datasheet's *configurable defaults*, not this servo's settings | **HIGH** | **MEASURED 2026-08-21**; real cutoff is 80 °C, not 70 °C |
 | [PLANT-11](#plant-11) | `armature = 0.040` is **4.75× the measured 0.00843** — every torque figure is inflated | **CRITICAL** | **MEASURED 2026-08-22**; blocks retrain #3 |
+| [POSE-1](#pose-1) | The head is held rolled ~17° and pitched down ~11° for the whole gait — the camera rides with it | **MEDIUM** | **MEASURED 2026-08-23**; spotted in the video audit |
 
 ---
 
@@ -1813,6 +1814,70 @@ J = 0.010. A 4–5× separation, well inside the 3.80 A trip.
 
 **Blocks retrain #3.** Retraining against a plant whose leg inertia is 87–99.7 %
 fiction produces a policy tuned to that fiction.
+
+
+<a id="pose-1"></a>
+## POSE-1 · The head is permanently canted, and the camera rides with it — MEDIUM
+
+**Spotted by the owner in the G-R3 video audit 2026-08-23** ("the head always
+slants to the lower right"), then measured. It is real and it is steady.
+
+Mean head joint angles, all with a **default of 0.00°**:
+
+| joint | fwd | stand | turn | sd | soft limit |
+|---|---|---|---|---|---|
+| **`head_roll`** | **−17.47°** | −8.89° | −8.31° | 1–2° | ±27° |
+| `neck_pitch` | −11.07° | −8.18° | −9.04° | ~1° | −15.75…+60.75° |
+| `head_pitch` | −4.49° | −1.41° | −0.70° | ~2° | ±40.5° |
+| `head_yaw` | +3.41° | +2.54° | +3.96° | ~4° | ±144° |
+
+**The standard deviations are far smaller than the offsets**, so this is a
+sustained lean, not oscillation. Nothing is pinned — `head_roll` sits 65 % of the
+way to its soft limit and on-stop time is **0 %**, so this is not
+[SERVO-1](#servo-1) recurring.
+
+### Cause: the penalty has no authority
+
+`joint_deviation_head` (`env_cfg.py:198`) is `joint_deviation_l1` at weight
+**−0.1**. Measured mean total head deviation is **0.673 rad**, so the term
+contributes **−0.067 per step — 0.67 % of the +10.0 alive bonus.** Any marginal
+benefit the policy gets from leaning comfortably outweighs it.
+
+This is the same structural problem as the torque penalty
+([PLANT-11](#plant-11)): a shaping term two orders of magnitude below the
+dominant reward cannot steer behaviour, and raising it far enough to matter is
+what broke other bars in v7b.
+
+### Why it matters beyond looking odd
+
+1. **THE CAMERA IS IN THE HEAD** (CSI ribbon, Head → Jetson, in
+   `jetson_wiring_diagram.drawio`). A permanent ~17° roll means **every frame the
+   perception stack sees is rolled ~17°**, on the real robot as well as in sim.
+   That lands directly on the Duck Embody VLM work.
+2. **Continuous torque** to hold it: `head_roll` 0.132 N·m RMS, `neck_pitch`
+   0.297 N·m RMS. Small, but paid every step of every gait.
+3. **It passed the gate.** §6b checks neck *travel* and *on-stop %*, not
+   *centring* — so a 17° permanent lean satisfies every bar. The gate measures
+   whether the head can move, never whether it is level.
+
+### Options, none taken yet
+
+| option | cost | note |
+|---|---|---|
+| **Accept, correct in software** | ~0 | de-rotate the camera image by the measured roll; needs the roll to be *stable*, which it is (sd 1–2°) |
+| Raise `joint_deviation_head` | a retrain | the v7b lesson says a weight big enough to matter may break other bars |
+| Add a `head_roll`-specific level term | a retrain | narrower than the above; targets the one joint that dominates |
+| Mount the camera on a roll-compensating bracket | hardware | fixes the image, not the torque |
+
+**Recommendation: software de-rotation**, because the roll is steady enough to
+subtract and it costs no GPU time. Revisit only if a future retrain happens for
+another reason.
+
+### Add a gate bar
+
+Whatever is chosen, §6b should gain a **head-level** bar — mean `|head_roll|`
+under some threshold — so this cannot pass unnoticed again. It took a human
+watching a video to catch it, which is exactly what G-R3 exists for.
 
 <a id="not-issues-verified-refutations"></a>
 # Not issues — verified refutations
